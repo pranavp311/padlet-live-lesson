@@ -63,7 +63,7 @@ export function validOp(o: unknown): o is Op {
   const v = o as Record<string, unknown>;
   switch (v.op) {
     case "set_title": return str(v.title);
-    case "add_node": return str(v.id) && str(v.label) && (v.role === undefined || ROLES.includes(v.role as string));
+    case "add_node": return str(v.id) && str(v.label); // an unknown role ("pool") is drawn as "other", not dropped
     case "relabel": return str(v.id) && str(v.label);
     case "add_edge": return str(v.from) && str(v.to) && (v.id === undefined || str(v.id)) && (v.label === undefined || typeof v.label === "string");
     case "add_event": return str(v.id) && str(v.when) && str(v.label);
@@ -98,7 +98,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         break;
       case "add_node":
         if (!has(o.id)) {
-          next.nodes.push({ id: o.id, label: o.label, role: o.role ?? "other" });
+          next.nodes.push({ id: o.id, label: o.label, role: o.role && ROLES.includes(o.role) ? o.role : "other" });
           next.fresh.push(o.id);
         }
         break;

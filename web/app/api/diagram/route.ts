@@ -98,8 +98,14 @@ async function drawRequest(heard: string, said: string, current: Diagram | null,
     const kind: Kind = jev.kind !== "none" ? jev.kind : "flow";
     const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\nEarlier in the lesson: ${said}`;
     const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
+    const ops = Array.isArray(reply.ops) ? reply.ops : [];
+    // Only a line of text ("write the formula underneath") is an edit Jev scored low: it goes under the diagram on screen.
+    if (current && ops.length && ops.every((o) => o?.op === "set_caption")) {
+      console.info("diagram", JSON.stringify({ path: "bubbles-caption", ask, asked, edits }));
+      return { jev, action: "update", kind: current.kind, ops };
+    }
     console.info("diagram", JSON.stringify({ path: "bubbles", ask, jev, asked, edits, kind }));
-    return { jev, action: "new_topic", kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
+    return { jev, action: "new_topic", kind, ops };
   } catch (e) {
     console.error("bubbles request failed", e);
     return { error: String(e) };
