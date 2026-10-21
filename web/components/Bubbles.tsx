@@ -1,6 +1,18 @@
+import { useId } from "react";
+
 // Bubbles, the mascot teachers can ask for a diagram ("Bubbles, draw the water cycle").
-// A soap bubble with a face: floats when idle, bobs and blows little bubbles while drawing.
+// A soap bubble whose rainbow film uses Padlet's palette. Idle it floats and blinks;
+// drawing, it holds a pencil, scribbles and throws off sparkles.
+const INK = "#2e1c5f";
+
 export function Bubbles({ size = 72, drawing = false }: { size?: number; drawing?: boolean }) {
+  // Several Bubbles can be on screen at once, so gradient ids must be unique per instance.
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const fill = `bb-fill-${id}`;
+  const film = `bb-film-${id}`;
+  // At pill size (28px) extra detail turns to noise: drop the sparkles, scrawl and second reflection.
+  const small = size < 40;
+
   return (
     <svg
       width={size}
@@ -11,37 +23,68 @@ export function Bubbles({ size = 72, drawing = false }: { size?: number; drawing
       className={drawing ? "bubbles bubbles-drawing" : "bubbles"}
     >
       <defs>
-        <radialGradient id="bb-body" cx="38%" cy="32%" r="75%">
+        <radialGradient id={fill} cx="40%" cy="34%" r="72%">
           <stop offset="0" stopColor="#ffffff" />
-          <stop offset="0.55" stopColor="#e6f3ff" />
-          <stop offset="0.85" stopColor="#d9c7ff" />
-          <stop offset="1" stopColor="#b79cf5" />
+          <stop offset="0.55" stopColor="#f6f0ff" />
+          <stop offset="0.85" stopColor="#e6dbff" />
+          <stop offset="1" stopColor="#d4e9ff" />
         </radialGradient>
-        <linearGradient id="bb-rim" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#7cc4ff" />
-          <stop offset="0.5" stopColor="#9466e8" />
-          <stop offset="1" stopColor="#ff7fb0" />
+        <linearGradient id={film} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#3992de" />
+          <stop offset="0.4" stopColor="#9466e8" />
+          <stop offset="0.72" stopColor="#ff4081" />
+          <stop offset="1" stopColor="#ffd54f" />
         </linearGradient>
       </defs>
-      {drawing && (
-        <g className="bubbles-trail" fill="#fff" stroke="#b79cf5" strokeWidth="1.2">
-          <circle cx="84" cy="30" r="5" />
-          <circle cx="92" cy="16" r="3.2" />
-          <circle cx="78" cy="10" r="2.2" />
+
+      {drawing && !small && (
+        <g className="bubbles-sparkles">
+          <path d="M88 10q.8 5.2 6 6q-5.2.8-6 6q-.8-5.2-6-6q5.2-.8 6-6z" fill="#ffd54f" stroke="#ff833e" strokeWidth="1" strokeLinejoin="round" />
+          <path d="M10 14q.6 3.9 4.5 4.5q-3.9.6-4.5 4.5q-.6-3.9-4.5-4.5q3.9-.6 4.5-4.5z" fill="#ff4081" />
+          <circle cx="76" cy="6" r="2.6" fill="#fff" stroke="#3992de" strokeWidth="1.2" />
         </g>
       )}
-      <circle cx="48" cy="54" r="38" fill="url(#bb-body)" stroke="url(#bb-rim)" strokeWidth="3" />
-      <path d="M26 40a24 24 0 0 1 16-14" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity="0.95" />
-      <circle cx="24" cy="50" r="2.6" fill="#fff" opacity="0.9" />
-      <g className="bubbles-eyes">
-        <ellipse cx="38" cy="54" rx="4.4" ry="6" fill="#2b1a4f" />
-        <ellipse cx="60" cy="54" rx="4.4" ry="6" fill="#2b1a4f" />
-        <circle cx="39.6" cy="51.4" r="1.6" fill="#fff" />
-        <circle cx="61.6" cy="51.4" r="1.6" fill="#fff" />
+
+      <g className="bubbles-body">
+        <ellipse cx="50" cy="55" rx="39" ry="37" fill={`url(#${fill})`} stroke={`url(#${film})`} strokeWidth={small ? 5 : 4} />
+        <path d="M21.8 45.4A30 28 0 0 1 37.3 29.6" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" />
+        <circle cx="44" cy="27.4" r="2.6" fill="#fff" />
+        {!small && <path d="M38.7 84.1A33 31 0 0 0 81.9 63" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />}
+
+        <ellipse cx="27" cy="68" rx="5.5" ry="3.2" fill="#ff4081" opacity="0.28" />
+        <ellipse cx="73" cy="68" rx="5.5" ry="3.2" fill="#ff4081" opacity="0.28" />
+        <g className="bubbles-eyes" fill={INK}>
+          <ellipse cx="38" cy="58" rx={small ? 6.4 : 5.4} ry={small ? 8 : 6.8} />
+          <ellipse cx="62" cy="58" rx={small ? 6.4 : 5.4} ry={small ? 8 : 6.8} />
+          <circle cx="40" cy="55.2" r="2.1" fill="#fff" />
+          <circle cx="64" cy="55.2" r="2.1" fill="#fff" />
+          {!small && <circle cx="36.4" cy="61" r="1" fill="#fff" />}
+          {!small && <circle cx="60.4" cy="61" r="1" fill="#fff" />}
+        </g>
+        {drawing ? (
+          <>
+            <path d="M44.5 67h11q-1 6.5-5.5 6.5t-5.5-6.5z" fill={INK} stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
+            <path d="M47 71.4q3-2.4 6 0q-1.2 1.9-3 1.9t-3-1.9z" fill="#ff7aa8" />
+          </>
+        ) : (
+          <path d="M45 68.5q5 4.5 10 0" fill="none" stroke={INK} strokeWidth={small ? 3.4 : 2.6} strokeLinecap="round" />
+        )}
       </g>
-      <ellipse cx="30" cy="64" rx="4.5" ry="2.6" fill="#ff8fb8" opacity="0.55" />
-      <ellipse cx="68" cy="64" rx="4.5" ry="2.6" fill="#ff8fb8" opacity="0.55" />
-      <path d={drawing ? "M43 65q6 6 12 0" : "M43 66q6 4 12 0"} fill="none" stroke="#2b1a4f" strokeWidth="2.6" strokeLinecap="round" />
+
+      {drawing && (
+        <>
+          {!small && <path className="bubbles-scrawl" d="M58 97q4-5 8 0t8 0" pathLength={1} fill="none" stroke="#9466e8" strokeWidth="2.2" strokeLinecap="round" />}
+          <g transform={small ? "translate(84 96) rotate(35) scale(1.35)" : "translate(83 93) rotate(35)"}>
+            <g className="bubbles-pencil" stroke={INK} strokeWidth="1.5" strokeLinejoin="round">
+              <rect x="-4" y="-25" width="8" height="5" rx="2" fill="#ff4081" />
+              <rect x="-4" y="-20" width="8" height="3" fill="#ced0d4" />
+              <rect x="-4" y="-17" width="8" height="11" fill="#ffd54f" />
+              <path d="M-4-6L0 1.5L4-6z" fill="#ffe9c8" />
+              <path d="M-1.4-1.2L0 1.5L1.4-1.2z" fill={INK} />
+            </g>
+          </g>
+        </>
+      )}
     </svg>
   );
 }

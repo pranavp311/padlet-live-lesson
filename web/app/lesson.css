@@ -130,15 +130,22 @@
 
 /* Bubbles the mascot */
 @keyframes bb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-@keyframes bb-bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+@keyframes bb-squish { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.025, 0.975); } }
+@keyframes bb-bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(4deg); } }
 @keyframes bb-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
-@keyframes bb-rise { from { transform: translateY(6px); opacity: 0; } 40% { opacity: 1; } to { transform: translateY(-10px); opacity: 0; } }
-.bubbles { overflow: visible; animation: bb-float 3.2s var(--ease) infinite; }
-.bubbles-drawing { animation: bb-bob 0.9s var(--ease) infinite; }
+@keyframes bb-scribble { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+@keyframes bb-scrawl { from { stroke-dashoffset: 1; } 60%, to { stroke-dashoffset: 0; } }
+@keyframes bb-twinkle { 0%, 100% { transform: scale(0.4) rotate(0); opacity: 0; } 40%, 60% { transform: scale(1) rotate(20deg); opacity: 1; } }
+.bubbles { overflow: visible; animation: bb-float 3.2s ease-in-out infinite; }
+.bubbles-body { transform-origin: 50px 92px; animation: bb-squish 3.2s ease-in-out infinite; }
 .bubbles-eyes { transform-box: fill-box; transform-origin: center; animation: bb-blink 4s infinite; }
-.bubbles-trail circle { animation: bb-rise 1.4s var(--ease) infinite; }
-.bubbles-trail circle:nth-child(2) { animation-delay: 0.3s; }
-.bubbles-trail circle:nth-child(3) { animation-delay: 0.6s; }
+.bubbles-drawing { animation: bb-bob 0.9s ease-in-out infinite; }
+.bubbles-drawing .bubbles-body { animation: none; }
+.bubbles-pencil { transform-box: fill-box; transform-origin: 50% 100%; animation: bb-scribble 0.45s ease-in-out infinite; }
+.bubbles-scrawl { stroke-dasharray: 1; stroke-dashoffset: 0; animation: bb-scrawl 1.8s var(--ease) infinite; }
+.bubbles-sparkles > * { transform-box: fill-box; transform-origin: center; animation: bb-twinkle 1.6s ease-in-out infinite; }
+.bubbles-sparkles > :nth-child(2) { animation-delay: 0.5s; }
+.bubbles-sparkles > :nth-child(3) { animation-delay: 1s; }
 .drawing-caption { font-size: 15px; font-weight: 600; color: var(--text-2); }
 .btn-stop { background: var(--scarlet-tint); color: #7c0000; }
 .btn-stop:hover { background: #ffc4c4; }
