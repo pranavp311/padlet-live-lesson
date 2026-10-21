@@ -17,50 +17,106 @@ type L = ReturnType<typeof useLesson>;
 
 const today = () => new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
-// Start page: every saved lesson, newest first, with a new-lesson row on top.
-export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[]; onOpen: (id: string) => void }) {
+// Start page: every saved lesson as a card, newest first. "New lesson" opens a small dialog for the title.
+export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[] | null; onOpen: (id: string) => void }) {
+  const [asking, setAsking] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const open = () => {
+    l.clearError();
+    setAsking(true);
+  };
+  useEffect(() => {
+    if (asking) dialog.current?.showModal();
+    else dialog.current?.close();
+  }, [asking]);
+  const newLesson = (
+    <button className="btn new-lesson" onClick={open}>
+      <Icon name="plus" />
+      New lesson
+    </button>
+  );
+
   return (
     <div className="wall">
       <header className="hdr">
         <Brand />
+        <span className="spacer" />
+        {!!lessons?.length && newLesson}
       </header>
       <main className="dash">
+        {lessons === null ? null : lessons.length ? (
+          <>
+            <div className="dash-head">
+              <h1 className="h1">Lessons</h1>
+              <span className="t14 tnum">{lessons.length}</span>
+            </div>
+            <div className="lesson-grid">
+              {lessons.map((x) => (
+                <LessonCard key={x.id} x={x} onOpen={() => onOpen(x.id)} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="dash-empty">
+            <Bubbles size={120} />
+            <h1 className="h1">No lessons here yet</h1>
+            <p className="muted">Start a lesson with Bubbles.</p>
+            {newLesson}
+          </div>
+        )}
+      </main>
+
+      <dialog ref={dialog} className="dialog new-dialog" onClose={() => setAsking(false)}>
         <form
-          className="dash-start"
           onSubmit={(e) => {
             e.preventDefault();
             void l.start();
           }}
         >
-          <input className="input" aria-label="Lesson title" placeholder="Lesson title" value={l.title} onChange={(e) => l.setTitle(e.target.value)} />
-          <button className="cta" type="submit" disabled={l.starting}>
-            <Icon name="mic" size={22} />
-            {l.starting ? "Waiting for microphone…" : "Start lesson"}
-          </button>
+          <div className="dialog-head">
+            <h2 className="h2">New lesson</h2>
+            <button type="button" className="btn btn-ghost btn-icon" aria-label="Close" onClick={() => setAsking(false)}>
+              <Icon name="x" />
+            </button>
+          </div>
+          <div className="new-body">
+            <input className="input" aria-label="Lesson title" placeholder="Lesson title (optional)" autoFocus value={l.title} onChange={(e) => l.setTitle(e.target.value)} />
+            {l.error && <Notice error={l.error} />}
+            <button className="cta" type="submit" disabled={l.starting}>
+              <Icon name="mic" size={22} />
+              {l.starting ? "Waiting for microphone…" : l.error ? "Try again" : "Start lesson"}
+            </button>
+          </div>
         </form>
-        {l.error && <Notice error={l.error} action="Try again" onAction={() => void l.start()} onDismiss={l.clearError} />}
-        <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <h1 className="h1">Lessons</h1>
-          {lessons.length ? (
-            <div className="grid">
-              {lessons.map((x) => (
-                <button key={x.id} className="card lesson-card clickable" onClick={() => onOpen(x.id)}>
-                  <SubjectTile subject={x.subject} size={44} />
-                  <span className="t17">{x.title}</span>
-                  <span className="t14 tnum">
-                    {new Date(x.startedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} ·{" "}
-                    {Math.max(1, Math.round((x.endedAt - x.startedAt) / 60000))} min
-                    {x.diagrams > 0 && ` · ${x.diagrams} diagram${x.diagrams > 1 ? "s" : ""}`}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">Your lessons appear here once you&apos;ve taught one.</p>
-          )}
-        </section>
-      </main>
+      </dialog>
     </div>
+  );
+}
+
+function LessonCard({ x, onOpen }: { x: LessonSummary; onOpen: () => void }) {
+  const mins = Math.max(1, Math.round((x.endedAt - x.startedAt) / 60000));
+  const date = new Date(x.startedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return (
+    <button className="lesson-card" onClick={onOpen}>
+      <span className="lesson-cover">
+        {x.cover ? <DiagramView d={x.cover} still /> : <SubjectTile subject={x.subject} size={64} />}
+      </span>
+      <span className="lesson-info">
+        <span className="lesson-title">
+          <SubjectTile subject={x.subject} size={28} />
+          <span className="t17">{x.title}</span>
+        </span>
+        <span className="t14 tnum">
+          {date} · {mins} min
+        </span>
+        {(x.diagrams > 0 || (x.todos ?? 0) > 0) && (
+          <span className="lesson-tags">
+            {x.diagrams > 0 && <span className="tag">{x.diagrams} diagram{x.diagrams > 1 ? "s" : ""}</span>}
+            {(x.todos ?? 0) > 0 && <span className="tag">{x.todos} to-do{x.todos! > 1 ? "s" : ""}</span>}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 
@@ -222,14 +278,16 @@ export function Live({ l }: { l: L }) {
 
         <section className="dpanel" aria-label="Diagram">
           {/* Bubbles lives in the corner for the whole lesson: breathing when idle, scribbling while drawing. */}
-          <div className="drawing-corner" role={l.drawing ? "status" : undefined}>
-            {l.drawing && (
+          <div className="drawing-corner" role={l.drawing || l.listening ? "status" : undefined}>
+            {l.drawing ? (
               <>
-                <span className="drawing-caption">{l.summoned ? "Bubbles is drawing…" : "Drawing…"}</span>
+                <span className="drawing-caption">Drawing…</span>
                 <StopButton onStop={l.stopDrawing} />
               </>
+            ) : (
+              l.listening && <span className="drawing-caption">Listening…</span>
             )}
-            <Bubbles size={92} drawing={l.drawing} />
+            <Bubbles size={92} mood={l.drawing ? "drawing" : l.listening ? "listening" : "idle"} />
           </div>
           <div className="dpanel-head">
             {list.length > 1 && (

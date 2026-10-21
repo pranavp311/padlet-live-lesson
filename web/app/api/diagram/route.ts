@@ -1,4 +1,4 @@
-import { route, type Route } from "@/lib/server/jev";
+import { asksForVisual, route, type Route } from "@/lib/server/jev";
 import { llmJson } from "@/lib/server/llm";
 import type { Diagram, Kind, Op } from "@/lib/diagram";
 
@@ -64,11 +64,13 @@ export async function POST(req: Request) {
   });
 }
 
-// The teacher asked Bubbles for a diagram by name: Jev only picks the kind, and it's always a new diagram.
+// The teacher said Bubbles' name: Jev checks it's really a request for a visual and picks the kind;
+// only then does the client get "drawing" (and Bubbles start drawing). It's always a new diagram.
 async function drawRequest(ask: string, said: string, send: (line: object) => void) {
-  send({ drawing: true });
   try {
-    const jev = await route(ask, null);
+    const [jev, visual] = await Promise.all([route(ask, null), asksForVisual(ask)]);
+    if (visual < 0.5) return { jev, action: "none" };
+    send({ jev, drawing: true });
     const kind: Kind = jev.kind !== "none" ? jev.kind : "flow";
     const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\nEarlier in the lesson: ${said}`;
     const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);

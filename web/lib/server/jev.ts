@@ -74,6 +74,22 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
   };
 }
 
+// Probability that a sentence addressed to Bubbles is really a request for a diagram or visual
+// (not, say, "Bubbles is a funny name").
+export async function asksForVisual(text: string): Promise<number> {
+  const a = await ask(text, {
+    visual: {
+      type: "noul",
+      instructions: "The teacher is asking Bubbles to draw, show or visualise something",
+      criteria: {
+        true: "A request to draw, show, sketch, visualise or diagram a topic",
+        false: "Bubbles is only mentioned, greeted, or talked about",
+      },
+    },
+  });
+  return a.visual.noul;
+}
+
 // Picks the lesson's subject (and so its icon) from the title, or the first sentences if there's no title.
 export async function pickSubject(text: string): Promise<Subject> {
   const a = await ask(text, {

@@ -112,39 +112,34 @@
 
 
 .dash { width: 100%; max-width: 1160px; margin: 0 auto; padding: 24px 20px 96px; display: flex; flex-direction: column; gap: 32px; }
-.dash-start { display: flex; gap: 12px; padding: 16px; border-radius: 24px; background: #fff; box-shadow: 0 0.5px 1px rgba(0,0,0,.2), 0 8px 16px rgba(92,58,16,.12); }
-.dash-start .input { flex: 1; }
-.dash-start .cta { padding: 0 24px; flex-shrink: 0; }
-.lesson-card { padding: 20px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.lesson-card .t17 { margin-top: 8px; }
-@media (max-width: 560px) { .dash-start { flex-direction: column; } }
-.dash .grid { grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
 
 /* Bubbles the mascot */
-@keyframes bb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-@keyframes bb-squish { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.045, 0.955); } } /* breathing */
-@keyframes bb-bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(4deg); } }
+@keyframes bb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes bb-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.01); } }
 @keyframes bb-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes bb-perk { 0% { transform: translateY(0) rotate(0); } 45% { transform: translateY(-5px) rotate(-6deg); } 100% { transform: translateY(-2px) rotate(-5deg); } }
+@keyframes bb-dot { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+@keyframes bb-bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-3px) rotate(2deg); } }
+@keyframes bb-scribble { 0% { transform: rotate(-12deg) translate(0, 0); } 25% { transform: rotate(10deg) translate(1px, -1px); } 50% { transform: rotate(-6deg) translate(-1px, 1px); } 75% { transform: rotate(14deg) translate(1px, 0); } 100% { transform: rotate(-12deg) translate(0, 0); } }
 @keyframes bb-scrawl { from { stroke-dashoffset: 1; } 60%, to { stroke-dashoffset: 0; } }
 @keyframes bb-twinkle { 0%, 100% { transform: scale(0.4) rotate(0); opacity: 0; } 40%, 60% { transform: scale(1) rotate(20deg); opacity: 1; } }
-.bubbles { overflow: visible; animation: bb-float 3.2s ease-in-out infinite; }
-.bubbles-body { transform-origin: 50px 92px; animation: bb-squish 3.2s ease-in-out infinite; }
+.bubbles { overflow: visible; animation: bb-float 4.8s ease-in-out infinite; }
+.bubbles-body { transform-box: fill-box; transform-origin: center; animation: bb-breathe 4.8s ease-in-out infinite; }
 .bubbles-eyes { transform-box: fill-box; transform-origin: center; animation: bb-blink 4s infinite; }
+/* Listening: a quick perk and lean, then hold still and wait. */
+.bubbles-listening { animation: bb-perk 0.5s var(--ease) forwards; }
+.bubbles-dots > * { animation: bb-dot 1.4s ease-in-out infinite; }
+.bubbles-dots > :nth-child(2) { animation-delay: 0.2s; }
+.bubbles-dots > :nth-child(3) { animation-delay: 0.4s; }
+/* Drawing: a busy bob, a fast scribble, sparkles popping round the head. */
 .bubbles-drawing { animation: bb-bob 0.6s ease-in-out infinite; }
-/* Arms: rise a touch with each breath when idle; a fast, vigorous scribble from the shoulder when drawing. */
-@keyframes bb-breathe-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(10deg); } }
-@keyframes bb-breathe-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-10deg); } }
-@keyframes bb-brace { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg); } }
-@keyframes bb-scrub { 0% { transform: rotate(-10deg) translate(0, 0); } 25% { transform: rotate(8deg) translate(1px, -1px); } 50% { transform: rotate(-4deg) translate(-1px, 1px); } 75% { transform: rotate(12deg) translate(1px, 0); } 100% { transform: rotate(-10deg) translate(0, 0); } }
-.bubbles-arm-left { transform-origin: 16px 68px; animation: bb-breathe-l 3.2s ease-in-out infinite; }
-.bubbles-arm-right { transform-origin: 84px 68px; animation: bb-breathe-r 3.2s ease-in-out infinite; }
-.bubbles-drawing .bubbles-arm-left { transform-origin: 16px 68px; animation: bb-brace 0.6s ease-in-out infinite; }
-.bubbles-hand { transform-origin: 84px 67px; animation: bb-scrub 0.32s linear infinite; }
 .bubbles-drawing .bubbles-body { animation: none; }
+.bubbles-pencil { transform-box: fill-box; transform-origin: 50% 100%; animation: bb-scribble 0.28s linear infinite; }
 .bubbles-scrawl { stroke-dasharray: 1; stroke-dashoffset: 0; animation: bb-scrawl 1.1s var(--ease) infinite; }
 .bubbles-sparkles > * { transform-box: fill-box; transform-origin: center; animation: bb-twinkle 1.6s ease-in-out infinite; }
-.bubbles-sparkles > :nth-child(2) { animation-delay: 0.5s; }
-.bubbles-sparkles > :nth-child(3) { animation-delay: 1s; }
+.bubbles-sparkles > :nth-child(2) { animation-delay: 0.4s; }
+.bubbles-sparkles > :nth-child(3) { animation-delay: 0.8s; }
+.bubbles-sparkles > :nth-child(4) { animation-delay: 1.2s; }
 .drawing-caption { font-size: 15px; font-weight: 600; color: var(--text-2); }
 .btn-stop { background: var(--scarlet-tint); color: #7c0000; }
 .btn-stop:hover { background: #ffc4c4; }
@@ -192,3 +187,26 @@
 .notice-body { font-size: 14px; line-height: 20px; color: var(--text-2); }
 .live-notice { padding: 0 20px 16px; max-width: 1600px; width: 100%; margin: 0 auto; }
 .cta:disabled { opacity: 0.7; }
+
+/* Dashboard */
+.new-lesson { height: 40px; padding: 0 16px 0 12px; border-radius: 12px; background: var(--grape-strong); color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,.16); }
+.new-lesson:hover { background: #7a00db; }
+.dash-head { display: flex; align-items: baseline; gap: 10px; }
+.dash-head .t14 { color: var(--wall-ink); }
+.dash-empty { margin: 12vh auto 0; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.dash-empty .h1 { margin-top: 12px; }
+.dash-empty .new-lesson { margin-top: 12px; }
+.lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 20px; }
+.lesson-card { padding: 8px; border: 0; border-radius: 20px; background: #fff; box-shadow: var(--shadow-1); display: flex; flex-direction: column; gap: 4px; text-align: left; font: inherit; color: #111; cursor: pointer; transition: transform 220ms var(--ease), box-shadow 220ms var(--ease); }
+.lesson-card:hover { transform: translateY(-4px) rotate(-0.4deg); box-shadow: 0 0.5px 1px rgba(0,0,0,.2), 0 14px 28px rgba(92,58,16,.16); }
+.lesson-card:active { transform: translateY(-1px) scale(0.99); }
+.lesson-cover { height: 150px; border-radius: 14px; background: var(--surface); overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 12px; }
+.lesson-cover > * { transition: transform 300ms var(--ease); }
+.lesson-card:hover .lesson-cover > * { transform: scale(1.05); }
+.lesson-info { padding: 8px 8px 6px; display: flex; flex-direction: column; gap: 4px; }
+.lesson-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lesson-title .t17 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.new-dialog { width: min(440px, calc(100vw - 32px)); }
+.new-body { padding: 8px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+.lesson-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.tag { height: 24px; padding: 0 8px; border-radius: 8px; background: var(--surface); font-size: 12px; font-weight: 600; color: var(--text-2); display: inline-flex; align-items: center; white-space: nowrap; }
