@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { DiagramView } from "@/components/Diagram";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { Bubbles } from "@/components/Bubbles";
@@ -179,14 +179,28 @@ export function Live({ l }: { l: L }) {
       </div>
       <main className="live">
         <section className="transcript" aria-label="Transcript" aria-live="polite">
-          {shown.slice(-8).map((b, k, arr) => {
+          {/* Speech held during a cold start is written up out of sight, then lands in one go. */}
+          {l.catchUp !== null && (
+            <div className="catchup">
+              <span>Catching up…</span>
+              <div className="meter" role="progressbar" aria-label="Catching up" aria-valuenow={Math.round(l.catchUp * 100)}>
+                <div style={{ width: `${Math.max(4, l.catchUp * 100)}%` }} />
+              </div>
+            </div>
+          )}
+          {l.catchUp === null && shown.slice(-8).map((b, k, arr) => {
             const idx = shown.length - arr.length + k;
             if (b.kind === "diagram") return <Thumb key={b.d.id} d={b.d} onOpen={() => setOpen(list.indexOf(b.d))} />;
             const age = paras.filter((p) => p.i > idx).length;
             const isNow = idx === nowIdx;
             const text = b.sentences.map((s) => s.clean ?? s.raw).join(" ");
+            const landed = l.landing !== null && (b.sentences[0]?.id ?? 0) < l.landing; // part of the caught-up chunk
             return (
-              <p key={b.sentences[0]?.id ?? "now"} className={`para ${isNow ? "now" : age === 1 ? "old1" : "old2"}`}>
+              <p
+                key={b.sentences[0]?.id ?? "now"}
+                className={`para ${isNow ? "now" : age === 1 ? "old1" : "old2"}${landed ? " landed" : ""}`}
+                style={landed ? ({ "--i": k } as CSSProperties) : undefined}
+              >
                 {text}
                 {isNow && (
                   <>
@@ -198,7 +212,7 @@ export function Live({ l }: { l: L }) {
               </p>
             );
           })}
-          {!l.sentences.length && !l.pending && <p className="hint">Start talking. Your words appear here.</p>}
+          {l.catchUp === null && !l.sentences.length && !l.pending && <p className="hint">Start talking. Your words appear here.</p>}
         </section>
 
         <section className="dpanel" aria-label="Diagram">
