@@ -423,6 +423,19 @@ export function useLesson() {
 
   const drawThis = useCallback(() => void checkDiagram(true), [checkDiagram]);
 
+  // Edits from the send review panel are kept with the lesson.
+  const updateTargets = useCallback(
+    (targets: LessonExport["targets"]) => {
+      setLessonExport((e) => {
+        if (!e) return e;
+        const next = { ...e, targets };
+        save(next);
+        return next;
+      });
+    },
+    [save],
+  );
+
   // Stop: cancel the drawing in flight (and a Bubbles request still listening). The automatic trigger
   // then waits out the usual gap before offering a new diagram.
   const stopDrawing = useCallback(() => {
@@ -476,7 +489,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, ending, drawing, summoned, stopDrawing, saveFailed, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, ending, drawing, summoned, stopDrawing, saveFailed, updateTargets, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 

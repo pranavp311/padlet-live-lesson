@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { DiagramView } from "@/components/Diagram";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { Bubbles } from "@/components/Bubbles";
+import { SendPanel, type Target } from "@/components/SendPanel";
+import type { LessonExport } from "@/app/api/export/route";
 import { Brand, Icon, MicBars, SubjectTile, TodoItem } from "@/components/Bits";
 import { KIND_LABEL, type Diagram } from "@/lib/diagram";
 import { formatClock, type Sentence } from "@/lib/transcript";
@@ -312,13 +314,13 @@ function Thumb({ d, onOpen }: { d: Diagram; onOpen: () => void }) {
   );
 }
 
-type Target = "board" | "arcade" | "sandbox";
 
 // Everything the summary screen needs; the live lesson hook and a saved lesson both provide it.
 export type EndedData = Pick<L, "title" | "subject" | "startedAt" | "endedAt" | "sentences" | "archive" | "todos" | "lessonExport"> & {
   exportError?: string | null;
   saveFailed?: boolean;
   retryExport?: () => Promise<void>;
+  updateTargets?: (next: LessonExport["targets"]) => void; // saves the teacher's edits from the send review
 };
 
 export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; onDone: () => void; doneLabel?: string }) {
@@ -327,6 +329,7 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
   const title = l.title || e?.title || "Lesson";
   const mins = Math.max(1, Math.round((l.endedAt - l.startedAt) / 60000));
   const [sent, setSent] = useState<Partial<Record<Target, boolean>>>({});
+  const [reviewing, setReviewing] = useState<Target | null>(null);
   const [viewing, setViewing] = useState<Target | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
@@ -387,7 +390,7 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
                   </button>
                 </div>
               ) : (
-                <button className="btn btn-dark" disabled={!e} onClick={() => setSent((s) => ({ ...s, [t.key]: true }))}>
+                <button className="btn btn-dark" disabled={!e} onClick={() => setReviewing(t.key)}>
                   Send
                 </button>
               )}
@@ -486,6 +489,19 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
       </main>
 
       <DiagramViewer diagrams={l.archive} index={openDiagram} onIndex={setOpenDiagram} onClose={() => setOpenDiagram(null)} />
+      {e && (
+        <SendPanel
+          target={reviewing}
+          targets={e.targets}
+          diagrams={l.archive}
+          onClose={() => setReviewing(null)}
+          onSend={(next) => {
+            l.updateTargets?.(next);
+            setSent((s) => ({ ...s, [reviewing!]: true }));
+            setReviewing(null);
+          }}
+        />
+      )}
       <dialog ref={dialog} className="dialog" onClose={() => setViewing(null)}>
         <div className="dialog-head">
           <h2 className="h2">{viewing && targets.find((t) => t.key === viewing)?.name} payload</h2>

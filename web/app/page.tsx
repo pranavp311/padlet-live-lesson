@@ -3,7 +3,7 @@
 import "./lesson.css";
 import { useEffect, useState } from "react";
 import { Ended, Live, Ready, Warming } from "@/components/Screens";
-import { listLessons, loadLesson, type LessonRecord, type LessonSummary } from "@/lib/history";
+import { listLessons, loadLesson, saveLesson, type LessonRecord, type LessonSummary } from "@/lib/history";
 import { useLesson } from "@/lib/useLesson";
 
 export default function Page() {
@@ -19,6 +19,13 @@ export default function Page() {
   if (l.phase === "warming") return <Warming l={l} />;
   if (l.phase === "live") return <Live l={l} />;
   if (l.phase === "ended") return <Ended l={l} onDone={l.reset} doneLabel="Done" />;
-  if (past) return <Ended l={past} onDone={() => setPast(null)} doneLabel="All lessons" />;
+  if (past) {
+    const updateTargets = (targets: NonNullable<LessonRecord["lessonExport"]>["targets"]) => {
+      const next = { ...past, lessonExport: past.lessonExport && { ...past.lessonExport, targets } };
+      saveLesson(next);
+      setPast(next);
+    };
+    return <Ended l={{ ...past, updateTargets }} onDone={() => setPast(null)} doneLabel="All lessons" />;
+  }
   return <Ready l={l} lessons={lessons} onOpen={(id) => setPast(loadLesson(id))} />;
 }

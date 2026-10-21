@@ -4,9 +4,16 @@ export type LessonExport = {
   title: string;
   sections: { heading: string; start_s: number; summary: string }[];
   key_terms: { term: string; definition: string }[];
+  // Optional fields are settings the teacher picks in the send review panel (see padlet-integration-brief.md).
   targets: {
-    board: { posts: { subject: string; body: string }[] };
-    arcade: { prompt: string; questions: { q: string; answer: string; distractors: string[] }[] };
+    board: { posts: { subject: string; body: string }[]; layout?: "wall" | "columns" | "timeline" };
+    arcade: {
+      prompt: string;
+      questions: { q: string; answer: string; distractors: string[] }[];
+      grade?: string;
+      gameType?: string;
+      attachTranscript?: boolean;
+    };
     sandbox: { cards: { title: string; body: string; diagram_id?: string }[] };
   };
 };
