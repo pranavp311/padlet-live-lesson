@@ -1,7 +1,7 @@
 // Diagram spec and the typed changes ("ops") the LLM returns. The model never writes drawing code:
 // it adds parts by id, and our renderers decide layout, colour and motion.
 
-export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters", "table", "numberline", "chart", "fraction"] as const;
+export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters", "table", "numberline", "chart", "fraction", "tree", "web"] as const;
 export type Kind = (typeof KINDS)[number];
 export type Role = "input" | "process" | "output" | "other";
 
@@ -36,6 +36,10 @@ export type Diagram = {
   chart?: { style: "bar" | "pictograph"; axis?: string };
   // Fractions as shaded equal parts of a bar or circle; bars stack so equivalent fractions line up.
   fractions?: { id: string; num: number; den: number; shape: "bar" | "circle"; label?: string }[];
+  // Tree (top to bottom) and mind map (radial) share one shape: branches hanging off a parent; the root has none.
+  branches?: { id: string; label: string; parent?: string; edge?: string }[];
+  // Words split into parts ("but-ter-fly") under the letters, as syllables, sounds or word parts.
+  words?: { id: string; parts: string[]; mode: "syllables" | "sounds" | "parts" }[];
   caption?: string; // a line under the diagram, e.g. a formula
   fresh: string[]; // ids added by the latest change, drawn highlighted
 };
@@ -64,7 +68,9 @@ export type Op =
   | { op: "add_jump"; id: string; from: number; to: number; label?: string }
   | { op: "add_bar"; id: string; label: string; value: number; icon?: string }
   | { op: "set_chart"; style?: "bar" | "pictograph"; axis?: string }
-  | { op: "add_fraction"; id: string; num: number; den: number; shape?: "bar" | "circle"; label?: string };
+  | { op: "add_fraction"; id: string; num: number; den: number; shape?: "bar" | "circle"; label?: string }
+  | { op: "add_branch"; id: string; label: string; parent?: string; edge?: string }
+  | { op: "add_word"; id: string; parts: string[]; mode?: "syllables" | "sounds" | "parts" };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
   return {
@@ -126,6 +132,12 @@ export function validOp(o: unknown): o is Op {
     case "add_mark": return str(v.id) && num(v.value) && optStr(v.label);
     case "add_jump": return str(v.id) && num(v.from) && num(v.to) && v.from !== v.to && optStr(v.label);
     case "add_bar": return str(v.id) && str(v.label) && num(v.value) && v.value >= 0 && optStr(v.icon);
+    case "add_branch": return str(v.id) && str(v.label) && optStr(v.parent) && optStr(v.edge);
+    case "add_word":
+      return (
+        str(v.id) && Array.isArray(v.parts) && v.parts.length >= 1 && v.parts.length <= 8 && v.parts.every((x) => str(x)) &&
+        (v.mode === undefined || v.mode === "syllables" || v.mode === "sounds" || v.mode === "parts")
+      );
     case "set_chart": return (v.style === undefined || v.style === "bar" || v.style === "pictograph") && optStr(v.axis);
     case "add_fraction":
       return (
@@ -157,6 +169,8 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
     jumps: [...(d.jumps ?? [])],
     bars: [...(d.bars ?? [])],
     fractions: [...(d.fractions ?? [])],
+    branches: [...(d.branches ?? [])],
+    words: [...(d.words ?? [])],
     fresh: [],
   };
   const has = (id: string) => next.nodes.some((n) => n.id === id);
@@ -228,6 +242,19 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.jumps = keep(next.jumps!);
         next.bars = keep(next.bars!);
         next.fractions = keep(next.fractions!);
+        // Taking a branch off takes everything hanging from it too.
+        const gone = new Set([o.id]);
+        for (let grew = true; grew; ) {
+          grew = false;
+          for (const b of next.branches!) {
+            if (b.parent && gone.has(b.parent) && !gone.has(b.id)) {
+              gone.add(b.id);
+              grew = true;
+            }
+          }
+        }
+        next.branches = next.branches!.filter((b) => !gone.has(b.id));
+        next.words = keep(next.words!);
         if (o.id === "caption") next.caption = undefined;
         break;
       }
@@ -258,6 +285,21 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         break;
       case "set_chart":
         next.chart = { style: o.style ?? next.chart?.style ?? "bar", axis: o.axis ?? next.chart?.axis };
+        break;
+      case "add_branch":
+        // A branch needs its parent drawn first (or no parent: the root); a second root becomes a branch of the first.
+        if (next.branches!.length < 15 && !next.branches!.some((x) => x.id === o.id)) {
+          const root = next.branches!.find((b) => !b.parent);
+          const parent = o.parent && next.branches!.some((b) => b.id === o.parent) ? o.parent : root?.id;
+          next.branches!.push({ id: o.id, label: o.label, parent, edge: o.edge });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "add_word":
+        if (next.words!.length < 4 && !next.words!.some((x) => x.id === o.id)) {
+          next.words!.push({ id: o.id, parts: o.parts.map((p) => p.trim()), mode: o.mode ?? "syllables" });
+          next.fresh.push(o.id);
+        }
         break;
       case "add_fraction":
         if (next.fractions!.length < 4 && !next.fractions!.some((x) => x.id === o.id)) {
@@ -316,7 +358,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
 export function isEmpty(d: Diagram) {
   return (
     !d.nodes.length && !d.events.length && !d.curves.length && !d.points.length && !d.segments?.length && !d.smiles &&
-    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length
+    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length && !d.branches?.length && !d.words?.length
   );
 }
 
@@ -332,4 +374,6 @@ export const KIND_LABEL: Record<Kind, string> = {
   numberline: "Number line",
   chart: "Chart",
   fraction: "Fractions",
+  tree: "Tree",
+  web: "Mind map",
 };

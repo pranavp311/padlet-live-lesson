@@ -16,7 +16,9 @@ const OPS: Record<Kind, string> = {
   numberline: `{"op":"set_range","min":0,"max":10,"step":1} (at most 40 steps; use step 0.25 for quarters), {"op":"add_mark","id":"start","value":3,"label":"start"}, {"op":"add_jump","id":"j1","from":3,"to":7,"label":"+4"} (a jump back has from > to). Mark where you start and land`,
   chart: `{"op":"add_bar","id":"apples","label":"Apples","value":12,"icon":"🍎"} (one per category, at most 8; icon is one emoji, needed for a pictograph), {"op":"set_chart","style":"bar"|"pictograph","axis":"Number of children"}. Use pictograph for young children counting objects`,
   fraction: `{"op":"add_fraction","id":"f1","num":3,"den":4,"shape":"bar"|"circle","label":"three quarters"} (whole numbers, num at most den, den at most 24, at most 4 fractions). For equivalent fractions add one per fraction with the same shape, e.g. 1/2 and 2/4`,
-  letters: `{"op":"add_letter","id":"m","text":"Mm","sound":"/m/","word":"moon"}: text is the letter in upper and lower case ("Ss"), or a letter group as written ("sh", "ai"); sound is the sound between slashes; word is a short example word that contains it. One add_letter per letter or sound the teacher is talking about (at most 4). "What letter makes the sound s?" draws "Ss"`,
+  tree: `{"op":"add_branch","id":"start","label":"Start"} for the root (no parent), then {"op":"add_branch","id":"h","label":"Heads","parent":"start","edge":"1/2"} (edge: optional label on the link, e.g. a probability or a yes/no answer in a key); at most 15 branches; add parents before their children`,
+  web: `{"op":"add_branch","id":"main","label":"Plants"} for the main idea in the middle (no parent), then {"op":"add_branch","id":"roots","label":"Roots","parent":"main"} for ideas around it, and details under those (parent: their idea); at most 15 branches, 1-3 words each`,
+  letters: `{"op":"add_letter","id":"m","text":"Mm","sound":"/m/","word":"moon"}: text is the letter in upper and lower case ("Ss"), or a letter group as written ("sh", "ai"); sound is the sound between slashes; word is a short example word that contains it. One add_letter per letter or sound the teacher is talking about (at most 4). "What letter makes the sound s?" draws "Ss". To split a word up, {"op":"add_word","id":"butterfly","parts":["but","ter","fly"],"mode":"syllables"|"sounds"|"parts"} (sounds: "c","a","t"; parts: prefix, root, suffix "un","help","ful"); add_word needs no add_letter`,
 };
 
 const SYSTEM = (kind: Kind) => `You draw a ${kind} diagram live while a teacher talks, for a projected classroom screen.
@@ -150,7 +152,8 @@ function describe(d: Diagram) {
     ...(d.sets ?? []).map((x) => x.label), ...(d.items ?? []).map((x) => x.label), ...(d.letters ?? []).map((x) => x.text),
     ...(d.columns ?? []).map((x) => x.label), ...(d.rows ?? []).map((x) => x.label ?? ""), ...(d.marks ?? []).map((x) => x.label ?? ""),
     ...(d.jumps ?? []).map((x) => x.label ?? ""), ...(d.bars ?? []).map((x) => x.label),
-    ...(d.fractions ?? []).map((x) => `${x.num}/${x.den}`), d.caption ?? "",
+    ...(d.fractions ?? []).map((x) => `${x.num}/${x.den}`), ...(d.branches ?? []).map((x) => x.label),
+    ...(d.words ?? []).map((x) => x.parts.join("-")), d.caption ?? "",
   ].filter(Boolean);
   return `a ${d.kind} titled '${d.title}'${labels.length ? ` showing: ${labels.slice(0, 12).join(", ")}` : ""}`;
 }
@@ -158,5 +161,5 @@ function describe(d: Diagram) {
 function compact(d: Diagram) {
   return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, sets: d.sets, items: d.items, letters: d.letters,
     columns: d.columns, rows: d.rows, cells: d.cells, line: d.line, marks: d.marks, jumps: d.jumps,
-    bars: d.bars, chart: d.chart, fractions: d.fractions, caption: d.caption };
+    bars: d.bars, chart: d.chart, fractions: d.fractions, branches: d.branches, words: d.words, caption: d.caption };
 }

@@ -57,6 +57,10 @@ function Drawing({ d, still }: { d: Diagram; still: boolean }) {
       return d.chart?.style === "pictograph" ? <Pictograph d={d} still={still} /> : <BarChart d={d} still={still} />;
     case "fraction":
       return <Fractions d={d} still={still} />;
+    case "tree":
+      return <Tree d={d} still={still} />;
+    case "web":
+      return <MindMap d={d} still={still} />;
   }
 }
 
@@ -505,9 +509,12 @@ function Letters({ d, still }: { d: Diagram; still: boolean }) {
   const fresh = new Set(d.fresh);
   // The font is drawn, not measured, so widths are estimates: generous enough that neighbours never touch.
   const widths = letters.map((l) => Math.max(260, [...l.text].reduce((w, ch) => w + (ch === ch.toUpperCase() ? 0.68 : 0.56) * size, 0) + 70));
-  const W = Math.max(1, widths.reduce((a, b) => a + b, 0)) + 40;
-  const H = 400;
-  let x = 20;
+  const words = d.words ?? [];
+  const wordsW = Math.max(0, ...words.map((w) => w.parts.reduce((t, p) => t + Math.max(90, p.length * 30 + 44), 0) + (w.parts.length - 1) * 14 + 40));
+  const W = Math.max(widths.reduce((a, b) => a + b, 0) + 40, wordsW, 1);
+  const lettersH = letters.length ? 400 : 0;
+  const H = lettersH + words.length * 170 || 1;
+  let x = (W - widths.reduce((a, b) => a + b, 0)) / 2;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
       <defs>
@@ -564,7 +571,35 @@ function Letters({ d, still }: { d: Diagram; still: boolean }) {
           </g>
         );
       })}
+      {words.map((w, k) => (
+        <SplitWord key={w.id} w={w} cx={W / 2} y={lettersH + k * 170 + 30} hot={fresh.has(w.id) && !still} />
+      ))}
     </svg>
+  );
+}
+
+// A word split into parts: one bubbly chip per part, with a clap dot under each syllable.
+function SplitWord({ w, cx, y, hot }: { w: { parts: string[]; mode: string }; cx: number; y: number; hot: boolean }) {
+  const ws = w.parts.map((p) => Math.max(90, p.length * 30 + 44));
+  const gap = 14;
+  let x = cx - (ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1)) / 2;
+  return (
+    <g>
+      {w.parts.map((p, i) => {
+        const c = BUBBLE[i % BUBBLE.length];
+        const x0 = x;
+        x += ws[i] + gap;
+        return (
+          <g key={i} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: `ll-in 500ms var(--ease) ${i * 120}ms both` } : undefined}>
+            <rect x={x0} y={y} width={ws[i]} height={84} rx={22} fill={c.light} stroke={c.mid} strokeWidth={3} />
+            <text x={x0 + ws[i] / 2} y={y + 56} textAnchor="middle" fontSize={46} fontWeight={700} fill={c.ink} style={BUBBLE_FONT}>
+              {p}
+            </text>
+            {w.mode === "syllables" && <circle cx={x0 + ws[i] / 2} cy={y + 112} r={9} fill={c.mid} />}
+          </g>
+        );
+      })}
+    </g>
   );
 }
 
@@ -937,6 +972,117 @@ function Fractions({ d, still }: { d: Diagram; still: boolean }) {
               <rect key={k} x={left + k * part} y={y} width={part} height={64} fill={k < f.num ? colours[i % colours.length] : "#fff"} stroke="#3d1a78" strokeWidth={2.5} />
             ))}
             {f.label && <text x={left} y={y + 88} fontSize={16} fill="#6b6f76">{f.label}</text>}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+const BRANCH_COLOURS = ["#b98cff", "#6fb3f2", "#ff7aa8", "#78d96f", "#ffd54f", "#ff9b5e"];
+const pillW = (label: string, size: number) => Math.min(220, Math.max(70, label.length * size * 0.56 + 32));
+
+// A tree, top to bottom: compact pills, labels on the links (probabilities, yes/no in a key), end results in yellow.
+function Tree({ d, still }: { d: Diagram; still: boolean }) {
+  const branches = useMemo(() => d.branches ?? [], [d.branches]);
+  const fresh = new Set(d.fresh);
+  const layout = useMemo(() => {
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: "TB", nodesep: 18, ranksep: 70, marginx: 16, marginy: 16 });
+    g.setDefaultEdgeLabel(() => ({}));
+    branches.forEach((b) => g.setNode(b.id, { width: pillW(b.label, 16), height: 44 }));
+    branches.forEach((b) => b.parent && g.setEdge(b.parent, b.id));
+    dagre.layout(g);
+    return g;
+  }, [branches]);
+  const { width = 1, height = 1 } = layout.graph();
+  const leaf = (id: string) => !branches.some((b) => b.parent === id);
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={cap(width, height)} role="img" aria-label={d.title}>
+      {branches.map((b) => {
+        if (!b.parent) return null;
+        const p = layout.node(b.parent);
+        const n = layout.node(b.id);
+        if (!p || !n) return null;
+        const [x1, y1, x2, y2] = [p.x, p.y + 22, n.x, n.y - 22];
+        return (
+          <g key={`e${b.id}`} style={fresh.has(b.id) && !still ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}>
+            <path d={`M${x1} ${y1}C${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`} fill="none" stroke={EDGE} strokeWidth={2} />
+            {b.edge && (
+              <text x={(x1 + x2) / 2} y={(y1 + y2) / 2} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+                {b.edge}
+              </text>
+            )}
+          </g>
+        );
+      })}
+      {branches.map((b) => {
+        const n = layout.node(b.id);
+        if (!n) return null;
+        const hot = fresh.has(b.id) && !still;
+        const w = pillW(b.label, 16);
+        return (
+          <g key={b.id} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
+            <rect x={n.x - w / 2} y={n.y - 22} width={w} height={44} rx={22} fill={!b.parent ? "var(--grape-tint)" : leaf(b.id) ? "var(--canary-tint)" : "#f3f4f6"} stroke={hot ? "var(--grape)" : "none"} strokeWidth={2} />
+            <Lines x={n.x} y={n.y} lines={wrap(b.label, Math.floor((w - 20) / 9))} size={16} weight={600} fill="#111" lh={18} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// A mind map: the main idea in the middle, its ideas in a ring around it (each in its own colour), and their
+// details fanned out beyond them.
+function MindMap({ d, still }: { d: Diagram; still: boolean }) {
+  const branches = d.branches ?? [];
+  const fresh = new Set(d.fresh);
+  const root = branches.find((b) => !b.parent);
+  const first = branches.filter((b) => b.parent && b.parent === root?.id);
+  const kids = (id: string) => branches.filter((b) => b.parent === id);
+  const R1 = 170;
+  const R2 = 300;
+  // An even number of ideas sits on the diagonals, so the map comes out square rather than a wide cross.
+  const turn = first.length % 2 === 0 ? Math.PI / Math.max(1, first.length) : 0;
+  const pos = new Map<string, { x: number; y: number; colour: string }>();
+  if (root) pos.set(root.id, { x: 0, y: 0, colour: "var(--grape-strong)" });
+  first.forEach((b, i) => {
+    const a = -Math.PI / 2 + turn + (2 * Math.PI * i) / Math.max(1, first.length);
+    const colour = BRANCH_COLOURS[i % BRANCH_COLOURS.length];
+    pos.set(b.id, { x: R1 * Math.cos(a), y: R1 * Math.sin(a), colour });
+    const ks = kids(b.id);
+    const spread = Math.min(0.9, (2 * Math.PI) / Math.max(1, first.length) * 0.8);
+    ks.forEach((k, j) => {
+      const ak = a + (ks.length > 1 ? (j / (ks.length - 1) - 0.5) * spread : 0);
+      pos.set(k.id, { x: R2 * Math.cos(ak), y: R2 * Math.sin(ak), colour });
+    });
+  });
+  const placed = branches.filter((b) => pos.has(b.id));
+  const xs = placed.map((b) => pos.get(b.id)!.x);
+  const ys = placed.map((b) => pos.get(b.id)!.y);
+  const minX = Math.min(0, ...xs) - 120;
+  const maxX = Math.max(0, ...xs) + 120;
+  const minY = Math.min(0, ...ys) - 40;
+  const maxY = Math.max(0, ...ys) + 40;
+  const [W, H] = [maxX - minX, maxY - minY];
+  return (
+    <svg viewBox={`${minX} ${minY} ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      {placed.map((b) => {
+        if (!b.parent || !pos.has(b.parent)) return null;
+        const [p, n] = [pos.get(b.parent)!, pos.get(b.id)!];
+        return <line key={`e${b.id}`} x1={p.x} y1={p.y} x2={n.x} y2={n.y} stroke={n.colour} strokeWidth={b.parent === root?.id ? 5 : 3} strokeLinecap="round" opacity={0.7} />;
+      })}
+      {placed.map((b) => {
+        const n = pos.get(b.id)!;
+        const isRoot = b.id === root?.id;
+        const size = isRoot ? 28 : b.parent === root?.id ? 22 : 18;
+        const w = pillW(b.label, size) + (isRoot ? 20 : 0);
+        const h = isRoot ? 72 : b.parent === root?.id ? 54 : 46;
+        const hot = fresh.has(b.id) && !still;
+        return (
+          <g key={b.id} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
+            <rect x={n.x - w / 2} y={n.y - h / 2} width={w} height={h} rx={h / 2} fill={isRoot ? "var(--grape-strong)" : "#fff"} stroke={n.colour} strokeWidth={isRoot ? 0 : 3} />
+            <Lines x={n.x} y={n.y} lines={wrap(b.label, Math.floor((w - 20) / (size * 0.56)))} size={size} weight={700} fill={isRoot ? "#fff" : "#111"} lh={size * 1.15} />
           </g>
         );
       })}
