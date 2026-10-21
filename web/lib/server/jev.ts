@@ -54,7 +54,7 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
         flow: "Steps, inputs and outputs, or cause and effect",
         cycle: "A process that repeats and returns to its start",
         timeline: "Events placed in date order",
-        graph: "A math function or data plotted on axes",
+        graph: "A math function, data on axes, or a geometry figure (triangles, angles, lengths)",
         molecule: "The structure of a specific chemical compound",
         none: "Nothing to draw",
       },

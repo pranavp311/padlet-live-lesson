@@ -284,6 +284,20 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
           />
         ))}
       </g>
+      {(d.segments ?? []).map((g) => {
+        const hot = fresh.has(g.id) && !still;
+        const [x1, y1, x2, y2] = [sx(g.from[0]), sy(g.from[1]), sx(g.to[0]), sy(g.to[1])];
+        return (
+          <g key={g.id} style={hot ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}>
+            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={hot ? "var(--grape)" : "#111"} strokeWidth={3} strokeLinecap="round" />
+            {g.label && (
+              <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 10} textAnchor="middle" fontSize={15} fontWeight={600} fill="#111" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+                {g.label}
+              </text>
+            )}
+          </g>
+        );
+      })}
       {d.points.map((p) => {
         const hot = fresh.has(p.id) && !still;
         return (

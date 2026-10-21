@@ -15,6 +15,8 @@ export type Phase = "ready" | "warming" | "live" | "ended";
 const DRAWABLE = 0.75;
 const NEW_DIAGRAM_GAP_S = 20;
 const DISMISS_S = 60;
+const WAKE = /\bbubbles?\b/gi; // the mascot's name; the speech model writes it lowercase
+const SUMMON_QUIET_MS = 1500; // after "Bubbles", fire once the teacher pauses or goes quiet this long
 
 type DiagramReply = {
   jev?: { drawable: number };
@@ -41,7 +43,8 @@ export function useLesson() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
-  const [drawing, setDrawing] = useState(false); // a "Draw this" request is in flight
+  const [drawing, setDrawing] = useState(false); // a "Draw this" or Bubbles request is in flight
+  const [summoned, setSummoned] = useState(false); // Bubbles heard its name and is drawing
   const [saveFailed, setSaveFailed] = useState(false);
 
   // Refs mirror state that async callbacks read, so they never see stale values.
@@ -56,7 +59,10 @@ export function useLesson() {
     todos: [] as Todo[],
     pinned: false,
     inFlight: false,
-    queued: null as null | { force: boolean },
+    queued: null as null | { force: boolean; ask?: string },
+    wakeSeen: 0, // how many times "Bubbles" has been heard so far
+    abort: null as AbortController | null, // the diagram request in flight, so Stop can cancel it
+    summon: null as null | { start: number; timer?: ReturnType<typeof setTimeout> },
     streak: 0,
     lastCreatedAt: -Infinity,
     quietUntil: -Infinity,
@@ -85,27 +91,46 @@ export function useLesson() {
   }, []);
 
   const checkDiagram = useCallback(
-    async (force = false) => {
+    async (force = false, ask?: string) => {
       const s = r.current;
       if (s.inFlight) {
-        s.queued = { force: force || !!s.queued?.force };
+        s.queued = { force: force || !!s.queued?.force, ask: ask ?? s.queued?.ask };
         return;
       }
       if (!s.live || (s.pinned && !force)) return;
       const lesson = s.lesson;
       const t = now();
       const recent = s.sentences.slice(-3).map((x) => x.clean ?? x.raw);
-      if (!recent.length) return;
+      if (!recent.length && !ask) return;
       s.inFlight = true;
       if (force) setDrawing(true);
+      const abort = (s.abort = new AbortController());
       try {
         const allowCreate = s.streak >= 1 && t - s.lastCreatedAt >= NEW_DIAGRAM_GAP_S && t >= s.quietUntil;
         const res = await fetch("/api/diagram", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recent, current: s.current, allowCreate, force }),
+          body: JSON.stringify({ recent, current: s.current, allowCreate, force, ask }),
+          signal: abort.signal,
         });
-        const reply: DiagramReply = await res.json();
+        // NDJSON: an early {"drawing": true} line (start the animation), then the result line.
+        let reply: DiagramReply = {};
+        let buf = "";
+        const reader = res.body!.getReader();
+        const dec = new TextDecoder();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let nl;
+          while ((nl = buf.indexOf("\n")) >= 0) {
+            const line = JSON.parse(buf.slice(0, nl));
+            buf = buf.slice(nl + 1);
+            if (line.drawing) {
+              if (s.lesson === lesson && s.live && !(s.pinned && !force)) setDrawing(true);
+            } else reply = line;
+          }
+        }
         if (reply.error) console.error("diagram", reply.error);
         if (s.lesson !== lesson || !s.live) return;
         if (reply.jev) {
@@ -126,13 +151,15 @@ export function useLesson() {
           }
         }
       } catch (e) {
-        console.error("diagram request failed", e);
+        if (!abort.signal.aborted) console.error("diagram request failed", e);
       } finally {
-        if (force) setDrawing(false);
+        setDrawing(!!s.summon); // stay on if Bubbles is still listening for a request
+        if (ask) setSummoned(false);
+        s.abort = null;
         s.inFlight = false;
         const q = s.queued;
         s.queued = null;
-        if (q) void checkDiagram(q.force);
+        if (q) void checkDiagram(q.force, q.ask);
       }
     },
     [fileAway],
@@ -205,6 +232,41 @@ export function useLesson() {
     settle([rest]);
   }, [settle]);
 
+  // "Bubbles, draw …": the request is everything from the sentence where the name was heard up to the
+  // teacher's next pause. It goes straight to the diagram step, skipping Jev's drawable check and pacing.
+  const fireSummon = useCallback(() => {
+    const s = r.current;
+    if (!s.summon) return;
+    clearTimeout(s.summon.timer);
+    const { start } = s.summon;
+    s.summon = null;
+    settleRest();
+    const ask = s.sentences.slice(start).map((x) => x.raw).join(" ");
+    if (ask.trim()) void checkDiagram(true, ask);
+    else {
+      setDrawing(false);
+      setSummoned(false);
+    }
+  }, [settleRest, checkDiagram]);
+
+  const listenForBubbles = useCallback(() => {
+    const s = r.current;
+    const heard = (s.sentences.map((x) => x.raw).join(" ") + " " + s.pending).match(WAKE)?.length ?? 0;
+    if (heard > s.wakeSeen && !s.summon) {
+      // Start the drawing animation the moment the name is heard.
+      const pendingHasName = WAKE.test(s.pending);
+      WAKE.lastIndex = 0;
+      s.summon = { start: pendingHasName ? s.sentences.length : Math.max(0, s.sentences.length - 1) };
+      setSummoned(true);
+      setDrawing(true);
+    }
+    s.wakeSeen = heard;
+    if (s.summon) {
+      clearTimeout(s.summon.timer);
+      s.summon.timer = setTimeout(fireSummon, SUMMON_QUIET_MS);
+    }
+  }, [fireSummon]);
+
   const stopAudio = () => {
     r.current.mic?.stop();
     r.current.mic = null;
@@ -242,9 +304,12 @@ export function useLesson() {
         s.pending = rest;
         setPending(rest);
         if (done.length) settle(done);
+        listenForBubbles();
       },
       onPause: () => {
-        if (mine()) settleRest();
+        if (!mine()) return;
+        if (s.summon) fireSummon();
+        else settleRest();
       },
       onClose: (err) => {
         if (!err || !mine()) return;
@@ -274,7 +339,7 @@ export function useLesson() {
       );
       setPhase("ready");
     }
-  }, [settle, settleRest, pickIcon, title]);
+  }, [settle, settleRest, pickIcon, title, fireSummon, listenForBubbles]);
 
   const cancel = useCallback(() => {
     stopAudio();
@@ -333,6 +398,10 @@ export function useLesson() {
     if (!s.live || s.ending) return; // End clicked twice
     s.ending = true;
     setEnding(true);
+    clearTimeout(s.summon?.timer);
+    s.summon = null;
+    setSummoned(false);
+    setDrawing(false);
     const lesson = s.lesson;
     stopAudio();
     await s.stt?.end(); // the last words still arrive during this wait, so stay live until it returns
@@ -354,6 +423,20 @@ export function useLesson() {
 
   const drawThis = useCallback(() => void checkDiagram(true), [checkDiagram]);
 
+  // Stop: cancel the drawing in flight (and a Bubbles request still listening). The automatic trigger
+  // then waits out the usual gap before offering a new diagram.
+  const stopDrawing = useCallback(() => {
+    const s = r.current;
+    clearTimeout(s.summon?.timer);
+    s.summon = null;
+    s.queued = null;
+    s.abort?.abort();
+    s.lastCreatedAt = now();
+    s.streak = 0;
+    setDrawing(false);
+    setSummoned(false);
+  }, []);
+
   const togglePin = useCallback(() => {
     r.current.pinned = !r.current.pinned;
     setPinned(r.current.pinned);
@@ -374,7 +457,7 @@ export function useLesson() {
       ending: false,
       subject: "other",
       pending: "", sentences: [], current: null, archive: [], todos: [], pinned: false, streak: 0,
-      lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null,
+      lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null, wakeSeen: 0, summon: null,
     });
     setSentences([]);
     setPending("");
@@ -393,7 +476,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, ending, drawing, saveFailed, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, ending, drawing, summoned, stopDrawing, saveFailed, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 

@@ -16,6 +16,7 @@ export type Diagram = {
   axes?: { x: [number, number]; y: [number, number] };
   curves: { id: string; expr: string; label?: string }[];
   points: { id: string; x: number; y: number; label?: string }[];
+  segments: { id: string; from: [number, number]; to: [number, number]; label?: string }[];
   smiles?: string;
   fresh: string[]; // ids added by the latest change, drawn highlighted
 };
@@ -29,6 +30,7 @@ export type Op =
   | { op: "set_axes"; x: [number, number]; y: [number, number] }
   | { op: "add_curve"; id: string; expr: string; label?: string }
   | { op: "add_point"; id: string; x: number; y: number; label?: string }
+  | { op: "add_segment"; id: string; from: [number, number]; to: [number, number]; label?: string }
   | { op: "set_smiles"; smiles: string };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
@@ -42,6 +44,7 @@ export function emptyDiagram(kind: Kind, t: number): Diagram {
     events: [],
     curves: [],
     points: [],
+    segments: [],
     fresh: [],
   };
 }
@@ -49,6 +52,7 @@ export function emptyDiagram(kind: Kind, t: number): Diagram {
 const str = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const range = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]) && v[0] < v[1];
+const pair = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]);
 const ROLES = ["input", "process", "output", "other"];
 
 // LLM output is untrusted: drop any op whose fields have the wrong shape, so the renderers never see them.
@@ -64,6 +68,7 @@ export function validOp(o: unknown): o is Op {
     case "set_axes": return range(v.x) && range(v.y);
     case "add_curve": return str(v.id) && str(v.expr) && (v.label === undefined || typeof v.label === "string");
     case "add_point": return str(v.id) && num(v.x) && num(v.y) && (v.label === undefined || typeof v.label === "string");
+    case "add_segment": return str(v.id) && pair(v.from) && pair(v.to) && (v.label === undefined || typeof v.label === "string");
     case "set_smiles": return str(v.smiles);
     default: return false;
   }
@@ -79,6 +84,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
     events: [...d.events],
     curves: [...d.curves],
     points: [...d.points],
+    segments: [...(d.segments ?? [])], // lessons saved before segments existed have none
     fresh: [],
   };
   const has = (id: string) => next.nodes.some((n) => n.id === id);
@@ -125,6 +131,12 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
           next.fresh.push(o.id);
         }
         break;
+      case "add_segment":
+        if (!next.segments.some((x) => x.id === o.id)) {
+          next.segments.push({ id: o.id, from: o.from, to: o.to, label: o.label });
+          next.fresh.push(o.id);
+        }
+        break;
       case "set_smiles":
         next.smiles = o.smiles;
         next.fresh.push("smiles");
@@ -135,7 +147,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
 }
 
 export function isEmpty(d: Diagram) {
-  return !d.nodes.length && !d.events.length && !d.curves.length && !d.points.length && !d.smiles;
+  return !d.nodes.length && !d.events.length && !d.curves.length && !d.points.length && !d.segments?.length && !d.smiles;
 }
 
 export const KIND_LABEL: Record<Kind, string> = {

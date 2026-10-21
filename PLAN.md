@@ -136,6 +136,8 @@ Next.js (App Router, TS) in `web/`. One page, a state machine: ready → warming
 - Styling from the approved mockup (`design/`) and `brand/BRAND_KIT.md`.
 - Start page is a dashboard of saved lessons; each opens the same summary page as a just-ended lesson. Lessons are saved in the browser's localStorage (`lib/history.ts`): demo storage, one browser only. The production design (Postgres + Lessons API) is on `architecture-scale.excalidraw`.
 - Diagrams: ‹ › steps through them in the live panel; clicking any diagram, thumbnail or gallery card opens a full-size viewer (← →, SVG/PNG download). Teachers download the transcript as .txt; the Board/Arcade/Sandbox payloads stay behind "View payload".
+- Bubbles (mascot): saying "Bubbles" starts the drawing animation immediately; the request (from the sentence where the name was heard to the next pause) skips Jev's drawable check and pacing, Jev only picks the kind, and the LLM draws exactly what was asked. Graphs gained labelled segments for geometry (e.g. Pythagoras).
+- Every drawing shows the animation with a Stop button: `/api/diagram` streams NDJSON, sending `{"drawing": true}` as soon as Jev decides, then the result. Stop aborts the request and waits out the usual 20 s gap.
 - Deploy to Vercel after a local end-to-end check.
 
 ## Later: Padlet's own GPUs for speech to text

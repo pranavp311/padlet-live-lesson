@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DiagramView } from "@/components/Diagram";
 import { DiagramViewer } from "@/components/DiagramViewer";
+import { Bubbles } from "@/components/Bubbles";
 import { Brand, Icon, MicBars, SubjectTile, TodoItem } from "@/components/Bits";
 import { KIND_LABEL, type Diagram } from "@/lib/diagram";
 import { formatClock, type Sentence } from "@/lib/transcript";
@@ -199,7 +200,16 @@ export function Live({ l }: { l: L }) {
         </section>
 
         <section className="dpanel" aria-label="Diagram">
-          {l.drawing && panelD && <div className="drawing-bar" aria-hidden="true" />}
+          {l.drawing && panelD && (
+            <>
+              <div className="drawing-bar" aria-hidden="true" />
+              <div className="drawing-pill" role="status">
+                <Bubbles size={28} drawing />
+                Drawing…
+                <StopButton onStop={l.stopDrawing} />
+              </div>
+            </>
+          )}
           <div className="dpanel-head">
             {list.length > 1 && (
               <>
@@ -219,7 +229,7 @@ export function Live({ l }: { l: L }) {
             )}
             <button className="btn btn-ghost" onClick={l.drawThis} disabled={!l.sentences.length || l.drawing}>
               <Icon name="pen" />
-              {l.drawing ? "Drawing…" : "Draw this"}
+              Draw this
             </button>
             {isLive && (
               <>
@@ -246,6 +256,10 @@ export function Live({ l }: { l: L }) {
             </>
           ) : l.drawing ? (
             <div className="drawing" role="status" aria-label="Drawing">
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                <Bubbles size={64} drawing />
+                <span className="drawing-caption">{l.summoned ? "Bubbles is drawing…" : "Drawing…"}</span>
+              </span>
               <div className="drawing-row">
                 {["var(--canary-tint)", "var(--canary-tint)", "var(--canary-tint)"].map((c, i) => (
                   <span key={i} className="drawing-note" style={{ background: c, animationDelay: `${i * 120}ms` }} />
@@ -257,14 +271,30 @@ export function Live({ l }: { l: L }) {
                   <span key={i} className="drawing-note" style={{ background: c, animationDelay: `${480 + i * 120}ms` }} />
                 ))}
               </div>
+              <StopButton onStop={l.stopDrawing} />
             </div>
           ) : (
-            <div className="dpanel-empty">Diagrams appear here as you explain.</div>
+            <div className="dpanel-empty">
+              <Bubbles size={64} />
+              Diagrams appear here as you explain.
+              <span style={{ fontSize: 15 }}>Or ask: “Bubbles, draw the water cycle.”</span>
+            </div>
           )}
         </section>
       </main>
       <DiagramViewer diagrams={list} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
     </div>
+  );
+}
+
+function StopButton({ onStop }: { onStop: () => void }) {
+  return (
+    <button className="btn btn-stop" onClick={onStop}>
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+        <rect width="12" height="12" rx="2.5" fill="currentColor" />
+      </svg>
+      Stop
+    </button>
   );
 }
 
