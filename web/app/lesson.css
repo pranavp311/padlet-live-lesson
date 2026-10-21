@@ -109,14 +109,6 @@
 .clickable { cursor: zoom-in; border: 0; font: inherit; color: inherit; text-align: left; }
 .clickable:hover { box-shadow: var(--shadow-card); }
 
-/* "Draw this" in flight: placeholder notes pulse where the diagram will appear. */
-@keyframes ll-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.85; } }
-.drawing { flex: 1; display: grid; place-content: center; gap: 28px; justify-items: center; }
-.drawing-row { display: flex; gap: 16px; }
-.drawing-note { width: 120px; height: 52px; border-radius: 12px; animation: ll-pulse 1.2s var(--ease) infinite; }
-.drawing-bar { position: absolute; left: 24px; right: 24px; top: 0; height: 3px; border-radius: 3px; overflow: hidden; background: transparent; }
-.drawing-bar::after { content: ""; display: block; height: 100%; width: 40%; border-radius: 3px; background: var(--grape); animation: ll-slide 1.1s var(--ease) infinite; }
-@keyframes ll-slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 
 .dash { width: 100%; max-width: 1160px; margin: 0 auto; padding: 24px 20px 96px; display: flex; flex-direction: column; gap: 32px; }
@@ -130,27 +122,33 @@
 
 /* Bubbles the mascot */
 @keyframes bb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-@keyframes bb-squish { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.025, 0.975); } }
+@keyframes bb-squish { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.045, 0.955); } } /* breathing */
 @keyframes bb-bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(4deg); } }
 @keyframes bb-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
-@keyframes bb-scribble { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
 @keyframes bb-scrawl { from { stroke-dashoffset: 1; } 60%, to { stroke-dashoffset: 0; } }
 @keyframes bb-twinkle { 0%, 100% { transform: scale(0.4) rotate(0); opacity: 0; } 40%, 60% { transform: scale(1) rotate(20deg); opacity: 1; } }
 .bubbles { overflow: visible; animation: bb-float 3.2s ease-in-out infinite; }
 .bubbles-body { transform-origin: 50px 92px; animation: bb-squish 3.2s ease-in-out infinite; }
 .bubbles-eyes { transform-box: fill-box; transform-origin: center; animation: bb-blink 4s infinite; }
-.bubbles-drawing { animation: bb-bob 0.9s ease-in-out infinite; }
+.bubbles-drawing { animation: bb-bob 0.6s ease-in-out infinite; }
+/* Arms: rise a touch with each breath when idle; a fast, vigorous scribble from the shoulder when drawing. */
+@keyframes bb-breathe-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(10deg); } }
+@keyframes bb-breathe-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-10deg); } }
+@keyframes bb-brace { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg); } }
+@keyframes bb-scrub { 0% { transform: rotate(-10deg) translate(0, 0); } 25% { transform: rotate(8deg) translate(1px, -1px); } 50% { transform: rotate(-4deg) translate(-1px, 1px); } 75% { transform: rotate(12deg) translate(1px, 0); } 100% { transform: rotate(-10deg) translate(0, 0); } }
+.bubbles-arm-left { transform-origin: 16px 68px; animation: bb-breathe-l 3.2s ease-in-out infinite; }
+.bubbles-arm-right { transform-origin: 84px 68px; animation: bb-breathe-r 3.2s ease-in-out infinite; }
+.bubbles-drawing .bubbles-arm-left { transform-origin: 16px 68px; animation: bb-brace 0.6s ease-in-out infinite; }
+.bubbles-hand { transform-origin: 84px 67px; animation: bb-scrub 0.32s linear infinite; }
 .bubbles-drawing .bubbles-body { animation: none; }
-.bubbles-pencil { transform-box: fill-box; transform-origin: 50% 100%; animation: bb-scribble 0.45s ease-in-out infinite; }
-.bubbles-scrawl { stroke-dasharray: 1; stroke-dashoffset: 0; animation: bb-scrawl 1.8s var(--ease) infinite; }
+.bubbles-scrawl { stroke-dasharray: 1; stroke-dashoffset: 0; animation: bb-scrawl 1.1s var(--ease) infinite; }
 .bubbles-sparkles > * { transform-box: fill-box; transform-origin: center; animation: bb-twinkle 1.6s ease-in-out infinite; }
 .bubbles-sparkles > :nth-child(2) { animation-delay: 0.5s; }
 .bubbles-sparkles > :nth-child(3) { animation-delay: 1s; }
 .drawing-caption { font-size: 15px; font-weight: 600; color: var(--text-2); }
 .btn-stop { background: var(--scarlet-tint); color: #7c0000; }
 .btn-stop:hover { background: #ffc4c4; }
-.drawing-pill { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 1; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 10px; border-radius: 16px; background: #fff; box-shadow: var(--shadow-card); font-size: 14px; font-weight: 600; color: var(--text-2); white-space: nowrap; animation: ll-fade 300ms var(--ease) both; }
-.drawing-pill .btn { height: 32px; padding: 0 12px; }
+
 
 /* Send review: Padlet's side-panel pattern (480 px, 24 px corners) */
 .side { margin: 8px 8px 8px auto; height: calc(100vh - 16px); max-height: none; width: min(480px, calc(100vw - 16px)); padding: 0; border: 0; border-radius: 24px; box-shadow: 4px 4px 0 0 rgba(0,0,0,.25), 0 8px 16px rgba(0,0,0,.16); }
@@ -175,3 +173,13 @@
 .icon-btn { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
 .icon-btn:hover { background: var(--surface); color: #111; }
 .item-attach { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); }
+
+/* Drawing in progress: mild bouncing dots on an empty board, Bubbles scribbling in the corner with Stop. */
+@keyframes ll-dot { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-8px); opacity: 1; } }
+.drawing { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.drawing .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--grape); animation: ll-dot 1.2s ease-in-out infinite; }
+.drawing .dot:nth-child(2) { animation-delay: .15s; }
+.drawing .dot:nth-child(3) { animation-delay: .3s; }
+.drawing-corner { position: absolute; right: 16px; bottom: 12px; z-index: 1; display: flex; align-items: center; gap: 10px; }
+.drawing-corner > :not(svg) { animation: ll-fade 250ms var(--ease) both; }
+.drawing-corner .btn { height: 32px; padding: 0 12px; }

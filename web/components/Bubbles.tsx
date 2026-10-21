@@ -1,9 +1,11 @@
 import { useId } from "react";
 
 // Bubbles, the mascot teachers can ask for a diagram ("Bubbles, draw the water cycle").
-// A soap bubble whose rainbow film uses Padlet's palette. Idle it floats and blinks;
-// drawing, it holds a pencil, scribbles and throws off sparkles.
+// A soap bubble with little arms, whose rainbow film uses Padlet's palette. Idle it breathes (body
+// swells, arms rise), floats and blinks; drawing, it scribbles hard with a pencil and throws off sparkles.
 const INK = "#2e1c5f";
+const ARM = "#c9b4f7"; // a shade of the bubble's lavender
+const HAND = "#f6f0ff";
 
 export function Bubbles({ size = 72, drawing = false }: { size?: number; drawing?: boolean }) {
   // Several Bubbles can be on screen at once, so gradient ids must be unique per instance.
@@ -45,6 +47,23 @@ export function Bubbles({ size = 72, drawing = false }: { size?: number; drawing
         </g>
       )}
 
+      {/* Arms sit behind the body so they look like they come out of its sides; an ink outline keeps them
+          readable on white (drawn as a wider ink stroke under the lavender one). */}
+      <g strokeLinecap="round" fill="none">
+        <g className="bubbles-arm-left">
+          <path d="M16 68q-8 4-11 13" stroke={INK} strokeWidth={small ? 10 : 9} />
+          <path d="M16 68q-8 4-11 13" stroke={ARM} strokeWidth={small ? 7 : 6} />
+          <circle cx="5" cy="82" r="5" fill={HAND} stroke={INK} strokeWidth="1.8" />
+        </g>
+        {!drawing && (
+          <g className="bubbles-arm-right">
+            <path d="M84 68q8 4 11 13" stroke={INK} strokeWidth={small ? 10 : 9} />
+            <path d="M84 68q8 4 11 13" stroke={ARM} strokeWidth={small ? 7 : 6} />
+            <circle cx="95" cy="82" r="5" fill={HAND} stroke={INK} strokeWidth="1.8" />
+          </g>
+        )}
+      </g>
+
       <g className="bubbles-body">
         <ellipse cx="50" cy="55" rx="39" ry="37" fill={`url(#${fill})`} stroke={`url(#${film})`} strokeWidth={small ? 5 : 4} />
         <path d="M21.8 45.4A30 28 0 0 1 37.3 29.6" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" />
@@ -74,14 +93,20 @@ export function Bubbles({ size = 72, drawing = false }: { size?: number; drawing
       {drawing && (
         <>
           {!small && <path className="bubbles-scrawl" d="M58 97q4-5 8 0t8 0" pathLength={1} fill="none" stroke="#9466e8" strokeWidth="2.2" strokeLinecap="round" />}
-          <g transform={small ? "translate(84 96) rotate(35) scale(1.35)" : "translate(83 93) rotate(35)"}>
-            <g className="bubbles-pencil" stroke={INK} strokeWidth="1.5" strokeLinejoin="round">
-              <rect x="-4" y="-25" width="8" height="5" rx="2" fill="#ff4081" />
-              <rect x="-4" y="-20" width="8" height="3" fill="#ced0d4" />
-              <rect x="-4" y="-17" width="8" height="11" fill="#ffd54f" />
-              <path d="M-4-6L0 1.5L4-6z" fill="#ffe9c8" />
-              <path d="M-1.4-1.2L0 1.5L1.4-1.2z" fill={INK} />
+          {/* Drawing arm: shoulder at the bubble's right side, hand gripping the pencil; the whole arm scribbles. */}
+          <g className="bubbles-hand">
+            <path d="M84 67q6 8 5 17" fill="none" stroke={INK} strokeWidth={small ? 10 : 9} strokeLinecap="round" />
+            <path d="M84 67q6 8 5 17" fill="none" stroke={ARM} strokeWidth={small ? 7 : 6} strokeLinecap="round" />
+            <g transform={small ? "translate(86 97) rotate(35) scale(1.3)" : "translate(85 95) rotate(35)"}>
+              <g stroke={INK} strokeWidth="1.5" strokeLinejoin="round">
+                <rect x="-4" y="-25" width="8" height="5" rx="2" fill="#ff4081" />
+                <rect x="-4" y="-20" width="8" height="3" fill="#ced0d4" />
+                <rect x="-4" y="-17" width="8" height="11" fill="#ffd54f" />
+                <path d="M-4-6L0 1.5L4-6z" fill="#ffe9c8" />
+                <path d="M-1.4-1.2L0 1.5L1.4-1.2z" fill={INK} />
+              </g>
             </g>
+            <circle cx="89" cy="85" r="5" fill={HAND} stroke={INK} strokeWidth="1.8" />
           </g>
         </>
       )}

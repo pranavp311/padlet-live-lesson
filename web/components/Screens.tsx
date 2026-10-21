@@ -216,16 +216,16 @@ export function Live({ l }: { l: L }) {
         </section>
 
         <section className="dpanel" aria-label="Diagram">
-          {l.drawing && panelD && (
-            <>
-              <div className="drawing-bar" aria-hidden="true" />
-              <div className="drawing-pill" role="status">
-                <Bubbles size={28} drawing />
-                Drawing…
+          {/* Bubbles lives in the corner for the whole lesson: breathing when idle, scribbling while drawing. */}
+          <div className="drawing-corner" role={l.drawing ? "status" : undefined}>
+            {l.drawing && (
+              <>
+                <span className="drawing-caption">{l.summoned ? "Bubbles is drawing…" : "Drawing…"}</span>
                 <StopButton onStop={l.stopDrawing} />
-              </div>
-            </>
-          )}
+              </>
+            )}
+            <Bubbles size={92} drawing={l.drawing} />
+          </div>
           <div className="dpanel-head">
             {list.length > 1 && (
               <>
@@ -271,27 +271,13 @@ export function Live({ l }: { l: L }) {
               </div>
             </>
           ) : l.drawing ? (
-            <div className="drawing" role="status" aria-label="Drawing">
-              <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                <Bubbles size={64} drawing />
-                <span className="drawing-caption">{l.summoned ? "Bubbles is drawing…" : "Drawing…"}</span>
-              </span>
-              <div className="drawing-row">
-                {["var(--canary-tint)", "var(--canary-tint)", "var(--canary-tint)"].map((c, i) => (
-                  <span key={i} className="drawing-note" style={{ background: c, animationDelay: `${i * 120}ms` }} />
-                ))}
-              </div>
-              <span className="drawing-note" style={{ background: "var(--grape-tint)", animationDelay: "360ms" }} />
-              <div className="drawing-row">
-                {["var(--park-tint)", "var(--park-tint)"].map((c, i) => (
-                  <span key={i} className="drawing-note" style={{ background: c, animationDelay: `${480 + i * 120}ms` }} />
-                ))}
-              </div>
-              <StopButton onStop={l.stopDrawing} />
+            <div className="drawing" aria-hidden="true">
+              <span className="dot" />
+              <span className="dot" />
+              <span className="dot" />
             </div>
           ) : (
             <div className="dpanel-empty">
-              <Bubbles size={64} />
               Diagrams appear here as you explain.
               <span style={{ fontSize: 15 }}>Or ask: “Bubbles, draw the water cycle.”</span>
             </div>
