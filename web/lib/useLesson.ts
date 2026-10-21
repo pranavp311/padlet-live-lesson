@@ -103,6 +103,8 @@ export function useLesson() {
     muted: false,
     summon: null as null | { start: number; timer?: ReturnType<typeof setTimeout> },
     settleTimer: undefined as ReturnType<typeof setTimeout> | undefined,
+    beforePause: "", // the words still arriving as of the last pause: a finished thought, not part of a request after it
+    noteTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     streak: 0,
     lastCreatedAt: -Infinity,
     quietUntil: -Infinity,
@@ -162,7 +164,8 @@ export function useLesson() {
       const tellTeacher = (failed: boolean) => {
         if (!ask || drew || s.lesson !== lesson || !s.live) return;
         setBubblesNote(failed ? "I couldn't draw that just now. Try again?" : "I wasn't sure what to draw. Try naming it.");
-        setTimeout(() => setBubblesNote(null), 4500);
+        clearTimeout(s.noteTimer);
+        s.noteTimer = setTimeout(() => setBubblesNote(null), 4500);
       };
       try {
         const allowCreate = s.streak >= 1 && t - s.lastCreatedAt >= NEW_DIAGRAM_GAP_S && t >= s.quietUntil;
@@ -307,6 +310,7 @@ export function useLesson() {
     const s = r.current;
     const rest = s.pending.trim();
     s.pending = "";
+    s.beforePause = "";
     setPending("");
     if (!rest) return;
     if (/^[.?!]+$/.test(rest)) {
@@ -379,6 +383,15 @@ export function useLesson() {
     const s = r.current;
     const heard = countWake(s);
     if (heard > s.wakeSeen) {
+      // "The sun heats the ocean" [pause] "bubbles, draw the water cycle": the words before the pause are lecture,
+      // not part of the request (Jev ignores a request buried in them), so they settle as their own sentence.
+      const held = s.beforePause;
+      if (held.trim() && s.pending.startsWith(held) && !WAKE.test(held)) {
+        s.pending = s.pending.slice(held.length).replace(/^\s*[,;:]+/, "");
+        setPending(s.pending);
+        settle([held.trim()], true);
+      }
+      WAKE.lastIndex = 0;
       // Attentive the moment the name is heard; drawing only starts once the server confirms. Each new
       // mention restarts the window at its own sentence, so "Thank you, Bubbles… Okay Bubbles, draw…"
       // asks only for what follows the latest mention.
@@ -393,7 +406,7 @@ export function useLesson() {
     }
     s.wakeSeen = heard;
     awaitRequest(false);
-  }, [awaitRequest]);
+  }, [awaitRequest, settle]);
   // The held speech is all in: show it in one go, then run the diagram check its sentences skipped.
   const caughtUp = useCallback(() => {
     const s = r.current;
@@ -466,15 +479,18 @@ export function useLesson() {
           s.sentences = s.sentences.map((x) => (x === last ? { ...x, raw: x.raw + lead } : x));
           setSentences(s.sentences);
         }
+        // The name often arrives as the words that close the previous sentence: Bubbles' request comes next.
+        // Counted before splitting, so a name inside the sentence that settles now counts too.
+        const named = countWake(s) > s.wakeSeen;
         const { done, rest } = splitSettled(s.pending);
         s.pending = rest;
         setPending(rest);
-        // The name often arrives as the words that close the previous sentence: Bubbles' request comes next.
-        if (done.length) settle(done, countWake(s) > s.wakeSeen);
-        listenForBubbles();
+        if (done.length) settle(done, named);
+        if (!s.ending) listenForBubbles(); // a "Bubbles" heard while End drains the last words starts nothing
       },
       onPause: () => {
-        if (!mine()) return;
+        if (!mine() || s.ending) return; // End settles the last words itself
+        s.beforePause = s.pending;
         if (s.summon) awaitRequest(true);
         else settleLater();
       },
@@ -502,7 +518,7 @@ export function useLesson() {
     clearTimeout(s.summon?.timer);
     clearTimeout(s.settleTimer);
     s.abort?.abort();
-    Object.assign(s, { cleans: [], pending: "", sentences: [], muted: false, summon: null, wakeSeen: 0, queued: null });
+    Object.assign(s, { cleans: [], pending: "", beforePause: "", sentences: [], muted: false, summon: null, wakeSeen: 0, queued: null });
     setPending("");
     setSentences([]);
     setMuted(false);
@@ -681,7 +697,7 @@ export function useLesson() {
       subject: "other",
       catchingUp: false, cleans: [],
       pending: "", sentences: [], current: null, archive: [], todos: [], pinnedId: null, streak: 0,
-      lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null, wakeSeen: 0, summon: null,
+      lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null, wakeSeen: 0, summon: null, beforePause: "",
     });
     setCatchUp(null);
     setLanding(null);
