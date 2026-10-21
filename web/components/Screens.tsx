@@ -578,9 +578,12 @@ export type EndedData = Pick<L, "title" | "subject" | "startedAt" | "endedAt" | 
   updateTargets?: (next: LessonExport["targets"]) => void; // saves the teacher's edits from the send review
 };
 
+const GALLERY_START = 8;
+
 export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; onDone: () => void; doneLabel?: string }) {
   const e = l.lessonExport;
   const [openDiagram, setOpenDiagram] = useState<number | null>(null);
+  const [allDiagrams, setAllDiagrams] = useState(false);
   const title = l.title || e?.title || "Lesson";
   const mins = Math.max(1, Math.round((l.endedAt - l.startedAt) / 60000));
   const [created, setCreated] = useState<Partial<Record<Target, boolean>>>({});
@@ -694,9 +697,13 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
 
         {l.archive.length > 0 && (
           <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h2 className="h2">Diagrams</h2>
+            <div className="dash-head">
+              <h2 className="h2" style={{ flex: "none" }}>Diagrams</h2>
+              <span className="t14 tnum">{l.archive.length}</span>
+            </div>
             <div className="grid">
-              {l.archive.map((d, i) => (
+              {/* Two rows to start with; a long lesson's diagrams shouldn't push the rest of the summary far down. */}
+              {(allDiagrams ? l.archive : l.archive.slice(0, GALLERY_START)).map((d, i) => (
                 <button key={d.id} className="card gal clickable" onClick={() => setOpenDiagram(i)} aria-label={`Open ${d.title}`}>
                   <span className="gal-img">
                     <DiagramView d={d} still />
@@ -710,6 +717,11 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
                 </button>
               ))}
             </div>
+            {l.archive.length > GALLERY_START && (
+              <button className="btn btn-soft" style={{ alignSelf: "center" }} onClick={() => setAllDiagrams((v) => !v)}>
+                {allDiagrams ? "Show fewer" : `Show all ${l.archive.length}`}
+              </button>
+            )}
           </section>
         )}
 
