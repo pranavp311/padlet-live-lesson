@@ -306,6 +306,9 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
   const W = equal ? spanX * unit + 2 * pad : 520;
   const H = equal ? spanY * unit + 2 * pad : 400;
   const sx = (x: number) => pad + ((x - ax.x[0]) / spanX) * (W - 2 * pad);
+  const geometry = (d.segments?.length ?? 0) > 0;
+  const onAxisY = !geometry && ax.y[0] <= 0 && ax.y[1] >= 0; // x numbers sit on the x axis
+  const onAxisX = !geometry && ax.x[0] <= 0 && ax.x[1] >= 0; // y numbers sit beside the y axis
   const sy = (y: number) => H - pad - ((y - ax.y[0]) / spanY) * (H - 2 * pad);
   const fresh = new Set(d.fresh);
   // With equal units both axes share one grid step, so the cells are square.
@@ -355,18 +358,19 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
       {ticks(ax.y[0], ax.y[1]).map((v) => (
         <line key={`y${v}`} y1={sy(v)} y2={sy(v)} x1={pad} x2={W - pad} stroke="#ebecef" />
       ))}
-      {/* Numbers along the axes (or the edges when an axis is off screen), leaving out 0 where the axes cross. */}
+      {/* Numbers along the axes, leaving out 0 where they cross. On the grid's edges instead when an axis is off screen,
+          or for geometry, whose sides often lie on an axis with their own labels. */}
       {ticks(ax.x[0], ax.x[1])
-        .filter((v) => v !== 0 || !(ax.y[0] <= 0 && ax.y[1] >= 0))
+        .filter((v) => v !== 0 || !onAxisY)
         .map((v) => (
-          <text key={`nx${v}`} x={sx(v)} y={(ax.y[0] <= 0 && ax.y[1] >= 0 ? sy(0) : H - pad) + 16} textAnchor="middle" fontSize={12} fill="#6b6f76">
+          <text key={`nx${v}`} x={sx(v)} y={(onAxisY ? sy(0) : H - pad) + 16} textAnchor="middle" fontSize={12} fill="#6b6f76">
             {v}
           </text>
         ))}
       {ticks(ax.y[0], ax.y[1])
-        .filter((v) => v !== 0)
+        .filter((v) => v !== 0 || !onAxisX)
         .map((v) => (
-          <text key={`ny${v}`} x={(ax.x[0] <= 0 && ax.x[1] >= 0 ? sx(0) : pad) - 6} y={sy(v)} textAnchor="end" dominantBaseline="central" fontSize={12} fill="#6b6f76">
+          <text key={`ny${v}`} x={(onAxisX ? sx(0) : pad) - 6} y={sy(v)} textAnchor="end" dominantBaseline="central" fontSize={12} fill="#6b6f76">
             {v}
           </text>
         ))}
