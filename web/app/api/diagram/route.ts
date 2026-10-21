@@ -56,6 +56,7 @@ export async function POST(req: Request) {
       let action = !target ? (reply.action === "none" ? "none" : "new_topic") : reply.action;
       // A topic change found while updating still has to respect the client's pacing rules.
       if (target && action === "new_topic" && !allowCreate && !force) action = "none";
+      console.info("diagram", JSON.stringify({ path: force ? "draw-this" : "auto", said: said.slice(-160), jev, kind, action }));
       send({ jev, action, kind, ops: Array.isArray(reply.ops) ? reply.ops : [] });
     } catch (e) {
       console.error("diagram llm failed", e);
@@ -74,6 +75,7 @@ async function drawRequest(ask: string, said: string, send: (line: object) => vo
     const kind: Kind = jev.kind !== "none" ? jev.kind : "flow";
     const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\nEarlier in the lesson: ${said}`;
     const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
+    console.info("diagram", JSON.stringify({ path: "bubbles", ask, jev, visual, kind }));
     return { jev, action: "new_topic", kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
   } catch (e) {
     console.error("bubbles request failed", e);
