@@ -2,44 +2,60 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DiagramView } from "@/components/Diagram";
+import { DiagramViewer } from "@/components/DiagramViewer";
 import { Brand, Icon, MicBars, SubjectTile, TodoItem } from "@/components/Bits";
 import { KIND_LABEL, type Diagram } from "@/lib/diagram";
 import { formatClock, type Sentence } from "@/lib/transcript";
+import { downloadBlob, slug, transcriptText } from "@/lib/files";
+import type { LessonSummary } from "@/lib/history";
 import type { useLesson } from "@/lib/useLesson";
 
 type L = ReturnType<typeof useLesson>;
 
 const today = () => new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
-export function Ready({ l }: { l: L }) {
+// Start page: every saved lesson, newest first, with a new-lesson row on top.
+export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[]; onOpen: (id: string) => void }) {
   return (
     <div className="wall">
       <header className="hdr">
         <Brand />
       </header>
-      <main className="center">
+      <main className="dash">
         <form
-          className="panel"
+          className="dash-start"
           onSubmit={(e) => {
             e.preventDefault();
             void l.start();
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span className="tile" style={{ background: "var(--grape-tint)", color: "#520085" }}>
-              <Icon name="lesson" size={26} />
-            </span>
-            <h1 className="h1">Live lesson</h1>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <input className="input" aria-label="Lesson title" placeholder="Lesson title" value={l.title} onChange={(e) => l.setTitle(e.target.value)} />
-            <button className="cta" type="submit">
-              <Icon name="mic" size={22} />
-              Start lesson
-            </button>
-            {l.error && <p className="err">{l.error}</p>}
-          </div>
+          <input className="input" aria-label="Lesson title" placeholder="Lesson title" value={l.title} onChange={(e) => l.setTitle(e.target.value)} />
+          <button className="cta" type="submit">
+            <Icon name="mic" size={22} />
+            Start lesson
+          </button>
         </form>
+        {l.error && <p className="err">{l.error}</p>}
+        <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <h1 className="h1">Lessons</h1>
+          {lessons.length ? (
+            <div className="grid">
+              {lessons.map((x) => (
+                <button key={x.id} className="card lesson-card clickable" onClick={() => onOpen(x.id)}>
+                  <SubjectTile subject={x.subject} size={44} />
+                  <span className="t17">{x.title}</span>
+                  <span className="t14 tnum">
+                    {new Date(x.startedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} ·{" "}
+                    {Math.max(1, Math.round((x.endedAt - x.startedAt) / 60000))} min
+                    {x.diagrams > 0 && ` · ${x.diagrams} diagram${x.diagrams > 1 ? "s" : ""}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Your lessons appear here once you&apos;ve taught one.</p>
+          )}
+        </section>
       </main>
     </div>
   );
@@ -117,6 +133,19 @@ export function Live({ l }: { l: L }) {
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
   const d = l.current;
 
+  // The panel shows the live diagram unless the teacher steps back (‹ ›) through earlier ones.
+  const list = d ? [...l.archive, d] : l.archive;
+  const [view, setView] = useState<number | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  useEffect(() => setView(null), [d?.id]); // a new diagram brings the panel back to live
+  const shownIdx = view ?? (d ? list.length - 1 : null);
+  const panelD = shownIdx === null ? null : list[shownIdx];
+  const isLive = view === null && !!d;
+  const step = (by: number) => {
+    const next = Math.min(list.length - 1, Math.max(0, (shownIdx ?? list.length) + by));
+    setView(d && next === list.length - 1 ? null : next);
+  };
+
   return (
     <div className="wall" style={{ height: "100vh", overflow: "hidden" }}>
       <header className="hdr">
@@ -149,7 +178,7 @@ export function Live({ l }: { l: L }) {
         <section className="transcript" aria-label="Transcript" aria-live="polite">
           {shown.slice(-8).map((b, k, arr) => {
             const idx = shown.length - arr.length + k;
-            if (b.kind === "diagram") return <Thumb key={b.d.id} d={b.d} />;
+            if (b.kind === "diagram") return <Thumb key={b.d.id} d={b.d} onOpen={() => setOpen(list.indexOf(b.d))} />;
             const age = paras.filter((p) => p.i > idx).length;
             const isNow = idx === nowIdx;
             const text = b.sentences.map((s) => s.clean ?? s.raw).join(" ");
@@ -170,13 +199,29 @@ export function Live({ l }: { l: L }) {
         </section>
 
         <section className="dpanel" aria-label="Diagram">
+          {l.drawing && panelD && <div className="drawing-bar" aria-hidden="true" />}
           <div className="dpanel-head">
-            <h2 className="h2">{d?.title ?? ""}</h2>
-            <button className="btn btn-ghost" onClick={l.drawThis} disabled={!l.sentences.length}>
+            {list.length > 1 && (
+              <>
+                <button className="btn btn-ghost btn-icon" aria-label="Previous diagram" onClick={() => step(-1)} disabled={shownIdx === 0}>
+                  <Icon name="left" />
+                </button>
+                <button className="btn btn-ghost btn-icon" aria-label="Next diagram" onClick={() => step(1)} disabled={isLive || shownIdx === list.length - 1}>
+                  <Icon name="right" />
+                </button>
+              </>
+            )}
+            <h2 className="h2">{panelD?.title ?? ""}</h2>
+            {view !== null && d && (
+              <button className="btn btn-ghost" onClick={() => setView(null)}>
+                Back to live
+              </button>
+            )}
+            <button className="btn btn-ghost" onClick={l.drawThis} disabled={!l.sentences.length || l.drawing}>
               <Icon name="pen" />
-              Draw this
+              {l.drawing ? "Drawing…" : "Draw this"}
             </button>
-            {d && (
+            {isLive && (
               <>
                 <button className="btn btn-ghost" aria-pressed={l.pinned} onClick={l.togglePin}>
                   <Icon name="pin" />
@@ -188,29 +233,44 @@ export function Live({ l }: { l: L }) {
               </>
             )}
           </div>
-          {d ? (
+          {panelD ? (
             <>
-              <div className="dpanel-body">
-                <DiagramView d={d} />
-              </div>
+              <button className="dpanel-body clickable" style={{ background: "none" }} aria-label={`Open ${panelD.title}`} onClick={() => setOpen(shownIdx)}>
+                <DiagramView d={panelD} still={!isLive} />
+              </button>
               <div>
                 <span className="chip tnum" style={{ background: "var(--grape-tint)", color: "#520085" }}>
-                  {KIND_LABEL[d.kind]} · {formatClock(d.t)}
+                  {KIND_LABEL[panelD.kind]} · {formatClock(panelD.t)}
                 </span>
               </div>
             </>
+          ) : l.drawing ? (
+            <div className="drawing" role="status" aria-label="Drawing">
+              <div className="drawing-row">
+                {["var(--canary-tint)", "var(--canary-tint)", "var(--canary-tint)"].map((c, i) => (
+                  <span key={i} className="drawing-note" style={{ background: c, animationDelay: `${i * 120}ms` }} />
+                ))}
+              </div>
+              <span className="drawing-note" style={{ background: "var(--grape-tint)", animationDelay: "360ms" }} />
+              <div className="drawing-row">
+                {["var(--park-tint)", "var(--park-tint)"].map((c, i) => (
+                  <span key={i} className="drawing-note" style={{ background: c, animationDelay: `${480 + i * 120}ms` }} />
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="dpanel-empty">Diagrams appear here as you explain.</div>
           )}
         </section>
       </main>
+      <DiagramViewer diagrams={list} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
     </div>
   );
 }
 
-function Thumb({ d }: { d: Diagram }) {
+function Thumb({ d, onOpen }: { d: Diagram; onOpen: () => void }) {
   return (
-    <div className="thumb">
+    <button className="thumb clickable" onClick={onOpen} aria-label={`Open ${d.title}`}>
       <span className="thumb-img">
         <DiagramView d={d} still />
       </span>
@@ -218,14 +278,23 @@ function Thumb({ d }: { d: Diagram }) {
         <span className="thumb-title">{d.title}</span>
         <span className="thumb-time tnum">{formatClock(d.t)}</span>
       </span>
-    </div>
+    </button>
   );
 }
 
 type Target = "board" | "arcade" | "sandbox";
 
-export function Ended({ l }: { l: L }) {
+// Everything the summary screen needs; the live lesson hook and a saved lesson both provide it.
+export type EndedData = Pick<L, "title" | "subject" | "startedAt" | "endedAt" | "sentences" | "archive" | "todos" | "lessonExport"> & {
+  exportError?: string | null;
+  saveFailed?: boolean;
+  retryExport?: () => Promise<void>;
+};
+
+export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; onDone: () => void; doneLabel?: string }) {
   const e = l.lessonExport;
+  const [openDiagram, setOpenDiagram] = useState<number | null>(null);
+  const title = l.title || e?.title || "Lesson";
   const mins = Math.max(1, Math.round((l.endedAt - l.startedAt) / 60000));
   const [sent, setSent] = useState<Partial<Record<Target, boolean>>>({});
   const [viewing, setViewing] = useState<Target | null>(null);
@@ -236,21 +305,8 @@ export function Ended({ l }: { l: L }) {
     else dialog.current?.close();
   }, [viewing]);
 
-  // Download works even if the summary failed: the transcript, diagrams and to-dos are already here.
-  const lesson = {
-    ...(e ?? {}),
-    duration_s: Math.round((l.endedAt - l.startedAt) / 1000),
-    diagrams: l.archive.map((d) => ({ ...d, fresh: undefined })),
-    todos: l.todos.map((t) => ({ kind: t.kind, text: t.text, due: t.due })),
-    transcript: l.sentences.map((s) => ({ t: Math.round(s.t), text: s.clean ?? s.raw })),
-  };
-
-  const download = () => {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(lesson, null, 2)], { type: "application/json" }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: "lesson.json" });
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const downloadTranscript = () =>
+    downloadBlob(new Blob([transcriptText(title, l.startedAt, l.sentences)], { type: "text/plain" }), `${slug(title)}-transcript.txt`);
 
   const targets: { key: Target; name: string; icon: "board" | "game" | "cards"; bg: string; fg: string; count?: string }[] = [
     { key: "board", name: "Board", icon: "board", bg: "var(--canary-tint)", fg: "#913d00", count: e ? `${e.targets.board.posts.length} posts` : undefined },
@@ -263,8 +319,8 @@ export function Ended({ l }: { l: L }) {
       <header className="hdr">
         <Brand />
         <span className="spacer" />
-        <button className="btn btn-dark" onClick={l.reset}>
-          New lesson
+        <button className="btn btn-dark" onClick={onDone}>
+          {doneLabel}
         </button>
       </header>
       <div className="lesson-head">
@@ -273,7 +329,7 @@ export function Ended({ l }: { l: L }) {
           <span className="eyebrow tnum">
             {today()} · {mins} min
           </span>
-          <h1 className="h1">{l.title || e?.title || "Lesson"}</h1>
+          <h1 className="h1">{title}</h1>
         </div>
       </div>
 
@@ -310,23 +366,24 @@ export function Ended({ l }: { l: L }) {
           <div className="card target" style={{ boxShadow: "inset 0 0 0 1px #ebecef" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <span className="target-tile" style={{ background: "var(--surface)" }}>
-                <Icon name="json" size={22} />
+                <Icon name="text" size={22} />
               </span>
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <span className="t17">lesson.json</span>
-                <span className="t14">All three payloads</span>
+                <span className="t17">Transcript</span>
+                <span className="t14">{l.sentences.length} sentences</span>
               </div>
             </div>
-            <button className="btn btn-soft" onClick={download}>
+            <button className="btn btn-soft" onClick={downloadTranscript}>
               <Icon name="download" />
               Download
             </button>
           </div>
         </div>
-        {l.exportError && (
+        {l.saveFailed && <p className="err">This browser didn&apos;t save the lesson. Download it to keep a copy.</p>}
+        {l.exportError && l.retryExport && (
           <p className="err" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {l.exportError}
-            <button className="btn btn-soft" onClick={() => void l.retryExport()}>
+            <button className="btn btn-soft" onClick={() => void l.retryExport?.()}>
               Try again
             </button>
           </p>
@@ -336,8 +393,8 @@ export function Ended({ l }: { l: L }) {
           <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <h2 className="h2">Diagrams</h2>
             <div className="grid">
-              {l.archive.map((d) => (
-                <div key={d.id} className="card gal">
+              {l.archive.map((d, i) => (
+                <button key={d.id} className="card gal clickable" onClick={() => setOpenDiagram(i)} aria-label={`Open ${d.title}`}>
                   <span className="gal-img">
                     <DiagramView d={d} still />
                   </span>
@@ -347,7 +404,7 @@ export function Ended({ l }: { l: L }) {
                       {formatClock(d.t)}
                     </span>
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </section>
@@ -398,6 +455,7 @@ export function Ended({ l }: { l: L }) {
         </div>
       </main>
 
+      <DiagramViewer diagrams={l.archive} index={openDiagram} onIndex={setOpenDiagram} onClose={() => setOpenDiagram(null)} />
       <dialog ref={dialog} className="dialog" onClose={() => setViewing(null)}>
         <div className="dialog-head">
           <h2 className="h2">{viewing && targets.find((t) => t.key === viewing)?.name} payload</h2>

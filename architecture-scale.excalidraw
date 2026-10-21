@@ -29,15 +29,15 @@
       "originalText": "Live Lesson at Padlet scale",
       "roughness": 1,
       "roundness": null,
-      "seed": 1842636031,
+      "seed": 993882336,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Live Lesson at Padlet scale",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1578271049,
+      "versionNonce": 555386314,
       "verticalAlign": "top"
     },
     {
@@ -66,15 +66,15 @@
       "originalText": "Same product as the demo board: the teacher talks, words and diagrams appear live,\nand the lesson exports to Padlet. This board sizes it for about 40 million users a month.",
       "roughness": 1,
       "roundness": null,
-      "seed": 365884412,
+      "seed": 1535597750,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Same product as the demo board: the teacher talks, words and diagrams appear live,\nand the lesson exports to Padlet. This board sizes it for about 40 million users a month.",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 591909831,
+      "versionNonce": 2014385110,
       "verticalAlign": "top"
     },
     {
@@ -108,13 +108,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 893626932,
+      "seed": 1043227313,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1956999209
+      "versionNonce": 471547018
     },
     {
       "id": "ban1_t",
@@ -142,15 +142,15 @@
       "originalText": "Requirements",
       "roughness": 1,
       "roundness": null,
-      "seed": 413635560,
+      "seed": 641473037,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Requirements",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 650625767,
+      "versionNonce": 866920726,
       "verticalAlign": "middle"
     },
     {
@@ -180,13 +180,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 380288916,
+      "seed": 278764810,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1555530505
+      "versionNonce": 1263999818
     },
     {
       "id": "ban1_m_t",
@@ -214,15 +214,15 @@
       "originalText": "1",
       "roughness": 1,
       "roundness": null,
-      "seed": 75988565,
+      "seed": 1972524646,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "1",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 247254535,
+      "versionNonce": 229807702,
       "verticalAlign": "middle"
     },
     {
@@ -260,13 +260,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 504006006,
+      "seed": 1153651305,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1657027049
+      "versionNonce": 1294541322
     },
     {
       "id": "ban2_t",
@@ -294,15 +294,15 @@
       "originalText": "Core entities",
       "roughness": 1,
       "roundness": null,
-      "seed": 2114217619,
+      "seed": 829353701,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Core entities",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1176728871,
+      "versionNonce": 1324964758,
       "verticalAlign": "middle"
     },
     {
@@ -332,13 +332,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 823525935,
+      "seed": 2110237661,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 936842441
+      "versionNonce": 1015828682
     },
     {
       "id": "ban2_m_t",
@@ -366,15 +366,15 @@
       "originalText": "2",
       "roughness": 1,
       "roundness": null,
-      "seed": 724128816,
+      "seed": 1883078216,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "2",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 610809927,
+      "versionNonce": 1572174038,
       "verticalAlign": "middle"
     },
     {
@@ -418,7 +418,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 263264646,
+      "seed": 47664677,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "ban1",
@@ -429,9 +429,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1602982825
+      "versionNonce": 488351626
     },
     {
       "id": "ban3",
@@ -468,13 +468,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1685151755,
+      "seed": 1067830212,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1600624487
+      "versionNonce": 293334550
     },
     {
       "id": "ban3_t",
@@ -502,15 +502,15 @@
       "originalText": "API",
       "roughness": 1,
       "roundness": null,
-      "seed": 442669917,
+      "seed": 1048290631,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "API",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1577924233,
+      "versionNonce": 1192371786,
       "verticalAlign": "middle"
     },
     {
@@ -540,13 +540,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 509802419,
+      "seed": 303309760,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1030623879
+      "versionNonce": 121748310
     },
     {
       "id": "ban3_m_t",
@@ -574,15 +574,15 @@
       "originalText": "3",
       "roughness": 1,
       "roundness": null,
-      "seed": 1019382508,
+      "seed": 45459190,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "3",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 639073641,
+      "versionNonce": 1397411082,
       "verticalAlign": "middle"
     },
     {
@@ -626,7 +626,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1976481474,
+      "seed": 1179918467,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "ban2",
@@ -637,9 +637,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 121121191
+      "versionNonce": 1968955542
     },
     {
       "id": "ban4",
@@ -676,13 +676,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 336554609,
+      "seed": 1342484166,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1190520905
+      "versionNonce": 121674698
     },
     {
       "id": "ban4_t",
@@ -710,15 +710,15 @@
       "originalText": "High-level\ndesign",
       "roughness": 1,
       "roundness": null,
-      "seed": 1249496895,
+      "seed": 995952657,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "High-level\ndesign",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 972184775,
+      "versionNonce": 2139053526,
       "verticalAlign": "middle"
     },
     {
@@ -748,13 +748,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 127652328,
+      "seed": 64507112,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1518597929
+      "versionNonce": 1091474058
     },
     {
       "id": "ban4_m_t",
@@ -782,15 +782,15 @@
       "originalText": "4",
       "roughness": 1,
       "roundness": null,
-      "seed": 1343923280,
+      "seed": 1392169629,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "4",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 2033789927,
+      "versionNonce": 180433686,
       "verticalAlign": "middle"
     },
     {
@@ -834,7 +834,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1517672610,
+      "seed": 491119302,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "ban3",
@@ -845,9 +845,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 858597897
+      "versionNonce": 1668264266
     },
     {
       "id": "ban5",
@@ -880,13 +880,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1073169330,
+      "seed": 1517451007,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1092163335
+      "versionNonce": 295067734
     },
     {
       "id": "ban5_t",
@@ -914,15 +914,15 @@
       "originalText": "Deep dives",
       "roughness": 1,
       "roundness": null,
-      "seed": 542336610,
+      "seed": 1586153594,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Deep dives",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1240269033,
+      "versionNonce": 1103034378,
       "verticalAlign": "middle"
     },
     {
@@ -952,13 +952,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 307815726,
+      "seed": 180744925,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1477352999
+      "versionNonce": 2010375574
     },
     {
       "id": "ban5_m_t",
@@ -986,15 +986,15 @@
       "originalText": "5",
       "roughness": 1,
       "roundness": null,
-      "seed": 793824692,
+      "seed": 626280921,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "5",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1817115593,
+      "versionNonce": 200763082,
       "verticalAlign": "middle"
     },
     {
@@ -1038,7 +1038,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 2014195445,
+      "seed": 349634755,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "ban4",
@@ -1049,9 +1049,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 17187143
+      "versionNonce": 1588511446
     },
     {
       "id": "s1_m",
@@ -1080,13 +1080,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 831113532,
+      "seed": 136185400,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 711891625
+      "versionNonce": 984874378
     },
     {
       "id": "s1_m_t",
@@ -1114,15 +1114,15 @@
       "originalText": "1",
       "roughness": 1,
       "roundness": null,
-      "seed": 780327095,
+      "seed": 1319241049,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "1",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1834778727,
+      "versionNonce": 2025584662,
       "verticalAlign": "middle"
     },
     {
@@ -1151,15 +1151,15 @@
       "originalText": "Requirements",
       "roughness": 1,
       "roundness": null,
-      "seed": 181317013,
+      "seed": 840512641,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Requirements",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 83320201,
+      "versionNonce": 2066725962,
       "verticalAlign": "top"
     },
     {
@@ -1168,7 +1168,7 @@
       "x": -240,
       "y": 430,
       "width": 924,
-      "height": 350,
+      "height": 375,
       "angle": 0,
       "autoResize": true,
       "backgroundColor": "transparent",
@@ -1185,18 +1185,18 @@
       "link": null,
       "locked": false,
       "opacity": 100,
-      "originalText": "Teachers can\n- start a live lesson from Padlet and see their words within 0.5 s\n- watch diagrams draw as they explain: flow, cycle, timeline, graph, molecule\n- lose Wi-Fi for a moment and carry on without losing the lesson\n- end the lesson and send it to Boards, Arcade or Sandbox\n\nOut of scope\n- students joining the live view; languages besides English\n\nLimits\n- 8 am rush: thousands of lessons start within minutes\n- keeps working when our GPUs are full (backup speech to text)\n- class audio is never stored; schools own the text (COPPA, FERPA)\n- well under $1 per lesson-hour",
+      "originalText": "Teachers can\n- start a live lesson from Padlet and see their words within 0.5 s\n- watch diagrams draw as they explain: flow, cycle, timeline, graph, molecule\n- lose Wi-Fi for a moment and carry on without losing the lesson\n- end the lesson and send it to Boards, Arcade or Sandbox\n- reopen past lessons on any device and download them (proposed)\n\nOut of scope\n- students joining the live view; languages besides English\n\nLimits\n- 8 am rush: thousands of lessons start within minutes\n- keeps working when our GPUs are full (backup speech to text)\n- class audio is never stored; schools own the text (COPPA, FERPA)\n- well under $1 per lesson-hour",
       "roughness": 1,
       "roundness": null,
-      "seed": 477715396,
+      "seed": 1749159586,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "text": "Teachers can\n- start a live lesson from Padlet and see their words within 0.5 s\n- watch diagrams draw as they explain: flow, cycle, timeline, graph, molecule\n- lose Wi-Fi for a moment and carry on without losing the lesson\n- end the lesson and send it to Boards, Arcade or Sandbox\n\nOut of scope\n- students joining the live view; languages besides English\n\nLimits\n- 8 am rush: thousands of lessons start within minutes\n- keeps working when our GPUs are full (backup speech to text)\n- class audio is never stored; schools own the text (COPPA, FERPA)\n- well under $1 per lesson-hour",
+      "text": "Teachers can\n- start a live lesson from Padlet and see their words within 0.5 s\n- watch diagrams draw as they explain: flow, cycle, timeline, graph, molecule\n- lose Wi-Fi for a moment and carry on without losing the lesson\n- end the lesson and send it to Boards, Arcade or Sandbox\n- reopen past lessons on any device and download them (proposed)\n\nOut of scope\n- students joining the live view; languages besides English\n\nLimits\n- 8 am rush: thousands of lessons start within minutes\n- keeps working when our GPUs are full (backup speech to text)\n- class audio is never stored; schools own the text (COPPA, FERPA)\n- well under $1 per lesson-hour",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1860033415,
+      "versionNonce": 1576043862,
       "verticalAlign": "top"
     },
     {
@@ -1221,13 +1221,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 923529793,
+      "seed": 1662690004,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1529136233
+      "versionNonce": 457548554
     },
     {
       "id": "bote_h",
@@ -1255,15 +1255,15 @@
       "originalText": "Back-of-envelope  (A = assumption, est. = not measured)",
       "roughness": 1,
       "roundness": null,
-      "seed": 1568900179,
+      "seed": 865186069,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Back-of-envelope  (A = assumption, est. = not measured)",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1774637735,
+      "versionNonce": 1604414102,
       "verticalAlign": "top"
     },
     {
@@ -1292,15 +1292,15 @@
       "originalText": "Users: 40M a month  (Padlet VP Growth, ClickHouse blog, Mar 2026)\nTeachers: 10% of users = 4M  (A)\nRun live lessons: 5% of teachers = 200k  (A)\nLessons: 3 a week, 40 min each  (A)  ->  2.6M a month = 1.7M lesson-hours\nPer school day (21 a month): 2.6M / 21 = 124k lessons\nBusiest hour: 12% of the day's lessons start  (A: US morning)  = 15k\nPeak live lessons: 15k x 0.67 h = ~10,000 at once\nAudio in at peak: 10k x 32 KB/s = 320 MB/s  (~2.6 Gbit/s)\nGPUs at peak: 10k / 100 per L4 (est.*) = 100, +30% spare = ~130 L4\nJev at peak: 6 settled sentences a min (A) x 10k = ~1,000 calls/s\nLLM at peak: Jev says draw on 15% (A) = ~150 calls/s\nStorage: ~150 KB of text per lesson = ~0.4 TB a month; audio: 0\n\n* H100 runs ~560 streams (NVIDIA, via MarkTechPost, Jan 2026); an L4 has\n  ~1/5 the power. Modal ran 127 streams on one GPU. Measure before trusting.",
       "roughness": 1,
       "roundness": null,
-      "seed": 1496686803,
+      "seed": 1690733719,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Users: 40M a month  (Padlet VP Growth, ClickHouse blog, Mar 2026)\nTeachers: 10% of users = 4M  (A)\nRun live lessons: 5% of teachers = 200k  (A)\nLessons: 3 a week, 40 min each  (A)  ->  2.6M a month = 1.7M lesson-hours\nPer school day (21 a month): 2.6M / 21 = 124k lessons\nBusiest hour: 12% of the day's lessons start  (A: US morning)  = 15k\nPeak live lessons: 15k x 0.67 h = ~10,000 at once\nAudio in at peak: 10k x 32 KB/s = 320 MB/s  (~2.6 Gbit/s)\nGPUs at peak: 10k / 100 per L4 (est.*) = 100, +30% spare = ~130 L4\nJev at peak: 6 settled sentences a min (A) x 10k = ~1,000 calls/s\nLLM at peak: Jev says draw on 15% (A) = ~150 calls/s\nStorage: ~150 KB of text per lesson = ~0.4 TB a month; audio: 0\n\n* H100 runs ~560 streams (NVIDIA, via MarkTechPost, Jan 2026); an L4 has\n  ~1/5 the power. Modal ran 127 streams on one GPU. Measure before trusting.",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 415387465,
+      "versionNonce": 1970319818,
       "verticalAlign": "top"
     },
     {
@@ -1325,13 +1325,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1866964752,
+      "seed": 2121094131,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 113501639
+      "versionNonce": 1552132054
     },
     {
       "id": "cost_h",
@@ -1359,15 +1359,15 @@
       "originalText": "Monthly cost  (list prices, Oct 2026; LLM = DeepSeek v4.1 Flash)",
       "roughness": 1,
       "roundness": null,
-      "seed": 2048578343,
+      "seed": 2018490311,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Monthly cost  (list prices, Oct 2026; LLM = DeepSeek v4.1 Flash)",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 606830121,
+      "versionNonce": 1556867210,
       "verticalAlign": "top"
     },
     {
@@ -1396,15 +1396,15 @@
       "originalText": "Speech to text: 1.7M h / 100 per GPU x 2 (idle + spare) x $0.80/h x 1.25 region\n    = ~$35k   (same hours on Deepgram Nova-3 at $0.0077/min: ~$790k)\nJev: 620M sentences x 300 tokens x $0.042 per M = ~$8k\nDiagram LLM: 93M calls x ~$0.00019 (1.5k in x $0.05/M + 300 out x $0.38/M, A) = ~$18k\nExport LLM: 2.6M lessons x ~$0.0015 (20k in x $0.05/M + 1.2k out x $0.38/M, A) = ~$4k\nTotal: ~$64k a month = ~$0.025 a lesson = ~$0.04 a lesson-hour",
       "roughness": 1,
       "roundness": null,
-      "seed": 38209250,
+      "seed": 297269640,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Speech to text: 1.7M h / 100 per GPU x 2 (idle + spare) x $0.80/h x 1.25 region\n    = ~$35k   (same hours on Deepgram Nova-3 at $0.0077/min: ~$790k)\nJev: 620M sentences x 300 tokens x $0.042 per M = ~$8k\nDiagram LLM: 93M calls x ~$0.00019 (1.5k in x $0.05/M + 300 out x $0.38/M, A) = ~$18k\nExport LLM: 2.6M lessons x ~$0.0015 (20k in x $0.05/M + 1.2k out x $0.38/M, A) = ~$4k\nTotal: ~$64k a month = ~$0.025 a lesson = ~$0.04 a lesson-hour",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 619812071,
+      "versionNonce": 346832150,
       "verticalAlign": "top"
     },
     {
@@ -1434,13 +1434,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1919879698,
+      "seed": 833214181,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 206295305
+      "versionNonce": 152192842
     },
     {
       "id": "s2_m_t",
@@ -1468,15 +1468,15 @@
       "originalText": "2",
       "roughness": 1,
       "roundness": null,
-      "seed": 223758029,
+      "seed": 129818016,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "2",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 198991879,
+      "versionNonce": 2106600022,
       "verticalAlign": "middle"
     },
     {
@@ -1505,15 +1505,15 @@
       "originalText": "Core entities",
       "roughness": 1,
       "roundness": null,
-      "seed": 300315833,
+      "seed": 858069630,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Core entities",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1990117353,
+      "versionNonce": 43961866,
       "verticalAlign": "top"
     },
     {
@@ -1522,7 +1522,7 @@
       "x": -240,
       "y": 1660,
       "width": 852,
-      "height": 125,
+      "height": 150,
       "angle": 0,
       "autoResize": true,
       "backgroundColor": "transparent",
@@ -1539,18 +1539,18 @@
       "link": null,
       "locked": false,
       "opacity": 100,
-      "originalText": "Lesson: id, teacher, school, region, status, started, ended\nSentence: lesson id, number, text, start, end\nDiagram: id, lesson id, kind, parts, version\nLesson export: lesson.json, one payload each for Board, Arcade, Sandbox\nNo audio entity: audio is never written to disk",
+      "originalText": "Lesson: id, teacher, school, region, status, started, ended,\n    title, subject, to-dos, summary (+ its sentences and diagrams)\nSentence: lesson id, number, text, start, end\nDiagram: id, lesson id, kind, parts (spec as JSON), version\nLesson export: lesson.json, one payload each for Board, Arcade, Sandbox\nNo audio entity: audio is never written to disk",
       "roughness": 1,
       "roundness": null,
-      "seed": 700419967,
+      "seed": 1362222091,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "text": "Lesson: id, teacher, school, region, status, started, ended\nSentence: lesson id, number, text, start, end\nDiagram: id, lesson id, kind, parts, version\nLesson export: lesson.json, one payload each for Board, Arcade, Sandbox\nNo audio entity: audio is never written to disk",
+      "text": "Lesson: id, teacher, school, region, status, started, ended,\n    title, subject, to-dos, summary (+ its sentences and diagrams)\nSentence: lesson id, number, text, start, end\nDiagram: id, lesson id, kind, parts (spec as JSON), version\nLesson export: lesson.json, one payload each for Board, Arcade, Sandbox\nNo audio entity: audio is never written to disk",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1568720679,
+      "versionNonce": 369389462,
       "verticalAlign": "top"
     },
     {
@@ -1580,13 +1580,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 101386441,
+      "seed": 216583137,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1294983881
+      "versionNonce": 241990858
     },
     {
       "id": "s3_m_t",
@@ -1614,15 +1614,15 @@
       "originalText": "3",
       "roughness": 1,
       "roundness": null,
-      "seed": 2059036127,
+      "seed": 2095128504,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "3",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1212893767,
+      "versionNonce": 977145046,
       "verticalAlign": "middle"
     },
     {
@@ -1651,15 +1651,15 @@
       "originalText": "API",
       "roughness": 1,
       "roundness": null,
-      "seed": 1969782814,
+      "seed": 500384109,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "API",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 748331433,
+      "versionNonce": 437670794,
       "verticalAlign": "top"
     },
     {
@@ -1667,8 +1667,8 @@
       "type": "text",
       "x": -240,
       "y": 1920,
-      "width": 852,
-      "height": 175,
+      "width": 876,
+      "height": 250,
       "angle": 0,
       "autoResize": true,
       "backgroundColor": "transparent",
@@ -1685,18 +1685,18 @@
       "link": null,
       "locked": false,
       "opacity": 100,
-      "originalText": "POST /lessons  {board id}  ->  {lesson id, speech URL, token}\nWS   speech gateway /ws?lesson=..&token=..&from=n\n     in: audio chunks    out: rough text, settled sentences\nLive updates channel (Padlet's own, A)  ->  diagram changes\nPOST /lessons/:id/end  ->  starts the export\nGET  /lessons/:id/export  ->  lesson.json\nJev: POST api.typesafe.ai/v1/systemone  {last 3 sentences, 3 questions}",
+      "originalText": "POST /lessons  {board id}  ->  {lesson id, speech URL, token}\nWS   speech gateway /ws?lesson=..&token=..&from=n\n     in: audio chunks    out: rough text, settled sentences\nLive updates channel (Padlet's own, A)  ->  diagram changes\nPOST /lessons/:id/end  ->  starts the export\nGET  /lessons/:id/export  ->  lesson.json\nProposed, past lessons (teacher's own only):\nGET  /lessons  ->  list     GET /lessons/:id  ->  summary, text, diagrams\nGET  /lessons/:id/export?as=json or txt     DELETE /lessons/:id\nJev: POST api.typesafe.ai/v1/systemone  {last 3 sentences, 3 questions}",
       "roughness": 1,
       "roundness": null,
-      "seed": 1709281602,
+      "seed": 2046770847,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "text": "POST /lessons  {board id}  ->  {lesson id, speech URL, token}\nWS   speech gateway /ws?lesson=..&token=..&from=n\n     in: audio chunks    out: rough text, settled sentences\nLive updates channel (Padlet's own, A)  ->  diagram changes\nPOST /lessons/:id/end  ->  starts the export\nGET  /lessons/:id/export  ->  lesson.json\nJev: POST api.typesafe.ai/v1/systemone  {last 3 sentences, 3 questions}",
+      "text": "POST /lessons  {board id}  ->  {lesson id, speech URL, token}\nWS   speech gateway /ws?lesson=..&token=..&from=n\n     in: audio chunks    out: rough text, settled sentences\nLive updates channel (Padlet's own, A)  ->  diagram changes\nPOST /lessons/:id/end  ->  starts the export\nGET  /lessons/:id/export  ->  lesson.json\nProposed, past lessons (teacher's own only):\nGET  /lessons  ->  list     GET /lessons/:id  ->  summary, text, diagrams\nGET  /lessons/:id/export?as=json or txt     DELETE /lessons/:id\nJev: POST api.typesafe.ai/v1/systemone  {last 3 sentences, 3 questions}",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 2031642983,
+      "versionNonce": 2010251798,
       "verticalAlign": "top"
     },
     {
@@ -1726,13 +1726,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1087743547,
+      "seed": 236353997,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 302679177
+      "versionNonce": 668422730
     },
     {
       "id": "s4_m_t",
@@ -1760,15 +1760,15 @@
       "originalText": "4",
       "roughness": 1,
       "roundness": null,
-      "seed": 1060675867,
+      "seed": 1407256146,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "4",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1295295623,
+      "versionNonce": 1639272278,
       "verticalAlign": "middle"
     },
     {
@@ -1797,15 +1797,15 @@
       "originalText": "High-level design",
       "roughness": 1,
       "roundness": null,
-      "seed": 269741478,
+      "seed": 1920797400,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "High-level design",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1228606313,
+      "versionNonce": 982153482,
       "verticalAlign": "top"
     },
     {
@@ -1814,7 +1814,7 @@
       "x": 900,
       "y": 200,
       "width": 450,
-      "height": 1020,
+      "height": 1600,
       "angle": 0,
       "backgroundColor": "transparent",
       "boundElements": null,
@@ -1830,13 +1830,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 2141376369,
+      "seed": 621588615,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1146911655
+      "versionNonce": 1681716374
     },
     {
       "id": "fb_t",
@@ -1864,15 +1864,15 @@
       "originalText": "Teacher's browser",
       "roughness": 1,
       "roundness": null,
-      "seed": 1178272563,
+      "seed": 1698328458,
       "strokeColor": "#555555",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Teacher's browser",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 444053065,
+      "versionNonce": 1101711306,
       "verticalAlign": "top"
     },
     {
@@ -1906,13 +1906,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 555562791,
+      "seed": 69762686,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 851209927
+      "versionNonce": 421392854
     },
     {
       "id": "mic_t",
@@ -1940,15 +1940,15 @@
       "originalText": "Mic",
       "roughness": 1,
       "roundness": null,
-      "seed": 2006213582,
+      "seed": 560758752,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Mic",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 949749033,
+      "versionNonce": 89341578,
       "verticalAlign": "middle"
     },
     {
@@ -1986,13 +1986,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1629264359,
+      "seed": 1015415060,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 854654439
+      "versionNonce": 460146454
     },
     {
       "id": "wk_t",
@@ -2020,15 +2020,15 @@
       "originalText": "Audio worklet\nkeeps last 10 s",
       "roughness": 1,
       "roundness": null,
-      "seed": 1832242180,
+      "seed": 1822824764,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Audio worklet\nkeeps last 10 s",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1863546889,
+      "versionNonce": 306109770,
       "verticalAlign": "middle"
     },
     {
@@ -2062,13 +2062,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1235915173,
+      "seed": 698131109,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1476831495
+      "versionNonce": 1537209430
     },
     {
       "id": "tv_t",
@@ -2096,15 +2096,15 @@
       "originalText": "Live transcript\nrough, then settled",
       "roughness": 1,
       "roundness": null,
-      "seed": 2063508985,
+      "seed": 191754573,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Live transcript\nrough, then settled",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 265916137,
+      "versionNonce": 633906186,
       "verticalAlign": "middle"
     },
     {
@@ -2138,13 +2138,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1938857343,
+      "seed": 1757177784,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 528085031
+      "versionNonce": 1938487702
     },
     {
       "id": "dv_t",
@@ -2172,15 +2172,15 @@
       "originalText": "Diagram view\nMermaid, Mafs,\nSmilesDrawer",
       "roughness": 1,
       "roundness": null,
-      "seed": 1144411125,
+      "seed": 1486973859,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Diagram view\nMermaid, Mafs,\nSmilesDrawer",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 561629641,
+      "versionNonce": 434868938,
       "verticalAlign": "middle"
     },
     {
@@ -2214,13 +2214,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 324580796,
+      "seed": 1580848712,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 590828359
+      "versionNonce": 2053330646
     },
     {
       "id": "ctl_t",
@@ -2248,15 +2248,15 @@
       "originalText": "Lesson buttons\nstart, end, send",
       "roughness": 1,
       "roundness": null,
-      "seed": 913939467,
+      "seed": 1989394124,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Lesson buttons\nstart, end, send",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1292871849,
+      "versionNonce": 1363323274,
       "verticalAlign": "middle"
     },
     {
@@ -2281,13 +2281,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1475397792,
+      "seed": 631149228,
       "strokeColor": "#e03131",
       "strokeStyle": "dashed",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 194728551
+      "versionNonce": 1488849942
     },
     {
       "id": "fm_t",
@@ -2315,15 +2315,15 @@
       "originalText": "Modal, one copy per region\n(US, EU, Asia)",
       "roughness": 1,
       "roundness": null,
-      "seed": 488431674,
+      "seed": 1883534221,
       "strokeColor": "#e03131",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Modal, one copy per region\n(US, EU, Asia)",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 205958025,
+      "versionNonce": 587786314,
       "verticalAlign": "top"
     },
     {
@@ -2377,13 +2377,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 2114786662,
+      "seed": 834690810,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1098018183
+      "versionNonce": 479205718
     },
     {
       "id": "gw_t",
@@ -2411,15 +2411,15 @@
       "originalText": "Speech gateway (CPU)\nchecks token, picks a GPU",
       "roughness": 1,
       "roundness": null,
-      "seed": 1299551432,
+      "seed": 996933712,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Speech gateway (CPU)\nchecks token, picks a GPU",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 391795305,
+      "versionNonce": 1192840970,
       "verticalAlign": "middle"
     },
     {
@@ -2457,13 +2457,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1999666168,
+      "seed": 421657347,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1610163367
+      "versionNonce": 1294892694
     },
     {
       "id": "gpu_t",
@@ -2491,15 +2491,15 @@
       "originalText": "Speech to text pool\nNemotron on L4 GPUs\n~100 lessons each (est.)",
       "roughness": 1,
       "roundness": null,
-      "seed": 875244159,
+      "seed": 1259463087,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Speech to text pool\nNemotron on L4 GPUs\n~100 lessons each (est.)",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 320216393,
+      "versionNonce": 1106173386,
       "verticalAlign": "middle"
     },
     {
@@ -2533,13 +2533,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 344835797,
+      "seed": 1792606941,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1725691847
+      "versionNonce": 1062091734
     },
     {
       "id": "warm_t",
@@ -2567,15 +2567,15 @@
       "originalText": "Warm-up timer\nby school timezone",
       "roughness": 1,
       "roundness": null,
-      "seed": 174116957,
+      "seed": 980668365,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Warm-up timer\nby school timezone",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 2127924265,
+      "versionNonce": 1352963210,
       "verticalAlign": "middle"
     },
     {
@@ -2609,13 +2609,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1340520310,
+      "seed": 2002789077,
       "strokeColor": "#e03131",
       "strokeStyle": "dashed",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 741828327
+      "versionNonce": 1761890582
     },
     {
       "id": "own_t",
@@ -2643,15 +2643,15 @@
       "originalText": "Padlet GPU pool (later)\nalways on, sized to\nschool-day peak",
       "roughness": 1,
       "roundness": null,
-      "seed": 774465433,
+      "seed": 249828455,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Padlet GPU pool (later)\nalways on, sized to\nschool-day peak",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1652825865,
+      "versionNonce": 1425371978,
       "verticalAlign": "middle"
     },
     {
@@ -2685,13 +2685,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1250074805,
+      "seed": 776875644,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "dashed",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 244838919
+      "versionNonce": 902151766
     },
     {
       "id": "dg_t",
@@ -2719,15 +2719,15 @@
       "originalText": "Deepgram (hosted)\nbackup when GPUs full",
       "roughness": 1,
       "roundness": null,
-      "seed": 1536071712,
+      "seed": 1614620566,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Deepgram (hosted)\nbackup when GPUs full",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1016944105,
+      "versionNonce": 1094482442,
       "verticalAlign": "middle"
     },
     {
@@ -2761,13 +2761,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1467937843,
+      "seed": 67883389,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1727666471
+      "versionNonce": 1516733334
     },
     {
       "id": "jev_t",
@@ -2795,15 +2795,15 @@
       "originalText": "Jev (TypeSafe)\ndraw? which kind?",
       "roughness": 1,
       "roundness": null,
-      "seed": 1939011246,
+      "seed": 905130159,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Jev (TypeSafe)\ndraw? which kind?",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 808235209,
+      "versionNonce": 74754250,
       "verticalAlign": "middle"
     },
     {
@@ -2828,13 +2828,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1582908257,
+      "seed": 1412793712,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 986340423
+      "versionNonce": 689873110
     },
     {
       "id": "fq_t",
@@ -2862,15 +2862,15 @@
       "originalText": "Padlet servers: diagram path",
       "roughness": 1,
       "roundness": null,
-      "seed": 1166348993,
+      "seed": 1622856562,
       "strokeColor": "#555555",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Padlet servers: diagram path",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1926082473,
+      "versionNonce": 1983446922,
       "verticalAlign": "top"
     },
     {
@@ -2908,13 +2908,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1534416157,
+      "seed": 114713232,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 769997671
+      "versionNonce": 1702893078
     },
     {
       "id": "q_t",
@@ -2942,15 +2942,15 @@
       "originalText": "Sentence queue\nin order, per lesson",
       "roughness": 1,
       "roundness": null,
-      "seed": 1188284765,
+      "seed": 583596493,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Sentence queue\nin order, per lesson",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 2058080905,
+      "versionNonce": 1120173642,
       "verticalAlign": "middle"
     },
     {
@@ -2996,13 +2996,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 923791610,
+      "seed": 933100070,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 882325127
+      "versionNonce": 411099990
     },
     {
       "id": "wrk_t",
@@ -3030,15 +3030,15 @@
       "originalText": "Diagram workers\none lesson at a time",
       "roughness": 1,
       "roundness": null,
-      "seed": 357470525,
+      "seed": 544016587,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Diagram workers\none lesson at a time",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1820498281,
+      "versionNonce": 1458709770,
       "verticalAlign": "middle"
     },
     {
@@ -3063,13 +3063,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1818671463,
+      "seed": 1070296490,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 94162343
+      "versionNonce": 1685457046
     },
     {
       "id": "fl_t",
@@ -3097,15 +3097,15 @@
       "originalText": "Padlet servers: lessons",
       "roughness": 1,
       "roundness": null,
-      "seed": 604648704,
+      "seed": 484840860,
       "strokeColor": "#555555",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Padlet servers: lessons",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1235059785,
+      "versionNonce": 1279062986,
       "verticalAlign": "top"
     },
     {
@@ -3143,13 +3143,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 640374548,
+      "seed": 597954365,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1277329607
+      "versionNonce": 1494517206
     },
     {
       "id": "lu_t",
@@ -3177,15 +3177,15 @@
       "originalText": "Live updates\npushes to browser",
       "roughness": 1,
       "roundness": null,
-      "seed": 1725100047,
+      "seed": 644954915,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Live updates\npushes to browser",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1574441769,
+      "versionNonce": 1421863562,
       "verticalAlign": "middle"
     },
     {
@@ -3227,13 +3227,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 647868640,
+      "seed": 2021349189,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 432328679
+      "versionNonce": 1198611222
     },
     {
       "id": "st_t",
@@ -3261,15 +3261,15 @@
       "originalText": "Lesson store\nsentences, diagrams\n30 days (A)",
       "roughness": 1,
       "roundness": null,
-      "seed": 473311669,
+      "seed": 91014399,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Lesson store\nsentences, diagrams\n30 days (A)",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1839056393,
+      "versionNonce": 657852746,
       "verticalAlign": "middle"
     },
     {
@@ -3293,6 +3293,10 @@
         {
           "id": "a_ex",
           "type": "arrow"
+        },
+        {
+          "id": "a_hs",
+          "type": "arrow"
         }
       ],
       "fillStyle": "solid",
@@ -3307,13 +3311,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 620487652,
+      "seed": 1600971675,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 412105479
+      "versionNonce": 369199190
     },
     {
       "id": "api_t",
@@ -3341,15 +3345,15 @@
       "originalText": "Lesson API\nstarts lesson, picks region",
       "roughness": 1,
       "roundness": null,
-      "seed": 678454046,
+      "seed": 1070893259,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Lesson API\nstarts lesson, picks region",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 602545385,
+      "versionNonce": 1794789386,
       "verticalAlign": "middle"
     },
     {
@@ -3403,13 +3407,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1340144933,
+      "seed": 629557820,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 2097234471
+      "versionNonce": 345640342
     },
     {
       "id": "exw_t",
@@ -3437,15 +3441,15 @@
       "originalText": "Export worker\nbuilds lesson.json",
       "roughness": 1,
       "roundness": null,
-      "seed": 1252467400,
+      "seed": 690501024,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Export worker\nbuilds lesson.json",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1078499273,
+      "versionNonce": 604487370,
       "verticalAlign": "middle"
     },
     {
@@ -3483,13 +3487,13 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1468322060,
+      "seed": 1382311512,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 939812167
+      "versionNonce": 1349511894
     },
     {
       "id": "llm_t",
@@ -3517,15 +3521,15 @@
       "originalText": "LLM via\nOpenRouter",
       "roughness": 1,
       "roundness": null,
-      "seed": 864047679,
+      "seed": 2113305669,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "LLM via\nOpenRouter",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 81049257,
+      "versionNonce": 519656842,
       "verticalAlign": "middle"
     },
     {
@@ -3550,13 +3554,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 967349399,
+      "seed": 2028911858,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1760961639
+      "versionNonce": 1746411542
     },
     {
       "id": "obs_h",
@@ -3584,15 +3588,15 @@
       "originalText": "Watching it run",
       "roughness": 1,
       "roundness": null,
-      "seed": 1318435060,
+      "seed": 1876948469,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Watching it run",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1681521033,
+      "versionNonce": 1560941642,
       "verticalAlign": "top"
     },
     {
@@ -3621,15 +3625,15 @@
       "originalText": "Dashboards + alerts:\n- live lessons, free GPUs\n- speech-to-screen delay\n- share on Deepgram\n- $ per lesson-hour\n- Jev draw rate",
       "roughness": 1,
       "roundness": null,
-      "seed": 223154686,
+      "seed": 660822013,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Dashboards + alerts:\n- live lessons, free GPUs\n- speech-to-screen delay\n- share on Deepgram\n- $ per lesson-hour\n- Jev draw rate",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 262340487,
+      "versionNonce": 1602727254,
       "verticalAlign": "top"
     },
     {
@@ -3654,13 +3658,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 321195049,
+      "seed": 188224398,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1874059369
+      "versionNonce": 1374986
     },
     {
       "id": "pp_t",
@@ -3688,15 +3692,15 @@
       "originalText": "Padlet products",
       "roughness": 1,
       "roundness": null,
-      "seed": 1934119322,
+      "seed": 1642603064,
       "strokeColor": "#555555",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Padlet products",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 2118612647,
+      "versionNonce": 1947439766,
       "verticalAlign": "top"
     },
     {
@@ -3730,13 +3734,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 90211779,
+      "seed": 515297156,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 84798281
+      "versionNonce": 915737034
     },
     {
       "id": "pb_t",
@@ -3764,15 +3768,15 @@
       "originalText": "Boards\ndiscussion posts",
       "roughness": 1,
       "roundness": null,
-      "seed": 1147922726,
+      "seed": 1212337545,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Boards\ndiscussion posts",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 193989063,
+      "versionNonce": 1886441430,
       "verticalAlign": "middle"
     },
     {
@@ -3806,13 +3810,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 883242514,
+      "seed": 1801682290,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1017354793
+      "versionNonce": 665141386
     },
     {
       "id": "pa_t",
@@ -3840,15 +3844,15 @@
       "originalText": "Arcade\nPiper 2 game",
       "roughness": 1,
       "roundness": null,
-      "seed": 461273726,
+      "seed": 1782717711,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Arcade\nPiper 2 game",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 77150439,
+      "versionNonce": 11822358,
       "verticalAlign": "middle"
     },
     {
@@ -3882,13 +3886,13 @@
       "roundness": {
         "type": 3
       },
-      "seed": 42893524,
+      "seed": 2023186886,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 392195337
+      "versionNonce": 1593876298
     },
     {
       "id": "ps_t",
@@ -3916,15 +3920,15 @@
       "originalText": "Sandbox\nrevision cards",
       "roughness": 1,
       "roundness": null,
-      "seed": 1678180409,
+      "seed": 1747132108,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Sandbox\nrevision cards",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1592755207,
+      "versionNonce": 106123862,
       "verticalAlign": "middle"
     },
     {
@@ -3968,7 +3972,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 288169743,
+      "seed": 1948954367,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "mic",
@@ -3979,9 +3983,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1824515049
+      "versionNonce": 956442122
     },
     {
       "id": "a_au",
@@ -4029,7 +4033,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1033142038,
+      "seed": 1065983559,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "wk",
@@ -4040,9 +4044,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 714042151
+      "versionNonce": 1814206358
     },
     {
       "id": "a_au_t",
@@ -4070,15 +4074,15 @@
       "originalText": "audio",
       "roughness": 1,
       "roundness": null,
-      "seed": 1463995835,
+      "seed": 1808867123,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "audio",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 416120521,
+      "versionNonce": 1319425226,
       "verticalAlign": "middle"
     },
     {
@@ -4127,7 +4131,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1922273203,
+      "seed": 979467308,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "gw",
@@ -4138,9 +4142,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1139109447
+      "versionNonce": 2052535510
     },
     {
       "id": "a_tx_t",
@@ -4168,15 +4172,15 @@
       "originalText": "text",
       "roughness": 1,
       "roundness": null,
-      "seed": 55944170,
+      "seed": 1156710213,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "text",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1780792745,
+      "versionNonce": 1636019082,
       "verticalAlign": "middle"
     },
     {
@@ -4225,7 +4229,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 610831156,
+      "seed": 78420192,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "gw",
@@ -4236,9 +4240,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1171131751
+      "versionNonce": 713435670
     },
     {
       "id": "a_gp_t",
@@ -4266,15 +4270,15 @@
       "originalText": "audio, text back",
       "roughness": 1,
       "roundness": null,
-      "seed": 510743914,
+      "seed": 304240628,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "audio, text back",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1341202569,
+      "versionNonce": 1205447242,
       "verticalAlign": "middle"
     },
     {
@@ -4323,7 +4327,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 82055640,
+      "seed": 331859541,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "warm",
@@ -4334,9 +4338,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 999671943
+      "versionNonce": 2074376022
     },
     {
       "id": "a_wm_t",
@@ -4364,15 +4368,15 @@
       "originalText": "adds GPUs early",
       "roughness": 1,
       "roundness": null,
-      "seed": 203286450,
+      "seed": 1945453332,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "adds GPUs early",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1206789993,
+      "versionNonce": 1484902666,
       "verticalAlign": "middle"
     },
     {
@@ -4421,7 +4425,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 921042487,
+      "seed": 2017369186,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "gw",
@@ -4432,9 +4436,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "dashed",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 318316455
+      "versionNonce": 1174871190
     },
     {
       "id": "a_dg_t",
@@ -4462,15 +4466,15 @@
       "originalText": "if full",
       "roughness": 1,
       "roundness": null,
-      "seed": 1472218277,
+      "seed": 1548055841,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "if full",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 208097865,
+      "versionNonce": 1459036106,
       "verticalAlign": "middle"
     },
     {
@@ -4514,7 +4518,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 695166582,
+      "seed": 906599679,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "gw",
@@ -4525,9 +4529,9 @@
       "strokeColor": "#e03131",
       "strokeStyle": "dashed",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1311019719
+      "versionNonce": 258152918
     },
     {
       "id": "a_q",
@@ -4575,7 +4579,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1851619052,
+      "seed": 64506822,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "gw",
@@ -4586,9 +4590,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 37232937
+      "versionNonce": 1599379082
     },
     {
       "id": "a_q_t",
@@ -4616,15 +4620,15 @@
       "originalText": "settled",
       "roughness": 1,
       "roundness": null,
-      "seed": 678419877,
+      "seed": 2042688090,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "settled",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1974772199,
+      "versionNonce": 1590521622,
       "verticalAlign": "middle"
     },
     {
@@ -4673,7 +4677,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1453682151,
+      "seed": 1056167492,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "q",
@@ -4684,9 +4688,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1724650505
+      "versionNonce": 1381315914
     },
     {
       "id": "a_wq_t",
@@ -4714,15 +4718,15 @@
       "originalText": "next",
       "roughness": 1,
       "roundness": null,
-      "seed": 2021237129,
+      "seed": 221023789,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "next",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1253428487,
+      "versionNonce": 280697942,
       "verticalAlign": "middle"
     },
     {
@@ -4771,7 +4775,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1844523140,
+      "seed": 1928448734,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "wrk",
@@ -4782,9 +4786,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1042197225
+      "versionNonce": 1096023050
     },
     {
       "id": "a_jv_t",
@@ -4812,15 +4816,15 @@
       "originalText": "every sentence",
       "roughness": 1,
       "roundness": null,
-      "seed": 1790306945,
+      "seed": 706872788,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "every sentence",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 950309927,
+      "versionNonce": 721494422,
       "verticalAlign": "middle"
     },
     {
@@ -4869,7 +4873,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1370635650,
+      "seed": 1563510776,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "wrk",
@@ -4880,9 +4884,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 12281289
+      "versionNonce": 1514924746
     },
     {
       "id": "a_ll_t",
@@ -4910,15 +4914,15 @@
       "originalText": "if drawable",
       "roughness": 1,
       "roundness": null,
-      "seed": 2027374574,
+      "seed": 76214065,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "if drawable",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 124614471,
+      "versionNonce": 819232470,
       "verticalAlign": "middle"
     },
     {
@@ -4967,7 +4971,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1622318863,
+      "seed": 293644945,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "wrk",
@@ -4978,9 +4982,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 163431593
+      "versionNonce": 1406665098
     },
     {
       "id": "a_ws_t",
@@ -5008,15 +5012,15 @@
       "originalText": "changes",
       "roughness": 1,
       "roundness": null,
-      "seed": 588389736,
+      "seed": 1911240153,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "changes",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1298986599,
+      "versionNonce": 1992963094,
       "verticalAlign": "middle"
     },
     {
@@ -5065,7 +5069,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1197400133,
+      "seed": 1985850257,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "st",
@@ -5076,9 +5080,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1154566025
+      "versionNonce": 1496531018
     },
     {
       "id": "a_lu_t",
@@ -5106,15 +5110,15 @@
       "originalText": "new rows",
       "roughness": 1,
       "roundness": null,
-      "seed": 1768762150,
+      "seed": 753284615,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "new rows",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 560959879,
+      "versionNonce": 1993818454,
       "verticalAlign": "middle"
     },
     {
@@ -5163,7 +5167,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1946620853,
+      "seed": 2052019100,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "lu",
@@ -5174,9 +5178,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 473001577
+      "versionNonce": 1983424266
     },
     {
       "id": "a_dv_t",
@@ -5204,15 +5208,15 @@
       "originalText": "diagrams",
       "roughness": 1,
       "roundness": null,
-      "seed": 75600482,
+      "seed": 1453875588,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "diagrams",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 212977831,
+      "versionNonce": 609265302,
       "verticalAlign": "middle"
     },
     {
@@ -5261,7 +5265,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 2027465039,
+      "seed": 1136422743,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "ctl",
@@ -5272,9 +5276,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 648657225
+      "versionNonce": 56833482
     },
     {
       "id": "a_api_t",
@@ -5302,15 +5306,15 @@
       "originalText": "start, end",
       "roughness": 1,
       "roundness": null,
-      "seed": 183477333,
+      "seed": 714471415,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "start, end",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1021320135,
+      "versionNonce": 1072391126,
       "verticalAlign": "middle"
     },
     {
@@ -5359,7 +5363,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 858989236,
+      "seed": 99396367,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "api",
@@ -5370,9 +5374,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 362129449
+      "versionNonce": 298708106
     },
     {
       "id": "a_ex_t",
@@ -5400,15 +5404,15 @@
       "originalText": "on end",
       "roughness": 1,
       "roundness": null,
-      "seed": 88269036,
+      "seed": 337290023,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "on end",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1981221607,
+      "versionNonce": 733772054,
       "verticalAlign": "middle"
     },
     {
@@ -5457,7 +5461,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1437903863,
+      "seed": 1202982273,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "st",
@@ -5468,9 +5472,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1658895113
+      "versionNonce": 1463012170
     },
     {
       "id": "a_er_t",
@@ -5498,15 +5502,15 @@
       "originalText": "reads",
       "roughness": 1,
       "roundness": null,
-      "seed": 136199637,
+      "seed": 2059565787,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "reads",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1155732999,
+      "versionNonce": 1060693590,
       "verticalAlign": "middle"
     },
     {
@@ -5555,7 +5559,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 351209684,
+      "seed": 733002764,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "exw",
@@ -5566,9 +5570,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1057386985
+      "versionNonce": 435147274
     },
     {
       "id": "a_el_t",
@@ -5596,15 +5600,15 @@
       "originalText": "one pass",
       "roughness": 1,
       "roundness": null,
-      "seed": 1821033780,
+      "seed": 1983400855,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "one pass",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1883290919,
+      "versionNonce": 456502166,
       "verticalAlign": "middle"
     },
     {
@@ -5648,7 +5652,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1138933722,
+      "seed": 339951164,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "exw",
@@ -5659,9 +5663,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1058163913
+      "versionNonce": 486342858
     },
     {
       "id": "a_pa",
@@ -5704,7 +5708,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1311769650,
+      "seed": 1907661841,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "exw",
@@ -5715,9 +5719,9 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 731676743
+      "versionNonce": 2112342230
     },
     {
       "id": "a_ps",
@@ -5760,7 +5764,7 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1805362258,
+      "seed": 473622283,
       "startArrowhead": null,
       "startBinding": {
         "elementId": "exw",
@@ -5771,15 +5775,15 @@
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1251986345
+      "versionNonce": 200693642
     },
     {
       "id": "lg",
       "type": "rectangle",
       "x": 900,
-      "y": 1460,
+      "y": 1840,
       "width": 560,
       "height": 170,
       "angle": 0,
@@ -5797,19 +5801,19 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1167852304,
+      "seed": 1899352063,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 148037479
+      "versionNonce": 384056854
     },
     {
       "id": "lg_t",
       "type": "text",
       "x": 914,
-      "y": 1470,
+      "y": 1850,
       "width": 64.8,
       "height": 22.5,
       "angle": 0,
@@ -5831,22 +5835,22 @@
       "originalText": "Legend",
       "roughness": 1,
       "roundness": null,
-      "seed": 1704568970,
+      "seed": 1250288945,
       "strokeColor": "#555555",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Legend",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1239051913,
+      "versionNonce": 1729549898,
       "verticalAlign": "top"
     },
     {
       "id": "lg_b",
       "type": "text",
       "x": 920,
-      "y": 1500,
+      "y": 1880,
       "width": 475.2,
       "height": 90,
       "angle": 0,
@@ -5868,22 +5872,22 @@
       "originalText": "solid arrow: direct call or data moving\ndashed: backup, proposed or later\nred dashed: moves to Padlet's own GPUs later\n(A): assumption   (est.): not measured yet",
       "roughness": 1,
       "roundness": null,
-      "seed": 1095203641,
+      "seed": 1049619474,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "solid arrow: direct call or data moving\ndashed: backup, proposed or later\nred dashed: moves to Padlet's own GPUs later\n(A): assumption   (est.): not measured yet",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 707811975,
+      "versionNonce": 1528826710,
       "verticalAlign": "top"
     },
     {
       "id": "wu",
       "type": "rectangle",
       "x": 1500,
-      "y": 1460,
+      "y": 1840,
       "width": 760,
       "height": 170,
       "angle": 0,
@@ -5901,19 +5905,19 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1295224484,
+      "seed": 1229919482,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 327005545
+      "versionNonce": 1866038538
     },
     {
       "id": "wu_t",
       "type": "text",
       "x": 1514,
-      "y": 1470,
+      "y": 1850,
       "width": 108,
       "height": 22.5,
       "angle": 0,
@@ -5935,22 +5939,22 @@
       "originalText": "Words used",
       "roughness": 1,
       "roundness": null,
-      "seed": 266576650,
+      "seed": 793122911,
       "strokeColor": "#555555",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Words used",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 879849895,
+      "versionNonce": 1492136086,
       "verticalAlign": "top"
     },
     {
       "id": "wu_b",
       "type": "text",
       "x": 1520,
-      "y": 1500,
+      "y": 1880,
       "width": 572.4,
       "height": 90,
       "angle": 0,
@@ -5972,22 +5976,22 @@
       "originalText": "settled sentence: final text, won't change\nlesson-hour: one live lesson running for one hour\ncold start: GPU boot + model load (65-92 s, measured)\nJev: fast model that only answers yes/no or picks",
       "roughness": 1,
       "roundness": null,
-      "seed": 1577296028,
+      "seed": 1154581177,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "settled sentence: final text, won't change\nlesson-hour: one live lesson running for one hour\ncold start: GPU boot + model load (65-92 s, measured)\nJev: fast model that only answers yes/no or picks",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 450175049,
+      "versionNonce": 299453386,
       "verticalAlign": "top"
     },
     {
       "id": "priv",
       "type": "rectangle",
       "x": 2300,
-      "y": 1460,
+      "y": 1840,
       "width": 840,
       "height": 170,
       "angle": 0,
@@ -6005,19 +6009,19 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1512007033,
+      "seed": 1048378136,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 12756167
+      "versionNonce": 201960918
     },
     {
       "id": "priv_h",
       "type": "text",
       "x": 2320,
-      "y": 1474,
+      "y": 1854,
       "width": 224.4,
       "height": 27.5,
       "angle": 0,
@@ -6039,22 +6043,22 @@
       "originalText": "Classroom privacy",
       "roughness": 1,
       "roundness": null,
-      "seed": 1159693560,
+      "seed": 322365647,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Classroom privacy",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1572613929,
+      "versionNonce": 1427194506,
       "verticalAlign": "top"
     },
     {
       "id": "priv_b",
       "type": "text",
       "x": 2320,
-      "y": 1516,
+      "y": 1896,
       "width": 604.8,
       "height": 90,
       "angle": 0,
@@ -6073,25 +6077,25 @@
       "link": null,
       "locked": false,
       "opacity": 100,
-      "originalText": "- student voices reach the mic, so audio is never saved\n- text kept 30 days unless saved to a board (A)\n- EU lessons stay on the EU pool; no vendor trains on it\n- schools can delete a lesson any time (FERPA, COPPA)",
+      "originalText": "- student voices reach the mic, so audio is never saved\n- text kept 30 days unless the teacher keeps it (A)\n- EU lessons stay on the EU pool; no vendor trains on it\n- schools can delete a lesson any time (FERPA, COPPA)",
       "roughness": 1,
       "roundness": null,
-      "seed": 909759885,
+      "seed": 1558969401,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "text": "- student voices reach the mic, so audio is never saved\n- text kept 30 days unless saved to a board (A)\n- EU lessons stay on the EU pool; no vendor trains on it\n- schools can delete a lesson any time (FERPA, COPPA)",
+      "text": "- student voices reach the mic, so audio is never saved\n- text kept 30 days unless the teacher keeps it (A)\n- EU lessons stay on the EU pool; no vendor trains on it\n- schools can delete a lesson any time (FERPA, COPPA)",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 247493607,
+      "versionNonce": 830571286,
       "verticalAlign": "top"
     },
     {
       "id": "s5_m",
       "type": "ellipse",
       "x": 900,
-      "y": 1760,
+      "y": 2140,
       "width": 44,
       "height": 44,
       "angle": 0,
@@ -6114,19 +6118,19 @@
       "roundness": {
         "type": 2
       },
-      "seed": 1805572193,
+      "seed": 1443499605,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 312369673
+      "versionNonce": 1134321994
     },
     {
       "id": "s5_m_t",
       "type": "text",
       "x": 916,
-      "y": 1769.5,
+      "y": 2149.5,
       "width": 12,
       "height": 25,
       "angle": 0,
@@ -6148,22 +6152,22 @@
       "originalText": "5",
       "roughness": 1,
       "roundness": null,
-      "seed": 369403643,
+      "seed": 1878539914,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "5",
       "textAlign": "center",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 913792775,
+      "versionNonce": 466399318,
       "verticalAlign": "middle"
     },
     {
       "id": "s5_h",
       "type": "text",
       "x": 958,
-      "y": 1766,
+      "y": 2146,
       "width": 156,
       "height": 32.5,
       "angle": 0,
@@ -6185,22 +6189,22 @@
       "originalText": "Deep dives",
       "roughness": 1,
       "roundness": null,
-      "seed": 2137242942,
+      "seed": 1307196305,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Deep dives",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 376912105,
+      "versionNonce": 1490397194,
       "verticalAlign": "top"
     },
     {
       "id": "dd1",
       "type": "rectangle",
       "x": 900,
-      "y": 1820,
+      "y": 2200,
       "width": 700,
       "height": 210,
       "angle": 0,
@@ -6218,19 +6222,19 @@
       "roundness": {
         "type": 3
       },
-      "seed": 937589071,
+      "seed": 717825266,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 442754599
+      "versionNonce": 113259926
     },
     {
       "id": "dd1_h",
       "type": "text",
       "x": 920,
-      "y": 1834,
+      "y": 2214,
       "width": 514.8,
       "height": 27.5,
       "angle": 0,
@@ -6252,22 +6256,22 @@
       "originalText": "The 8 am rush: GPU room and cold starts",
       "roughness": 1,
       "roundness": null,
-      "seed": 204200851,
+      "seed": 65508613,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "The 8 am rush: GPU room and cold starts",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 449983433,
+      "versionNonce": 1824003786,
       "verticalAlign": "top"
     },
     {
       "id": "dd1_b",
       "type": "text",
       "x": 920,
-      "y": 1876,
+      "y": 2256,
       "width": 680.4,
       "height": 112.5,
       "angle": 0,
@@ -6289,22 +6293,22 @@
       "originalText": "After a quiet spell, first teacher waits 65-92 s (warm: 1.1 s).\nTimer warms GPUs 20 min early, sized from last week +30%.\nCap each GPU at its measured load, not the 512 in our code.\nNo GPU free in 2 s: audio goes to Deepgram (~20x dearer).\nLater: Padlet's own always-on GPUs; Modal only for overflow.",
       "roughness": 1,
       "roundness": null,
-      "seed": 1097720184,
+      "seed": 1564910847,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "After a quiet spell, first teacher waits 65-92 s (warm: 1.1 s).\nTimer warms GPUs 20 min early, sized from last week +30%.\nCap each GPU at its measured load, not the 512 in our code.\nNo GPU free in 2 s: audio goes to Deepgram (~20x dearer).\nLater: Padlet's own always-on GPUs; Modal only for overflow.",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1500678471,
+      "versionNonce": 1804669654,
       "verticalAlign": "top"
     },
     {
       "id": "dd2",
       "type": "rectangle",
       "x": 1640,
-      "y": 1820,
+      "y": 2200,
       "width": 700,
       "height": 210,
       "angle": 0,
@@ -6322,19 +6326,19 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1246773803,
+      "seed": 1462560055,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 332059305
+      "versionNonce": 534687114
     },
     {
       "id": "dd2_h",
       "type": "text",
       "x": 1660,
-      "y": 1834,
+      "y": 2214,
       "width": 422.4,
       "height": 27.5,
       "angle": 0,
@@ -6356,22 +6360,22 @@
       "originalText": "Wi-Fi drops: one lesson, one GPU",
       "roughness": 1,
       "roundness": null,
-      "seed": 1456561719,
+      "seed": 1964602062,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Wi-Fi drops: one lesson, one GPU",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 16762983,
+      "versionNonce": 1423198230,
       "verticalAlign": "top"
     },
     {
       "id": "dd2_b",
       "type": "text",
       "x": 1660,
-      "y": 1876,
+      "y": 2256,
       "width": 680.4,
       "height": 112.5,
       "angle": 0,
@@ -6393,22 +6397,22 @@
       "originalText": "A lesson's socket stays on one GPU until it closes.\nEach settled sentence is numbered and saved right away.\nReconnect sends the last number + 10 s of held audio.\nAny GPU in the region can carry on. Lost: one half sentence.\nOur code sets timeout=3600, so 1 h+ lessons may get cut: check.",
       "roughness": 1,
       "roundness": null,
-      "seed": 520600490,
+      "seed": 875899822,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "A lesson's socket stays on one GPU until it closes.\nEach settled sentence is numbered and saved right away.\nReconnect sends the last number + 10 s of held audio.\nAny GPU in the region can carry on. Lost: one half sentence.\nOur code sets timeout=3600, so 1 h+ lessons may get cut: check.",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1712100745,
+      "versionNonce": 1199860810,
       "verticalAlign": "top"
     },
     {
       "id": "dd3",
       "type": "rectangle",
       "x": 2380,
-      "y": 1820,
+      "y": 2200,
       "width": 700,
       "height": 210,
       "angle": 0,
@@ -6426,19 +6430,19 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1596666278,
+      "seed": 1935519478,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1054352263
+      "versionNonce": 847172950
     },
     {
       "id": "dd3_h",
       "type": "text",
       "x": 2400,
-      "y": 1834,
+      "y": 2214,
       "width": 369.59999999999997,
       "height": 27.5,
       "angle": 0,
@@ -6460,22 +6464,22 @@
       "originalText": "Cost per lesson-hour: ~$0.04",
       "roughness": 1,
       "roundness": null,
-      "seed": 385283772,
+      "seed": 580913763,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Cost per lesson-hour: ~$0.04",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1423113321,
+      "versionNonce": 1501844234,
       "verticalAlign": "top"
     },
     {
       "id": "dd3_b",
       "type": "text",
       "x": 2400,
-      "y": 1876,
+      "y": 2256,
       "width": 626.4,
       "height": 112.5,
       "angle": 0,
@@ -6497,22 +6501,22 @@
       "originalText": "Speech $0.02, Jev $0.005, diagrams $0.01, export $0.002.\nWithout Jev, the LLM reads every sentence: ~$117k a month.\nJev costs ~$8k a month and saves ~$99k of that.\nLive tidy-up by LLM would add ~$22k: tidy once at export.\nNext lever: smaller diagram prompts (A: 1.5k tokens now).",
       "roughness": 1,
       "roundness": null,
-      "seed": 963142243,
+      "seed": 81760203,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Speech $0.02, Jev $0.005, diagrams $0.01, export $0.002.\nWithout Jev, the LLM reads every sentence: ~$117k a month.\nJev costs ~$8k a month and saves ~$99k of that.\nLive tidy-up by LLM would add ~$22k: tidy once at export.\nNext lever: smaller diagram prompts (A: 1.5k tokens now).",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1396185767,
+      "versionNonce": 770030230,
       "verticalAlign": "top"
     },
     {
       "id": "more",
       "type": "rectangle",
       "x": 900,
-      "y": 2070,
+      "y": 2450,
       "width": 1180,
       "height": 200,
       "angle": 0,
@@ -6530,19 +6534,19 @@
       "roundness": {
         "type": 3
       },
-      "seed": 854532212,
+      "seed": 870100890,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 1,
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 803833673
+      "versionNonce": 1482252746
     },
     {
       "id": "more_h",
       "type": "text",
       "x": 920,
-      "y": 2084,
+      "y": 2464,
       "width": 290.4,
       "height": 27.5,
       "angle": 0,
@@ -6564,22 +6568,22 @@
       "originalText": "Also plan for at scale",
       "roughness": 1,
       "roundness": null,
-      "seed": 649265419,
+      "seed": 1520384556,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "Also plan for at scale",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1120677319,
+      "versionNonce": 2109601750,
       "verticalAlign": "top"
     },
     {
       "id": "more_b",
       "type": "text",
       "x": 920,
-      "y": 2126,
+      "y": 2506,
       "width": 853.1999999999999,
       "height": 112.5,
       "angle": 0,
@@ -6601,15 +6605,926 @@
       "originalText": "- GPU supply: reserve L4s in each region before school terms start\n- A region goes down: move its lessons to the nearest one (EU stays in EU)\n- Backups have limits too: check Deepgram's stream cap, OpenRouter's rate limit\n- ~10k browsers connected at peak: test Padlet's live updates channel\n- Load test: replay 10k fake lessons before back-to-school",
       "roughness": 1,
       "roundness": null,
-      "seed": 1425395798,
+      "seed": 1842852804,
       "strokeColor": "#1e1e1e",
       "strokeStyle": "solid",
       "strokeWidth": 2,
       "text": "- GPU supply: reserve L4s in each region before school terms start\n- A region goes down: move its lessons to the nearest one (EU stays in EU)\n- Backups have limits too: check Deepgram's stream cap, OpenRouter's rate limit\n- ~10k browsers connected at peak: test Padlet's live updates channel\n- Load test: replay 10k fake lessons before back-to-school",
       "textAlign": "left",
-      "updated": 1792579135447,
+      "updated": 1792580422027,
       "version": 1,
-      "versionNonce": 1101772329,
+      "versionNonce": 1058969738,
+      "verticalAlign": "top"
+    },
+    {
+      "id": "fh",
+      "type": "rectangle",
+      "x": 1480,
+      "y": 1460,
+      "width": 1660,
+      "height": 340,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1d",
+      "isDeleted": false,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "roughness": 1,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 1788753502,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "dashed",
+      "strokeWidth": 1,
+      "updated": 1792580422027,
+      "version": 1,
+      "versionNonce": 974949654
+    },
+    {
+      "id": "fh_t",
+      "type": "text",
+      "x": 1494,
+      "y": 1470,
+      "width": 259.2,
+      "height": 22.5,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": null,
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 18,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1e",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "Proposed: lesson history",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1570028866,
+      "strokeColor": "#555555",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "Proposed: lesson history",
+      "textAlign": "left",
+      "updated": 1792580422027,
+      "version": 1,
+      "versionNonce": 1838085962,
+      "verticalAlign": "top"
+    },
+    {
+      "id": "hcache",
+      "type": "rectangle",
+      "x": 1090,
+      "y": 1520,
+      "width": 240,
+      "height": 110,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": [
+        {
+          "id": "hcache_t",
+          "type": "text"
+        },
+        {
+          "id": "a_hc",
+          "type": "arrow"
+        }
+      ],
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1f",
+      "isDeleted": false,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "roughness": 1,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 149845050,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "dashed",
+      "strokeWidth": 2,
+      "updated": 1792580422027,
+      "version": 1,
+      "versionNonce": 813070934
+    },
+    {
+      "id": "hcache_t",
+      "type": "text",
+      "x": 1118.2,
+      "y": 1541.25,
+      "width": 183.6,
+      "height": 67.5,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": "hcache",
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 18,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1g",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "Past lessons\noffline copy,\nsyncs when online",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 832014649,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "Past lessons\noffline copy,\nsyncs when online",
+      "textAlign": "center",
+      "updated": 1792580422027,
+      "version": 1,
+      "versionNonce": 335904266,
+      "verticalAlign": "middle"
+    },
+    {
+      "id": "hapi",
+      "type": "rectangle",
+      "x": 1520,
+      "y": 1515,
+      "width": 340,
+      "height": 120,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": [
+        {
+          "id": "hapi_t",
+          "type": "text"
+        },
+        {
+          "id": "a_hc",
+          "type": "arrow"
+        },
+        {
+          "id": "a_hs",
+          "type": "arrow"
+        },
+        {
+          "id": "a_hd",
+          "type": "arrow"
+        },
+        {
+          "id": "a_hf",
+          "type": "arrow"
+        }
+      ],
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1h",
+      "isDeleted": false,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "roughness": 1,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 1771605374,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "dashed",
+      "strokeWidth": 2,
+      "updated": 1792580422027,
+      "version": 1,
+      "versionNonce": 933281686
+    },
+    {
+      "id": "hapi_t",
+      "type": "text",
+      "x": 1555,
+      "y": 1541.25,
+      "width": 270,
+      "height": 67.5,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": "hapi",
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 18,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1i",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "Lessons API\nlist, get, export, delete\nteacher's own only",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 2029764944,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "Lessons API\nlist, get, export, delete\nteacher's own only",
+      "textAlign": "center",
+      "updated": 1792580422027,
+      "version": 1,
+      "versionNonce": 528297162,
+      "verticalAlign": "middle"
+    },
+    {
+      "id": "hdb",
+      "type": "rectangle",
+      "x": 2010,
+      "y": 1500,
+      "width": 340,
+      "height": 130,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": [
+        {
+          "id": "hdb_t",
+          "type": "text"
+        },
+        {
+          "id": "a_hd",
+          "type": "arrow"
+        }
+      ],
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1j",
+      "isDeleted": false,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "roughness": 1,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 22310241,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "dashed",
+      "strokeWidth": 2,
+      "updated": 1792580422027,
+      "version": 1,
+      "versionNonce": 63986902
+    },
+    {
+      "id": "hdb_t",
+      "type": "text",
+      "x": 2045,
+      "y": 1531.25,
+      "width": 270,
+      "height": 67.5,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": "hdb",
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 18,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1k",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "Lessons database\n(Postgres) lessons, text,\nto-dos, diagrams as JSON",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1984637237,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "Lessons database\n(Postgres) lessons, text,\nto-dos, diagrams as JSON",
+      "textAlign": "center",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 630260618,
+      "verticalAlign": "middle"
+    },
+    {
+      "id": "hfiles",
+      "type": "rectangle",
+      "x": 2010,
+      "y": 1670,
+      "width": 340,
+      "height": 100,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": [
+        {
+          "id": "hfiles_t",
+          "type": "text"
+        },
+        {
+          "id": "a_hf",
+          "type": "arrow"
+        }
+      ],
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1l",
+      "isDeleted": false,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "roughness": 1,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 581334095,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "dashed",
+      "strokeWidth": 2,
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 2056933910
+    },
+    {
+      "id": "hfiles_t",
+      "type": "text",
+      "x": 2045,
+      "y": 1697.5,
+      "width": 270,
+      "height": 45,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": "hfiles",
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 18,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1m",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "File storage\nexported .json, .txt, PNG",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 834668887,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "File storage\nexported .json, .txt, PNG",
+      "textAlign": "center",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 1350304330,
+      "verticalAlign": "middle"
+    },
+    {
+      "id": "hsize_h",
+      "type": "text",
+      "x": 2420,
+      "y": 1495,
+      "width": 420,
+      "height": 25,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": null,
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 20,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1n",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "Size (est., from section 1 numbers)",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1740605582,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "Size (est., from section 1 numbers)",
+      "textAlign": "left",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 116629334,
+      "verticalAlign": "top"
+    },
+    {
+      "id": "hsize",
+      "type": "text",
+      "x": 2420,
+      "y": 1535,
+      "width": 479.4,
+      "height": 106.25,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": null,
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 17,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1o",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "2.6M lessons x 150 KB = ~390 GB a month\nKept 30 days (privacy box): ~0.4 TB at any time\nIf teachers keep every lesson: +4.7 TB a year\nSmall for one Postgres; files only on download\nSign-in: the teacher's Padlet account",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1233466249,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "2.6M lessons x 150 KB = ~390 GB a month\nKept 30 days (privacy box): ~0.4 TB at any time\nIf teachers keep every lesson: +4.7 TB a year\nSmall for one Postgres; files only on download\nSign-in: the teacher's Padlet account",
+      "textAlign": "left",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 1259940106,
+      "verticalAlign": "top"
+    },
+    {
+      "id": "a_hc",
+      "type": "arrow",
+      "x": 1336,
+      "y": 1575,
+      "width": 178,
+      "height": 0,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": [
+        {
+          "id": "a_hc_t",
+          "type": "text"
+        }
+      ],
+      "elbowed": false,
+      "endArrowhead": "arrow",
+      "endBinding": {
+        "elementId": "hapi",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1p",
+      "isDeleted": false,
+      "lastCommittedPoint": null,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          178,
+          0
+        ]
+      ],
+      "roughness": 1,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1241487725,
+      "startArrowhead": "arrow",
+      "startBinding": {
+        "elementId": "hcache",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 1831945366
+    },
+    {
+      "id": "a_hc_t",
+      "type": "text",
+      "x": 1377,
+      "y": 1565,
+      "width": 96,
+      "height": 20,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": "a_hc",
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 16,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1q",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "list, sync",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1187167582,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "list, sync",
+      "textAlign": "center",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 753104842,
+      "verticalAlign": "middle"
+    },
+    {
+      "id": "a_hs",
+      "type": "arrow",
+      "x": 1820,
+      "y": 1206,
+      "width": 0,
+      "height": 303,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": [
+        {
+          "id": "a_hs_t",
+          "type": "text"
+        }
+      ],
+      "elbowed": false,
+      "endArrowhead": "arrow",
+      "endBinding": {
+        "elementId": "hapi",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1r",
+      "isDeleted": false,
+      "lastCommittedPoint": null,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          303
+        ]
+      ],
+      "roughness": 1,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1423360516,
+      "startArrowhead": null,
+      "startBinding": {
+        "elementId": "api",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 520634838
+    },
+    {
+      "id": "a_hs_t",
+      "type": "text",
+      "x": 1762.4,
+      "y": 1347.5,
+      "width": 115.19999999999999,
+      "height": 20,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": "a_hs",
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 16,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1s",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "saves on end",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 623356835,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "saves on end",
+      "textAlign": "center",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 1710616202,
+      "verticalAlign": "middle"
+    },
+    {
+      "id": "a_hd",
+      "type": "arrow",
+      "x": 1866,
+      "y": 1565,
+      "width": 138,
+      "height": 0,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "elbowed": false,
+      "endArrowhead": "arrow",
+      "endBinding": {
+        "elementId": "hdb",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1t",
+      "isDeleted": false,
+      "lastCommittedPoint": null,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          138,
+          0
+        ]
+      ],
+      "roughness": 1,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 389590727,
+      "startArrowhead": null,
+      "startBinding": {
+        "elementId": "hapi",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 260937494
+    },
+    {
+      "id": "a_hf",
+      "type": "arrow",
+      "x": 1866,
+      "y": 1620,
+      "width": 138,
+      "height": 95,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": [
+        {
+          "id": "a_hf_t",
+          "type": "text"
+        }
+      ],
+      "elbowed": false,
+      "endArrowhead": "arrow",
+      "endBinding": {
+        "elementId": "hfiles",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1u",
+      "isDeleted": false,
+      "lastCommittedPoint": null,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          138,
+          95
+        ]
+      ],
+      "roughness": 1,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1228863980,
+      "startArrowhead": null,
+      "startBinding": {
+        "elementId": "hapi",
+        "fixedPoint": null,
+        "focus": 0,
+        "gap": 6
+      },
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 722177354
+    },
+    {
+      "id": "a_hf_t",
+      "type": "text",
+      "x": 1901.4,
+      "y": 1657.5,
+      "width": 67.2,
+      "height": 20,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": "a_hf",
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 16,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1v",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "exports",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1786983667,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "exports",
+      "textAlign": "center",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 120996950,
+      "verticalAlign": "middle"
+    },
+    {
+      "id": "hidea",
+      "type": "rectangle",
+      "x": 2120,
+      "y": 2450,
+      "width": 1020,
+      "height": 200,
+      "angle": 0,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "fillStyle": "solid",
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1w",
+      "isDeleted": false,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "roughness": 1,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 1114540185,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "dashed",
+      "strokeWidth": 1,
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 1635734538
+    },
+    {
+      "id": "hidea_h",
+      "type": "text",
+      "x": 2140,
+      "y": 2464,
+      "width": 422.4,
+      "height": 27.5,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": null,
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 22,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1x",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "Ideas for lesson history (later)",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1325562963,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "Ideas for lesson history (later)",
+      "textAlign": "left",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 2010597782,
+      "verticalAlign": "top"
+    },
+    {
+      "id": "hidea_b",
+      "type": "text",
+      "x": 2140,
+      "y": 2506,
+      "width": 604.8,
+      "height": 67.5,
+      "angle": 0,
+      "autoResize": true,
+      "backgroundColor": "transparent",
+      "boundElements": null,
+      "containerId": null,
+      "fillStyle": "solid",
+      "fontFamily": 1,
+      "fontSize": 18,
+      "frameId": null,
+      "groupIds": [],
+      "index": "b1y",
+      "isDeleted": false,
+      "lineHeight": 1.25,
+      "link": null,
+      "locked": false,
+      "opacity": 100,
+      "originalText": "- Search across all past lessons by word or diagram\n- Share a saved lesson to a Padlet board in one click\n- Students open the saved lesson, read-only, after class",
+      "roughness": 1,
+      "roundness": null,
+      "seed": 1311118929,
+      "strokeColor": "#1e1e1e",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "text": "- Search across all past lessons by word or diagram\n- Share a saved lesson to a Padlet board in one click\n- Students open the saved lesson, read-only, after class",
+      "textAlign": "left",
+      "updated": 1792580422028,
+      "version": 1,
+      "versionNonce": 189547210,
       "verticalAlign": "top"
     }
   ],

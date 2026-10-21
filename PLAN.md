@@ -134,6 +134,8 @@ Next.js (App Router, TS) in `web/`. One page, a state machine: ready → warming
 - LLM: `deepseek/deepseek-v4.1-flash` on OpenRouter, reasoning off (benchmarked against Claude Haiku 5.5: same tidy-up speed, diagrams 1.3 s vs 1.8 s median, half the input price; with reasoning on, some replies came back empty).
 - Student to-dos: `/api/clean` also asks Jev whether the sentence is a reminder for students; at ≥ 0.7 the LLM extracts `{kind: exam|homework|bring|deadline|other, text, due}`. Shown as pills in the live title row and a To do card at the end; included in `lesson.json`.
 - Styling from the approved mockup (`design/`) and `brand/BRAND_KIT.md`.
+- Start page is a dashboard of saved lessons; each opens the same summary page as a just-ended lesson. Lessons are saved in the browser's localStorage (`lib/history.ts`): demo storage, one browser only. The production design (Postgres + Lessons API) is on `architecture-scale.excalidraw`.
+- Diagrams: ‹ › steps through them in the live panel; clicking any diagram, thumbnail or gallery card opens a full-size viewer (← →, SVG/PNG download). Teachers download the transcript as .txt; the Board/Arcade/Sandbox payloads stay behind "View payload".
 - Deploy to Vercel after a local end-to-end check.
 
 ## Later: Padlet's own GPUs for speech to text

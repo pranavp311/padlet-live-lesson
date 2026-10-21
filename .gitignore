@@ -6,3 +6,4 @@ __pycache__/
 *.tsbuildinfo
 codedb.snapshot
 .DS_Store
+.claude/

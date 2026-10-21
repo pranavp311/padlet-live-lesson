@@ -8,6 +8,7 @@ import { splitSettled, type Sentence } from "@/lib/transcript";
 import type { LessonExport } from "@/app/api/export/route";
 import type { Todo } from "@/lib/todo";
 import type { Subject } from "@/lib/subject";
+import { saveLesson } from "@/lib/history";
 
 export type Phase = "ready" | "warming" | "live" | "ended";
 
@@ -40,6 +41,8 @@ export function useLesson() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  const [drawing, setDrawing] = useState(false); // a "Draw this" request is in flight
+  const [saveFailed, setSaveFailed] = useState(false);
 
   // Refs mirror state that async callbacks read, so they never see stale values.
   const r = useRef({
@@ -62,6 +65,8 @@ export function useLesson() {
     lesson: 0, // bumped per lesson; async replies from an older lesson are dropped
     live: false, // between Start and End/Cancel; diagram checks only run while live
     ending: false,
+    endedAt: 0,
+    subject: "other" as Subject,
   });
 
   useEffect(() => warmStt(), []);
@@ -92,6 +97,7 @@ export function useLesson() {
       const recent = s.sentences.slice(-3).map((x) => x.clean ?? x.raw);
       if (!recent.length) return;
       s.inFlight = true;
+      if (force) setDrawing(true);
       try {
         const allowCreate = s.streak >= 1 && t - s.lastCreatedAt >= NEW_DIAGRAM_GAP_S && t >= s.quietUntil;
         const res = await fetch("/api/diagram", {
@@ -122,6 +128,7 @@ export function useLesson() {
       } catch (e) {
         console.error("diagram request failed", e);
       } finally {
+        if (force) setDrawing(false);
         s.inFlight = false;
         const q = s.queued;
         s.queued = null;
@@ -139,7 +146,7 @@ export function useLesson() {
     fetch("/api/subject", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
       .then((res) => res.json())
       .then(({ subject }: { subject?: Subject }) => {
-        if (subject && s.lesson === lesson) setSubject(subject);
+        if (subject && s.lesson === lesson) setSubject((s.subject = subject));
       })
       .catch((e) => console.error("subject failed", e));
   }, []);
@@ -276,6 +283,26 @@ export function useLesson() {
     setPhase("ready");
   }, []);
 
+  // Saves the finished lesson to this browser's history; called again once the summary arrives.
+  const save = useCallback(
+    (summary: LessonExport | null) => {
+      const s = r.current;
+      const ok = saveLesson({
+        id: `l${s.startedAt}`,
+        title: title.trim() || summary?.title || "Lesson",
+        subject: s.subject,
+        startedAt: s.startedAt,
+        endedAt: s.endedAt,
+        sentences: s.sentences,
+        archive: s.archive,
+        todos: s.todos,
+        lessonExport: summary,
+      });
+      setSaveFailed(!ok);
+    },
+    [title],
+  );
+
   const buildExport = useCallback(async () => {
     const s = r.current;
     const lesson = s.lesson;
@@ -294,11 +321,12 @@ export function useLesson() {
       if (s.lesson !== lesson) return;
       if (data.error) throw new Error(data.error);
       setLessonExport(data);
+      save(data);
     } catch (e) {
       console.error("export failed", e);
       if (s.lesson === lesson) setExportError("Couldn't build the summary.");
     }
-  }, [title]);
+  }, [title, save]);
 
   const end = useCallback(async () => {
     const s = r.current;
@@ -313,14 +341,16 @@ export function useLesson() {
     setEnding(false);
     if (s.lesson !== lesson) return;
     settleRest();
-    setEndedAt(Date.now());
+    s.endedAt = Date.now();
+    setEndedAt(s.endedAt);
     fileAway(s.current);
     setCur(null);
     setPhase("ended");
-    // Let the last clean-ups land before building the summary.
+    // Let the last clean-ups land before saving and building the summary.
     await new Promise((res) => setTimeout(res, 1500));
+    if (s.lesson === lesson) save(null);
     if (s.lesson === lesson) await buildExport();
-  }, [fileAway, settleRest, buildExport]);
+  }, [fileAway, settleRest, buildExport, save]);
 
   const drawThis = useCallback(() => void checkDiagram(true), [checkDiagram]);
 
@@ -342,6 +372,7 @@ export function useLesson() {
     Object.assign(r.current, {
       live: false,
       ending: false,
+      subject: "other",
       pending: "", sentences: [], current: null, archive: [], todos: [], pinned: false, streak: 0,
       lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null,
     });
@@ -362,17 +393,19 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, ending, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, ending, drawing, saveFailed, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 
-// Same reminder said twice ("Worksheet due Friday" / "Photosynthesis worksheet due Friday").
+// Same reminder said twice ("Worksheet due Friday" / "Photosynthesis worksheet due Friday"), but not two
+// tasks that only share a due date or differ by a number ("Read chapter 5" / "Read chapter 6").
 function sameTodo(a: Todo, b: Todo) {
   if (a.kind !== b.kind) return false;
-  if (a.due && b.due && a.due.toLowerCase() === b.due.toLowerCase()) return true;
   const words = (t: string) => new Set(t.toLowerCase().match(/[a-z0-9]+/g) ?? []);
   const wa = words(a.text);
   const wb = words(b.text);
+  const nums = (w: Set<string>) => [...w].filter((x) => /\d/.test(x)).sort().join();
+  if (nums(wa) !== nums(wb)) return false;
   const shared = [...wa].filter((w) => wb.has(w)).length;
-  return shared / Math.min(wa.size, wb.size) >= 0.6;
+  return shared / Math.min(wa.size, wb.size) >= 0.8;
 }

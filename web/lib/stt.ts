@@ -5,6 +5,9 @@
 // Audio sent before the server says Ready is held here, so speech during a cold start isn't lost.
 
 const STT_WS = process.env.NEXT_PUBLIC_STT_WS!;
+// At End, give up if the server sends nothing for this long. Batches during a cold-start catch-up can be
+// several seconds apart, and the server itself waits up to 60 s to drain, so this is generous.
+const IDLE_MS = 15000;
 
 // Any HTTP request to the app boots a GPU container; the Ready screen calls this on load.
 export function warmStt() {
@@ -32,7 +35,7 @@ export function connectStt(handlers: {
     if (ended) {
       // Ending: the server may still be catching up, so keep waiting while text keeps coming.
       clearTimeout(idle);
-      idle = setTimeout(stop, 5000);
+      idle = setTimeout(stop, IDLE_MS);
     }
     if (e.data === "END") {
       stop();
@@ -83,7 +86,7 @@ export function connectStt(handlers: {
         for (let i = 0; i < 15; i++) ws.send(new ArrayBuffer(2560));
         closedByUs = true;
         ws.send("END");
-        idle = setTimeout(stop, 5000);
+        idle = setTimeout(stop, IDLE_MS);
       });
     },
     close: stop,
