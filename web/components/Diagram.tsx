@@ -216,16 +216,24 @@ function Timeline({ d, still }: { d: Diagram; still: boolean }) {
 }
 
 function Graph({ d, still }: { d: Diagram; still: boolean }) {
-  const W = 520;
-  const H = 400;
   const pad = 28;
   const ax = d.axes ?? { x: [-5, 5] as [number, number], y: [-5, 5] as [number, number] };
-  const sx = (x: number) => pad + ((x - ax.x[0]) / (ax.x[1] - ax.x[0])) * (W - 2 * pad);
-  const sy = (y: number) => H - pad - ((y - ax.y[0]) / (ax.y[1] - ax.y[0])) * (H - 2 * pad);
+  const spanX = ax.x[1] - ax.x[0];
+  const spanY = ax.y[1] - ax.y[0];
+  // One unit across must equal one unit up, or a square draws as a rectangle. Geometry always gets equal
+  // units; a function graph does too unless its ranges are so different that it would be unreadable.
+  const equal = (d.segments?.length ?? 0) > 0 || (spanY / spanX <= 2.5 && spanX / spanY <= 2.5);
+  const unit = Math.min(464 / spanX, 464 / spanY);
+  const W = equal ? spanX * unit + 2 * pad : 520;
+  const H = equal ? spanY * unit + 2 * pad : 400;
+  const sx = (x: number) => pad + ((x - ax.x[0]) / spanX) * (W - 2 * pad);
+  const sy = (y: number) => H - pad - ((y - ax.y[0]) / spanY) * (H - 2 * pad);
   const fresh = new Set(d.fresh);
+  // With equal units both axes share one grid step, so the cells are square.
+  const shared = Math.max(1, Math.round(Math.max(spanX, spanY) / 10));
   const ticks = (lo: number, hi: number) => {
     const out: number[] = [];
-    const s = Math.max(1, Math.round((hi - lo) / 10));
+    const s = equal ? shared : Math.max(1, Math.round((hi - lo) / 10));
     for (let v = Math.ceil(lo / s) * s; v <= hi; v += s) out.push(v);
     return out;
   };
@@ -284,14 +292,22 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
           />
         ))}
       </g>
-      {(d.segments ?? []).map((g) => {
+      {(d.segments ?? []).map((g, _, all) => {
         const hot = fresh.has(g.id) && !still;
         const [x1, y1, x2, y2] = [sx(g.from[0]), sy(g.from[1]), sx(g.to[0]), sy(g.to[1])];
+        // Put the label beside its side, on the side away from the middle of the shape.
+        const cx = all.reduce((t, x) => t + sx(x.from[0]) + sx(x.to[0]), 0) / (2 * all.length);
+        const cy = all.reduce((t, x) => t + sy(x.from[1]) + sy(x.to[1]), 0) / (2 * all.length);
+        const [mx, my] = [(x1 + x2) / 2, (y1 + y2) / 2];
+        const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+        let [nx, ny] = [(y1 - y2) / len, (x2 - x1) / len];
+        if (nx * (mx - cx) + ny * (my - cy) < 0) [nx, ny] = [-nx, -ny];
+        const [lx, ly] = [mx + nx * 16, my + ny * 16];
         return (
           <g key={g.id} style={hot ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}>
             <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={hot ? "var(--grape)" : "#111"} strokeWidth={3} strokeLinecap="round" />
             {g.label && (
-              <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 10} textAnchor="middle" fontSize={15} fontWeight={600} fill="#111" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+              <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={600} fill="#111" stroke="#fff" strokeWidth={5} paintOrder="stroke">
                 {g.label}
               </text>
             )}
