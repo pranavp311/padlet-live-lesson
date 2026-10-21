@@ -14,6 +14,8 @@ export type Phase = "ready" | "warming" | "live" | "ended";
 const DRAWABLE = 0.75;
 const NEW_DIAGRAM_GAP_S = 20;
 const DISMISS_S = 60;
+const CLEANS_AT_ONCE = 2; // a cold start's backlog settles many sentences at once; don't fire them all together
+const LAND_MS = 1500; // how long the caught-up chunk's settle-in animation runs
 
 type DiagramReply = {
   jev?: { drawable: number };
@@ -40,12 +42,21 @@ export function useLesson() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  // Catching up on speech held during a cold start: progress 0–1, or null. While set, the transcript is hidden.
+  const [catchUp, setCatchUp] = useState<number | null>(null);
+  // The caught-up chunk just appeared: sentences with ids below this are part of it. Null otherwise.
+  const [landing, setLanding] = useState<number | null>(null);
 
   // Refs mirror state that async callbacks read, so they never see stale values.
   const r = useRef({
     mic: null as Mic | null,
     stt: null as Stt | null,
     startedAt: 0,
+    audioZero: 0, // lesson clock (s) when the mic started capturing
+    heard: 0, // lesson clock (s) of the latest text piece, from the audio the server has processed
+    catchingUp: false,
+    cleans: [] as (() => Promise<void>)[],
+    cleaning: 0,
     pending: "",
     sentences: [] as Sentence[],
     current: null as Diagram | null,
@@ -147,34 +158,40 @@ export function useLesson() {
   const settle = useCallback(
     (texts: string[]) => {
       const s = r.current;
-      const added: Sentence[] = texts.map((raw) => ({ id: s.nextId++, raw, t: now() }));
+      // Stamped with when it was said, not when it settled: a cold start's backlog settles all at once.
+      const added: Sentence[] = texts.map((raw) => ({ id: s.nextId++, raw, t: s.heard }));
       const before = s.sentences;
       s.sentences = [...before, ...added];
       setSentences(s.sentences);
       const lesson = s.lesson;
       for (const [i, sentence] of added.entries()) {
         const context = [...before, ...added.slice(0, i)].slice(-3).map((x) => x.clean ?? x.raw);
-        fetch("/api/clean", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sentence: sentence.raw, context, todos: s.todos }),
-        })
-          .then((res) => res.json())
-          .then(({ text, todo }: { text?: string; todo?: Todo | null }) => {
-            if (s.lesson !== lesson) return;
-            if (text) {
-              s.sentences = s.sentences.map((x) => (x.id === sentence.id ? { ...x, clean: text } : x));
-              setSentences(s.sentences);
-            }
-            if (todo && !s.todos.some((t) => sameTodo(t, todo))) {
-              s.todos = [...s.todos, { ...todo, id: `t${s.nextId++}` }];
-              setTodos(s.todos);
-            }
+        s.cleans.push(() =>
+          fetch("/api/clean", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sentence: sentence.raw, context, todos: s.todos }),
+            signal: AbortSignal.timeout(15000), // a hung call would hold a queue slot for the rest of the lesson
           })
-          .catch((e) => console.error("clean failed", e));
+            .then((res) => res.json())
+            .then(({ text, todo }: { text?: string; todo?: Todo | null }) => {
+              if (s.lesson !== lesson) return;
+              if (text) {
+                s.sentences = s.sentences.map((x) => (x.id === sentence.id ? { ...x, clean: text } : x));
+                setSentences(s.sentences);
+              }
+              if (todo && !s.todos.some((t) => sameTodo(t, todo))) {
+                s.todos = [...s.todos, { ...todo, id: `t${s.nextId++}` }];
+                setTodos(s.todos);
+              }
+            })
+            .catch((e) => console.error("clean failed", e)),
+        );
       }
+      runCleans(s);
       if (!s.iconPicked && s.sentences.length >= 2) pickIcon(s.sentences.map((x) => x.raw).join(" "));
-      if (added.length) void checkDiagram();
+      // A backlog gets one diagram check once it's caught up, not one per sentence.
+      if (added.length && !s.catchingUp) void checkDiagram();
     },
     [checkDiagram, pickIcon],
   );
@@ -198,6 +215,18 @@ export function useLesson() {
     settle([rest]);
   }, [settle]);
 
+  // The held speech is all in: show it in one go, then run the diagram check its sentences skipped.
+  const caughtUp = useCallback(() => {
+    const s = r.current;
+    if (!s.catchingUp) return;
+    s.catchingUp = false;
+    setCatchUp(null);
+    setLanding(s.nextId);
+    const lesson = s.lesson;
+    setTimeout(() => s.lesson === lesson && setLanding(null), LAND_MS);
+    void checkDiagram();
+  }, [checkDiagram]);
+
   const stopAudio = () => {
     r.current.mic?.stop();
     r.current.mic = null;
@@ -211,6 +240,8 @@ export function useLesson() {
     s.live = true;
     s.startedAt = Date.now();
     setStartedAt(s.startedAt);
+    Object.assign(s, { heard: 0, catchingUp: false, cleans: [] });
+    setCatchUp(null);
     const mine = () => s.lesson === lesson && s.live; // ignore events from a cancelled lesson's socket
     if (title.trim()) pickIcon(title.trim());
     let gotReady = false;
@@ -219,8 +250,9 @@ export function useLesson() {
         gotReady = true;
         if (mine()) setPhase((p) => (p === "warming" ? "live" : p));
       },
-      onText: (piece) => {
+      onText: (piece, audioSecs) => {
         if (!mine()) return;
+        s.heard = s.audioZero + audioSecs;
         // A phrase after a pause can open with the previous one's comma; it has nothing to attach to.
         s.pending = s.pending ? s.pending + piece : piece.replace(/^\s*[,;:]+/, "");
         // After a pause the model sends the closing punctuation at the start of the next phrase (". Let's").
@@ -239,8 +271,16 @@ export function useLesson() {
       onPause: () => {
         if (mine()) settleRest();
       },
+      onCatchUp: (progress) => {
+        if (!mine()) return;
+        if (progress < 1) {
+          s.catchingUp = true;
+          setCatchUp(progress);
+        } else caughtUp();
+      },
       onClose: (err) => {
         if (!err || !mine()) return;
+        caughtUp(); // show what arrived before the connection dropped
         setError(
           gotReady
             ? "Lost the connection to speech-to-text. End the lesson to keep what you have."
@@ -255,6 +295,7 @@ export function useLesson() {
       });
       if (!mine()) return mic.stop(); // cancelled while the permission prompt was open
       s.mic = mic;
+      s.audioZero = now();
     } catch (e) {
       console.error("mic failed", e);
       if (!mine()) return; // a cancelled lesson's prompt; the current lesson isn't affected
@@ -267,11 +308,12 @@ export function useLesson() {
       );
       setPhase("ready");
     }
-  }, [settle, settleRest, pickIcon, title]);
+  }, [settle, settleRest, pickIcon, caughtUp, title]);
 
   const cancel = useCallback(() => {
     stopAudio();
     r.current.live = false;
+    r.current.cleans = [];
     r.current.stt?.close();
     setPhase("ready");
   }, []);
@@ -312,13 +354,17 @@ export function useLesson() {
     s.ending = false;
     setEnding(false);
     if (s.lesson !== lesson) return;
+    s.catchingUp = false;
+    setCatchUp(null);
     settleRest();
     setEndedAt(Date.now());
     fileAway(s.current);
     setCur(null);
     setPhase("ended");
-    // Let the last clean-ups land before building the summary.
-    await new Promise((res) => setTimeout(res, 1500));
+    // Let the queued clean-ups land before building the summary (a backlog can leave several), up to 10 s.
+    for (let waited = 0; waited < 10000 && s.lesson === lesson && (s.cleans.length || s.cleaning); waited += 250) {
+      await new Promise((res) => setTimeout(res, 250));
+    }
     if (s.lesson === lesson) await buildExport();
   }, [fileAway, settleRest, buildExport]);
 
@@ -342,9 +388,12 @@ export function useLesson() {
     Object.assign(r.current, {
       live: false,
       ending: false,
+      catchingUp: false, cleans: [],
       pending: "", sentences: [], current: null, archive: [], todos: [], pinned: false, streak: 0,
       lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null,
     });
+    setCatchUp(null);
+    setLanding(null);
     setSentences([]);
     setPending("");
     setCurrent(null);
@@ -362,8 +411,19 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, ending, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, ending, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
+}
+
+// Runs queued /api/clean calls, at most CLEANS_AT_ONCE in flight.
+function runCleans(s: { cleans: (() => Promise<void>)[]; cleaning: number }) {
+  while (s.cleaning < CLEANS_AT_ONCE && s.cleans.length) {
+    s.cleaning++;
+    void s.cleans.shift()!().finally(() => {
+      s.cleaning--;
+      runCleans(s);
+    });
+  }
 }
 
 // Same reminder said twice ("Worksheet due Friday" / "Photosynthesis worksheet due Friday").

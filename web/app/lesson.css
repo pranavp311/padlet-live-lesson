@@ -48,6 +48,14 @@
 .para .rough { color: var(--text-3); }
 .caret { display: inline-block; width: 3px; height: 32px; margin-left: 4px; vertical-align: -5px; border-radius: 2px; background: var(--grape); animation: ll-caret 1s steps(1) infinite; }
 .hint { font-size: 30px; line-height: 44px; color: var(--text-3); }
+.catchup { width: 100%; padding: 24px 28px 28px; border-radius: 20px; background: #fff; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 20px; flex-shrink: 0; font-size: 30px; line-height: 44px; letter-spacing: -0.02em; color: var(--text-3); }
+.catchup > span { animation: ll-fade 1.2s ease-in-out infinite alternate; }
+.meter { height: 6px; border-radius: 3px; background: #ebecef; overflow: hidden; }
+.meter > div { height: 6px; border-radius: 3px; background: var(--grape); transition: width 400ms var(--ease); }
+/* The caught-up chunk settles in together, oldest paragraph first. */
+.para.landed { animation: ll-land 700ms var(--ease) both; animation-delay: calc(var(--i, 0) * 80ms); }
+@keyframes ll-land { from { opacity: 0; transform: translateY(24px) scale(0.98); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .para.landed { animation-delay: 0s; } }
 
 .thumb { display: flex; align-items: center; gap: 14px; padding: 8px 20px 8px 8px; border-radius: 16px; background: #fff; box-shadow: var(--shadow-1); flex-shrink: 0; }
 .thumb-img { width: 112px; height: 64px; flex-shrink: 0; border-radius: 10px; background: var(--surface); padding: 4px; display: flex; }
