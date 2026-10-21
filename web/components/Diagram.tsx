@@ -53,6 +53,10 @@ function Drawing({ d, still }: { d: Diagram; still: boolean }) {
       return <Table d={d} still={still} />;
     case "numberline":
       return <NumberLine d={d} still={still} />;
+    case "chart":
+      return d.chart?.style === "pictograph" ? <Pictograph d={d} still={still} /> : <BarChart d={d} still={still} />;
+    case "fraction":
+      return <Fractions d={d} still={still} />;
   }
 }
 
@@ -767,6 +771,175 @@ function NumberLine({ d, still }: { d: Diagram; still: boolean }) {
           )}
         </g>
       ))}
+    </svg>
+  );
+}
+
+// Round steps for an axis: 1, 2, 5, 10, 20, 50… so there are about five gridlines.
+function niceStep(max: number) {
+  const raw = Math.max(1, max) / 5;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw)!;
+}
+
+const PASTEL_BARS = ["#b98cff", "#6fb3f2", "#ff7aa8", "#78d96f", "#ffd54f", "#ff9b5e", "#5fd4c4", "#c9a7ff"];
+
+// A bar chart: one rounded pastel bar per category with its value on top, a numbered axis and gridlines.
+function BarChart({ d, still }: { d: Diagram; still: boolean }) {
+  const bars = d.bars ?? [];
+  const fresh = new Set(d.fresh);
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  const step = niceStep(max);
+  const top = Math.ceil(max / step) * step;
+  const left = 64;
+  const slot = 110;
+  const W = left + Math.max(1, bars.length) * slot + 24;
+  const plotTop = d.chart?.axis ? 48 : 24;
+  const plotH = 300;
+  const H = plotTop + plotH + 70;
+  const sy = (v: number) => plotTop + plotH - (v / top) * plotH;
+  const grid: number[] = [];
+  for (let v = 0; v <= top + 1e-9; v += step) grid.push(+v.toFixed(6));
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      {d.chart?.axis && (
+        <text x={left - 40} y={22} fontSize={15} fontWeight={600} fill="#6b6f76">
+          {d.chart.axis}
+        </text>
+      )}
+      {grid.map((v) => (
+        <g key={v}>
+          <line x1={left} x2={W - 16} y1={sy(v)} y2={sy(v)} stroke={v === 0 ? "#94969b" : "#ebecef"} strokeWidth={v === 0 ? 2 : 1} />
+          <text x={left - 10} y={sy(v)} textAnchor="end" dominantBaseline="central" fontSize={15} fill="#6b6f76">
+            {v}
+          </text>
+        </g>
+      ))}
+      {bars.map((b, i) => {
+        const x = left + i * slot + 22;
+        const w = slot - 44;
+        const hot = fresh.has(b.id) && !still;
+        return (
+          <g key={b.id} style={hot ? { transformBox: "fill-box", transformOrigin: "bottom", animation: "ll-grow 700ms var(--ease) both" } : undefined}>
+            <rect x={x} y={sy(b.value)} width={w} height={Math.max(0, sy(0) - sy(b.value))} rx={10} fill={PASTEL_BARS[i % PASTEL_BARS.length]} />
+            <rect x={x} y={sy(0) - 10} width={w} height={10} fill={PASTEL_BARS[i % PASTEL_BARS.length]} />
+            <text x={x + w / 2} y={sy(b.value) - 10} textAnchor="middle" fontSize={18} fontWeight={700} fill="#111">
+              {+b.value.toFixed(2)}
+            </text>
+            <Lines x={x + w / 2} y={sy(0) + 30} lines={wrap(b.label, 12)} size={15} weight={600} fill="#111" lh={17} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// A pictograph: each category is a row of its icon; with big numbers each icon stands for several, shown in a key.
+function Pictograph({ d, still }: { d: Diagram; still: boolean }) {
+  const bars = d.bars ?? [];
+  const fresh = new Set(d.fresh);
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  const per = max <= 10 ? 1 : niceStep(max / 2); // at most about ten icons in a row
+  const labelW = 150;
+  const icon = 40;
+  const rowH = 58;
+  const W = labelW + Math.ceil(max / per) * icon + 40;
+  const H = bars.length * rowH + (per > 1 ? 60 : 24);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      {bars.map((b, i) => {
+        const y = 12 + i * rowH + rowH / 2;
+        const whole = Math.floor(b.value / per);
+        const part = b.value / per - whole; // a half icon for a remainder, cut off on the right
+        const hot = fresh.has(b.id) && !still;
+        return (
+          <g key={b.id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
+            <rect x={4} y={y - rowH / 2 + 4} width={W - 8} height={rowH - 8} rx={12} fill={i % 2 ? "#fff" : "var(--canary-tint)"} />
+            <text x={20} y={y} dominantBaseline="central" fontSize={18} fontWeight={700} fill="#111">
+              {b.label}
+            </text>
+            {Array.from({ length: whole + (part > 0.05 ? 1 : 0) }, (_, k) => (
+              <text key={k} x={labelW + k * icon + icon / 2} y={y} textAnchor="middle" dominantBaseline="central" fontSize={30} style={k === whole ? { clipPath: `inset(0 ${(1 - part) * 100}% 0 0)` } : undefined}>
+                {b.icon ?? "●"}
+              </text>
+            ))}
+          </g>
+        );
+      })}
+      {per > 1 && (
+        <text x={20} y={H - 22} fontSize={16} fontWeight={600} fill="#6b6f76">
+          Each picture = {per}
+        </text>
+      )}
+    </svg>
+  );
+}
+
+// Fractions as equal parts with the shaded ones coloured: bars stacked full width (so 1/2 and 2/4 line up), or circles.
+function Fractions({ d, still }: { d: Diagram; still: boolean }) {
+  const fr = d.fractions ?? [];
+  const fresh = new Set(d.fresh);
+  const circles = fr.length > 0 && fr.every((f) => f.shape === "circle");
+  const colours = ["#b98cff", "#6fb3f2", "#ff7aa8", "#78d96f"];
+  const written = (f: { num: number; den: number }, x: number, y: number, size: number) => (
+    <g>
+      <text x={x} y={y - size * 0.18} textAnchor="middle" fontSize={size} fontWeight={700} fill="#111">{f.num}</text>
+      <line x1={x - size * 0.5} x2={x + size * 0.5} y1={y + size * 0.05} y2={y + size * 0.05} stroke="#111" strokeWidth={3} strokeLinecap="round" />
+      <text x={x} y={y + size * 0.95} textAnchor="middle" fontSize={size} fontWeight={700} fill="#111">{f.den}</text>
+    </g>
+  );
+  const anim = (id: string) => (fresh.has(id) && !still ? { animation: "ll-fade 600ms var(--ease) both" } : undefined);
+  if (circles) {
+    const r = 110;
+    const slot = 2 * r + 60;
+    const W = fr.length * slot;
+    const H = 2 * r + 150;
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+        {fr.map((f, i) => {
+          const cx = i * slot + slot / 2;
+          const cy = r + 20;
+          const pt = (k: number) => [cx + r * Math.sin((2 * Math.PI * k) / f.den), cy - r * Math.cos((2 * Math.PI * k) / f.den)];
+          return (
+            <g key={f.id} style={anim(f.id)}>
+              {Array.from({ length: f.den }, (_, k) => {
+                const [x1, y1] = pt(k);
+                const [x2, y2] = pt(k + 1);
+                const shade = k < f.num ? colours[i % colours.length] : "#fff";
+                return f.den === 1 ? (
+                  <circle key={k} cx={cx} cy={cy} r={r} fill={shade} stroke="#3d1a78" strokeWidth={2.5} />
+                ) : (
+                  <path key={k} d={`M${cx} ${cy}L${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}Z`} fill={shade} stroke="#3d1a78" strokeWidth={2.5} strokeLinejoin="round" />
+                );
+              })}
+              {written(f, cx, 2 * r + 70, 34)}
+              {f.label && <text x={cx} y={2 * r + 140} textAnchor="middle" fontSize={16} fill="#6b6f76">{f.label}</text>}
+            </g>
+          );
+        })}
+      </svg>
+    );
+  }
+  const left = 110;
+  const barW = 560;
+  const rowH = 110;
+  const W = left + barW + 20;
+  const H = Math.max(1, fr.length) * rowH + 10;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      {fr.map((f, i) => {
+        const y = 14 + i * rowH;
+        const part = barW / f.den;
+        return (
+          <g key={f.id} style={anim(f.id)}>
+            {written(f, 50, y + 30, 30)}
+            {Array.from({ length: f.den }, (_, k) => (
+              <rect key={k} x={left + k * part} y={y} width={part} height={64} fill={k < f.num ? colours[i % colours.length] : "#fff"} stroke="#3d1a78" strokeWidth={2.5} />
+            ))}
+            {f.label && <text x={left} y={y + 88} fontSize={16} fill="#6b6f76">{f.label}</text>}
+          </g>
+        );
+      })}
     </svg>
   );
 }

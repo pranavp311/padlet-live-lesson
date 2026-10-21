@@ -322,3 +322,4 @@
 .editing:empty::before { content: attr(data-placeholder); color: rgba(148, 102, 232, .55); }
 .edit-hint { position: absolute; left: 20px; top: 0; transform: translateY(-50%); z-index: 1; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px var(--grape-tint), 0 4px 12px rgba(82, 0, 133, .12); font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; color: #520085; white-space: nowrap; pointer-events: none; animation: ll-fade 200ms var(--ease) both; }
 .edit-hint kbd { font: inherit; padding: 0 5px; border-radius: 5px; background: var(--grape-tint); }
+@keyframes ll-grow { from { transform: scaleY(0); } to { transform: none; } }

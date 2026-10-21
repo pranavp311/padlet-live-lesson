@@ -59,6 +59,8 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
         venn: "Comparing two or three groups: what they share and what belongs to only one",
         letters: "Letters, the sounds letters make (phonics), spelling or the alphabet",
         table: "Comparing things across several features in rows and columns, or a chart to fill in (T-chart, KW-L chart, place value, Punnett square)",
+        chart: "Amounts or data to compare: how many of each thing, as a bar chart or pictograph",
+        fraction: "Fractions as parts of a whole: shading equal parts, comparing fractions or equivalent fractions",
         numberline: "Counting on or back, adding or subtracting along a line, negative numbers, rounding, or placing numbers or fractions in order on a line",
         none: "Nothing to draw",
       },
