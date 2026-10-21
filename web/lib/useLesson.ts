@@ -214,7 +214,9 @@ export function useLesson() {
         } else if (reply.action === "new_topic" && reply.kind && reply.ops?.length) {
           const next = applyOps(emptyDiagram(reply.kind, t), reply.ops);
           // A diagram needs a title: Jev's same-topic check and the transcript thumbnail both use it.
-          next.title ||= next.nodes[0]?.label ?? next.events[0]?.label ?? next.curves[0]?.label ?? "Diagram";
+          next.title ||=
+            next.nodes[0]?.label ?? next.events[0]?.label ?? next.curves[0]?.label ?? next.letters?.[0]?.text ??
+            (next.sets?.length ? next.sets.map((x) => x.label).join(" and ") : "Diagram");
           if (!isEmpty(next)) {
             drew = true;
             fileAway(s.current);

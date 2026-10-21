@@ -11,6 +11,8 @@ const OPS: Record<Kind, string> = {
   timeline: `{"op":"add_event","id":"e1","when":"1914","label":"War begins"} in date order`,
   graph: `{"op":"set_axes","x":[-5,5],"y":[-2,10]}, {"op":"add_curve","id":"f","expr":"x^2 - 2x + 1","label":"y = x² − 2x + 1"} (expr in mathjs syntax using x), {"op":"add_point","id":"v","x":1,"y":0,"label":"vertex"}, and for geometry {"op":"add_segment","id":"a","from":[0,0],"to":[3,0],"label":"a = 3"} (shapes are made of segments; set axes so the shape fits with a margin)`,
   molecule: `{"op":"set_smiles","smiles":"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O"} (valid SMILES)`,
+  venn: `{"op":"add_set","id":"mammals","label":"Mammals"} (2 or 3 sets), then {"op":"add_item","id":"whale","label":"Whale","sets":["mammals","sea"]} (an item in several sets sits in their overlap; "sets":[] puts it outside all of them); at most 4 items per region; put what the sets share in the overlap`,
+  letters: `{"op":"add_letter","id":"m","text":"Mm","sound":"/m/","word":"moon"}: text is the letter in upper and lower case ("Ss"), or a letter group as written ("sh", "ai"); sound is the sound between slashes; word is a short example word that contains it. One add_letter per letter or sound the teacher is talking about (at most 4). "What letter makes the sound s?" draws "Ss"`,
 };
 
 const SYSTEM = (kind: Kind) => `You draw a ${kind} diagram live while a teacher talks, for a projected classroom screen.
@@ -139,11 +141,12 @@ function asName(text: string) {
 function describe(d: Diagram) {
   const labels = [
     ...d.nodes.map((n) => n.label), ...d.events.map((e) => e.label), ...d.curves.map((c) => c.label ?? ""),
-    ...d.points.map((p) => p.label ?? ""), ...(d.segments ?? []).map((g) => g.label ?? ""), d.caption ?? "",
+    ...d.points.map((p) => p.label ?? ""), ...(d.segments ?? []).map((g) => g.label ?? ""),
+    ...(d.sets ?? []).map((x) => x.label), ...(d.items ?? []).map((x) => x.label), ...(d.letters ?? []).map((x) => x.text), d.caption ?? "",
   ].filter(Boolean);
   return `a ${d.kind} titled '${d.title}'${labels.length ? ` showing: ${labels.slice(0, 12).join(", ")}` : ""}`;
 }
 
 function compact(d: Diagram) {
-  return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, caption: d.caption };
+  return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, sets: d.sets, items: d.items, letters: d.letters, caption: d.caption };
 }

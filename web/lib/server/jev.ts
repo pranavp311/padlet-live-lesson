@@ -43,8 +43,8 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
       type: "noul",
       instructions: "The teacher is explaining something that a simple diagram would make clearer right now",
       criteria: {
-        true: "A process, sequence, cycle, structure, events in time, a function or a molecule is being explained",
-        false: "Small talk, classroom management, a definition with nothing to draw, or a question to students",
+        true: "A process, sequence, cycle, structure, events in time, a function, a molecule, a comparison of groups, or letters and the sounds they make is being explained or asked about",
+        false: "Small talk, classroom management, or a definition with nothing to draw",
       },
     },
     kind: {
@@ -56,6 +56,8 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
         timeline: "Events placed in date order",
         graph: "A math function, data on axes, or a geometry figure (triangles, angles, lengths)",
         molecule: "The structure of a specific chemical compound",
+        venn: "Comparing two or three groups: what they share and what belongs to only one",
+        letters: "Letters, the sounds letters make (phonics), spelling or the alphabet",
         none: "Nothing to draw",
       },
     },
@@ -81,9 +83,9 @@ export async function asksBubbles(text: string): Promise<number> {
   const a = await ask(text, {
     asked: {
       type: "noul",
-      instructions: "The teacher is asking Bubbles, the class's drawing helper, to draw, show, explain, write or add something",
+      instructions: "The teacher is asking Bubbles, the class's drawing helper, to draw, show, explain, write or add something, or asking Bubbles a question it can answer with a picture",
       criteria: {
-        true: "A direct request to Bubbles, e.g. 'Bubbles, could you draw…', 'Bubbles, explain…', 'Help me visualise X, Bubbles' or 'Hey Bubbles. Show us…'",
+        true: "A direct request or question to Bubbles, e.g. 'Bubbles, could you draw…', 'Bubbles, explain…', 'Help me visualise X, Bubbles', 'Hey Bubbles. Show us…' or 'Bubbles, what letter makes the sound s?'",
         false: "Thanking Bubbles, talking about Bubbles or what it drew, or a request to the students",
       },
     },

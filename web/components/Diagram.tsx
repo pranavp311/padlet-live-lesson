@@ -45,6 +45,10 @@ function Drawing({ d, still }: { d: Diagram; still: boolean }) {
       return <Graph d={d} still={still} />;
     case "molecule":
       return <Molecule d={d} still={still} />;
+    case "venn":
+      return <Venn d={d} still={still} />;
+    case "letters":
+      return <Letters d={d} still={still} />;
   }
 }
 
@@ -385,3 +389,172 @@ function Molecule({ d, still }: { d: Diagram; still: boolean }) {
     />
   );
 }
+
+// Padlet's palette as bubble-letter paint: light top, brighter base, and a dark outline of the same hue.
+const BUBBLE = [
+  { light: "#f6ecff", mid: "#b98cff", ink: "#3d1a78" },
+  { light: "#e6f3ff", mid: "#6fb3f2", ink: "#0c3b6e" },
+  { light: "#ffe8ee", mid: "#ff7aa8", ink: "#7a0f35" },
+  { light: "#ecffe9", mid: "#78d96f", ink: "#1d5a17" },
+  { light: "#fff8dc", mid: "#ffd54f", ink: "#6b4e00" },
+];
+const BUBBLE_FONT = { fontFamily: "var(--font-bubble), ui-rounded, system-ui, sans-serif" };
+
+// Letters and the sounds they make: each letter (or letter group, "sh") in a fat bubble font, its sound in a pill,
+// and an example word with the letter picked out.
+function Letters({ d, still }: { d: Diagram; still: boolean }) {
+  const sid = useSid();
+  const letters = d.letters ?? [];
+  const size = 200;
+  const fresh = new Set(d.fresh);
+  // The font is drawn, not measured, so widths are estimates: generous enough that neighbours never touch.
+  const widths = letters.map((l) => Math.max(260, [...l.text].reduce((w, ch) => w + (ch === ch.toUpperCase() ? 0.68 : 0.56) * size, 0) + 70));
+  const W = Math.max(1, widths.reduce((a, b) => a + b, 0)) + 40;
+  const H = 400;
+  let x = 20;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      <defs>
+        {BUBBLE.map((c, i) => (
+          <linearGradient key={i} id={`${sid}-g${i}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0.15" stopColor={c.light} />
+            <stop offset="0.85" stopColor={c.mid} />
+          </linearGradient>
+        ))}
+        <linearGradient id={`${sid}-shine`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity={0.7} />
+          <stop offset="0.45" stopColor="#fff" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      {letters.map((l, i) => {
+        const c = BUBBLE[i % BUBBLE.length];
+        const cx = x + widths[i] / 2;
+        x += widths[i];
+        const hot = fresh.has(l.id) && !still;
+        const base = { x: cx, y: 225, textAnchor: "middle" as const, fontSize: size, fontWeight: 700, style: BUBBLE_FONT };
+        return (
+          <g key={l.id} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
+            <text {...base} transform="translate(0 8)" fill={c.ink} opacity={0.16} stroke={c.ink} strokeWidth={18} strokeLinejoin="round">
+              {l.text}
+            </text>
+            <text {...base} fill={c.ink} stroke={c.ink} strokeWidth={18} strokeLinejoin="round">
+              {l.text}
+            </text>
+            <text {...base} fill="#fff" stroke="#fff" strokeWidth={8} strokeLinejoin="round">
+              {l.text}
+            </text>
+            <text {...base} fill={`url(#${sid}-g${i % BUBBLE.length})`}>{l.text}</text>
+            {/* A gloss on the top of each letter, like light on a soap bubble. */}
+            <text {...base} fill={`url(#${sid}-shine)`}>
+              {l.text}
+            </text>
+            {l.sound && (
+              <g>
+                <rect x={cx - 56} y={262} width={112} height={44} rx={22} fill={c.light} stroke={c.mid} strokeWidth={2} />
+                <text x={cx} y={292} textAnchor="middle" fontSize={26} fontWeight={700} fill={c.ink} style={BUBBLE_FONT}>
+                  {l.sound}
+                </text>
+              </g>
+            )}
+            {l.word && (
+              <text x={cx} y={l.sound ? 352 : 300} textAnchor="middle" fontSize={34} fontWeight={600} fill="#111" style={BUBBLE_FONT}>
+                {pickOut(l.word, l.text).map((part, k) => (
+                  <tspan key={k} fill={part.hit ? c.ink : undefined} fontWeight={part.hit ? 700 : undefined} textDecoration={part.hit ? "underline" : undefined}>
+                    {part.text}
+                  </tspan>
+                ))}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// "moon" with "Mm" → [m]oon: the first place the letter (either case) or letter group appears in the word.
+function pickOut(word: string, letters: string) {
+  const forms = [...new Set([letters, letters.toLowerCase(), letters.slice(-1), letters[0]?.toLowerCase()])].filter(Boolean);
+  for (const f of forms) {
+    const at = word.toLowerCase().indexOf(f.toLowerCase());
+    if (at >= 0) return [{ text: word.slice(0, at) }, { text: word.slice(at, at + f.length), hit: true }, { text: word.slice(at + f.length) }];
+  }
+  return [{ text: word }];
+}
+
+// Two or three overlapping circles; each item is written in the region of the sets it belongs to, and items in
+// none of them are listed underneath.
+const VENN_COLOURS = [
+  { fill: "var(--grape-tint)", line: "#b98cff", ink: "#3d1a78" },
+  { fill: "var(--oceanic-tint)", line: "#6fb3f2", ink: "#0c3b6e" },
+  { fill: "var(--canary-tint)", line: "#ffd54f", ink: "#6b4e00" },
+];
+const VENN_LAYOUT = {
+  1: { W: 460, H: 440, r: 180, c: [[230, 250]], label: [[230, 40]] },
+  2: { W: 680, H: 460, r: 180, c: [[240, 250], [440, 250]], label: [[170, 40], [510, 40]] },
+  3: { W: 700, H: 640, r: 165, c: [[260, 225], [440, 225], [350, 380]], label: [[150, 36], [550, 36], [350, 620]] },
+} as const;
+
+function Venn({ d, still }: { d: Diagram; still: boolean }) {
+  const sets = (d.sets ?? []).slice(0, 3);
+  const n = Math.max(1, sets.length) as 1 | 2 | 3;
+  const L = VENN_LAYOUT[n];
+  const fresh = new Set(d.fresh);
+  const outside = (d.items ?? []).filter((it) => !it.sets.length);
+  const H = L.H + (outside.length ? 60 : 0);
+  // Where each combination of sets is drawn: the average of their centres, pushed away from the others.
+  const spot = (memberOf: string[]) => {
+    const inIdx = sets.map((x, i) => (memberOf.includes(x.id) ? i : -1)).filter((i) => i >= 0);
+    const avg = (pts: number[][]) => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+    const mid = avg(L.c.map((p) => [...p]));
+    const here = avg(inIdx.map((i) => [...L.c[i]]));
+    if (inIdx.length === sets.length) return here; // in every set: the centre
+    const push = inIdx.length === 1 ? 0.55 : 0.35;
+    return [here[0] + (here[0] - mid[0]) * push, here[1] + (here[1] - mid[1]) * push];
+  };
+  const regions = new Map<string, { at: number[]; items: { id: string; label: string }[] }>();
+  for (const it of d.items ?? []) {
+    if (!it.sets.length) continue;
+    const key = [...it.sets].sort().join("|");
+    if (!regions.has(key)) regions.set(key, { at: spot(it.sets), items: [] });
+    regions.get(key)!.items.push(it);
+  }
+  return (
+    <svg viewBox={`0 0 ${L.W} ${H}`} width="100%" height="100%" style={cap(L.W, H)} role="img" aria-label={d.title}>
+      {sets.map((x, i) => {
+        const hot = fresh.has(x.id) && !still;
+        return (
+          <g key={x.id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
+            <circle cx={L.c[i][0]} cy={L.c[i][1]} r={L.r} fill={VENN_COLOURS[i].fill} fillOpacity={0.8} stroke={VENN_COLOURS[i].line} strokeWidth={3} style={{ mixBlendMode: "multiply" }} />
+            <text x={L.label[i][0]} y={L.label[i][1]} textAnchor="middle" fontSize={24} fontWeight={700} fill={VENN_COLOURS[i].ink}>
+              {x.label}
+            </text>
+          </g>
+        );
+      })}
+      {[...regions.values()].map(({ at, items }) =>
+        items.slice(0, 5).map((it, k) => (
+          <text
+            key={it.id}
+            x={at[0]}
+            y={at[1] + (k - (Math.min(items.length, 5) - 1) / 2) * 28}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={21}
+            fontWeight={600}
+            fill="#111"
+            style={fresh.has(it.id) && !still ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}
+          >
+            {it.label}
+          </text>
+        )),
+      )}
+      {outside.length > 0 && (
+        <text x={L.W / 2} y={H - 22} textAnchor="middle" fontSize={17} fill="rgba(0,0,0,.6)">
+          Neither: {outside.map((it) => it.label).join(", ")}
+        </text>
+      )}
+    </svg>
+  );
+}
+
