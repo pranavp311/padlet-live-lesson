@@ -1,0 +1,53 @@
+/* Tokens from brand/BRAND_KIT.md and the approved mockup (design/). */
+:root {
+  --text: #111111;
+  --text-2: rgba(0, 0, 0, 0.54);
+  --text-3: rgba(0, 0, 0, 0.38);
+  --wall: #fde3ba;
+  --wall-ink: #5c3a10;
+  --wall-tint: rgba(120, 72, 16, 0.1);
+  --card: #ffffff;
+  --surface: #f5f6f7;
+  --grape: #9466e8;
+  --grape-strong: #8b00f9;
+  --canary-tint: #fff4ce;
+  --grape-tint: #eed8ff;
+  --park-tint: #deffdd;
+  --scarlet-tint: #ffdada;
+  --oceanic-tint: #d6ecff;
+  --shadow-1: 0 0.5px 1px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 0.5px 1px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(92, 58, 16, 0.1);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; background: var(--wall); color: var(--text); }
+
+body { letter-spacing: -0.013em; }
+
+button { font: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: 0.5; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--grape); outline-offset: 2px; }
+
+.wall {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--wall);
+  background-image: url(/wall.svg);
+  background-size: 960px 960px;
+}
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+@keyframes ll-bar { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+@keyframes ll-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes ll-in { 0% { opacity: 0; transform: scale(0.9); } 60% { opacity: 1; transform: scale(1.03); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes ll-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ll-load { 0% { width: 8%; } 100% { width: 92%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+@keyframes ll-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
