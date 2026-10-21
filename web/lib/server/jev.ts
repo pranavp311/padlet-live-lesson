@@ -1,13 +1,11 @@
 import "server-only";
 import type { Kind } from "@/lib/diagram";
+import { SUBJECTS, type Subject } from "@/lib/subject";
 
 // Jev (TypeSafe's System One model): typed answers with calibrated probabilities, no text.
 // Docs: https://docs.typesafe.ai/api/system-one
 
-export const SUBJECTS = ["math", "biology", "chemistry", "physics", "history", "geography", "other"] as const;
-export type Subject = (typeof SUBJECTS)[number];
-
-export type Route = { drawable: number; kind: Kind | "none"; kindConfidence: number; subject: Subject; sameTopic: number | null };
+export type Route = { drawable: number; kind: Kind | "none"; kindConfidence: number; sameTopic: number | null };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function ask(state: string, questions: object): Promise<any> {
@@ -67,25 +65,19 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
         instructions: `The teacher is still explaining the same topic as the diagram "${onScreen}"`,
       },
     }),
-    subject: {
-      type: "choice",
-      instructions: "The school subject being taught",
-      criteria: {
-        math: "Mathematics",
-        biology: "Biology or life science",
-        chemistry: "Chemistry",
-        physics: "Physics",
-        history: "History",
-        geography: "Geography or earth science",
-        other: "Any other subject",
-      },
-    },
   });
   return {
     drawable: a.drawable.noul,
     kind: a.kind.choice,
     kindConfidence: a.kind.confidence,
-    subject: a.subject.choice,
     sameTopic: a.same_topic?.noul ?? null,
   };
+}
+
+// Picks the lesson's subject (and so its icon) from the title, or the first sentences if there's no title.
+export async function pickSubject(text: string): Promise<Subject> {
+  const a = await ask(text, {
+    subject: { type: "choice", instructions: "The school subject this lesson is about", criteria: SUBJECTS },
+  });
+  return a.subject.choice;
 }

@@ -127,8 +127,8 @@ export function Live({ l }: { l: L }) {
           <span className="tnum">{formatClock(secs)}</span>
           <MicBars level={l.level} />
         </div>
-        <button className="btn btn-dark" onClick={() => void l.end()}>
-          End lesson
+        <button className="btn btn-dark" onClick={() => void l.end()} disabled={l.ending}>
+          {l.ending ? "Ending…" : "End lesson"}
         </button>
       </header>
       <div className="lesson-head">
@@ -236,8 +236,9 @@ export function Ended({ l }: { l: L }) {
     else dialog.current?.close();
   }, [viewing]);
 
-  const lesson = e && {
-    ...e,
+  // Download works even if the summary failed: the transcript, diagrams and to-dos are already here.
+  const lesson = {
+    ...(e ?? {}),
     duration_s: Math.round((l.endedAt - l.startedAt) / 1000),
     diagrams: l.archive.map((d) => ({ ...d, fresh: undefined })),
     todos: l.todos.map((t) => ({ kind: t.kind, text: t.text, due: t.due })),
@@ -316,13 +317,20 @@ export function Ended({ l }: { l: L }) {
                 <span className="t14">All three payloads</span>
               </div>
             </div>
-            <button className="btn btn-soft" disabled={!e} onClick={download}>
+            <button className="btn btn-soft" onClick={download}>
               <Icon name="download" />
               Download
             </button>
           </div>
         </div>
-        {l.exportError && <p className="err">{l.exportError}</p>}
+        {l.exportError && (
+          <p className="err" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {l.exportError}
+            <button className="btn btn-soft" onClick={() => void l.retryExport()}>
+              Try again
+            </button>
+          </p>
+        )}
 
         {l.archive.length > 0 && (
           <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>

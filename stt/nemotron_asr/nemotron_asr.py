@@ -566,7 +566,13 @@ class NemotronASR:
                     
                     # Wait for any remaining frames to be processed
                     # This ensures we don't miss the last frames in the buffer
-                    await asyncio.sleep(1.0)  # 1 second buffer to process remaining frames
+                    # Live Lesson: wait until the pipeline has consumed this stream's frames (it drops the
+                    # stream once drained), not a fixed second, so END never overtakes a catch-up backlog.
+                    waited = 0.0
+                    while stream_id in self.pipeline._streaming_request_generator.streams and waited < 60:
+                        await asyncio.sleep(0.2)
+                        waited += 0.2
+                    await asyncio.sleep(0.5)  # let the last batch be routed
                     if got_text_end:
                         await transcription_queue.put({'output': None, 'audio_timestamp': 0.0, 'is_marker': True})
                     
@@ -890,8 +896,9 @@ class NemotronASR:
                                         'audio_timestamp': current_timestamp,
                                     }
                                     all_outputs_with_timestamps.append(output_dict)
-                                
-                                
+                                # Live Lesson: send each batch's text as soon as it's decoded, so a cold-start
+                                # backlog streams out progressively instead of arriving in one burst at the end.
+                                await self.route_outputs(all_outputs_with_timestamps[-len(outputs):])
                                 
                             except Exception as e:
                                 if type(e).__name__ == 'NotEnoughDataException':
@@ -966,7 +973,8 @@ class NemotronASR:
 
                         # Route all outputs 
                         route_start = time.perf_counter()
-                        await self.route_outputs(all_outputs_with_timestamps)
+                        if not self.exhaustive_batching:  # exhaustive mode already routed per batch
+                            await self.route_outputs(all_outputs_with_timestamps)
                         route_end = time.perf_counter()
                         timing_stats['route_outputs'].append((route_end - route_start) * 1000)
                         

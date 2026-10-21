@@ -5,16 +5,17 @@ export async function startMic(onFrame: (pcm: ArrayBuffer, level: number) => voi
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   });
-  const ctx = new AudioContext({ sampleRate: 16000 });
+  let ctx: AudioContext | undefined;
   let source: MediaStreamAudioSourceNode;
   let node: AudioWorkletNode;
   try {
+    ctx = new AudioContext({ sampleRate: 16000 });
     await ctx.audioWorklet.addModule("/pcm-worklet.js");
     source = ctx.createMediaStreamSource(stream);
     node = new AudioWorkletNode(ctx, "pcm-worklet");
   } catch (e) {
     stream.getTracks().forEach((t) => t.stop());
-    void ctx.close();
+    void ctx?.close();
     throw e;
   }
   node.port.onmessage = (e: MessageEvent<{ pcm: ArrayBuffer; level: number }>) => onFrame(e.data.pcm, e.data.level);

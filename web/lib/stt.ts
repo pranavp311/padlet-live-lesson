@@ -24,12 +24,18 @@ export function connectStt(handlers: {
   const held: ArrayBuffer[] = [];
   let ready = false;
   let ended: (() => void) | null = null;
+  let closedByUs = false;
+  let idle: ReturnType<typeof setTimeout> | undefined;
 
   ws.onmessage = (e) => {
     if (typeof e.data !== "string") return;
+    if (ended) {
+      // Ending: the server may still be catching up, so keep waiting while text keeps coming.
+      clearTimeout(idle);
+      idle = setTimeout(stop, 5000);
+    }
     if (e.data === "END") {
-      ended?.();
-      ws.close();
+      stop();
       return;
     }
     const msg = JSON.parse(e.data);
@@ -43,10 +49,18 @@ export function connectStt(handlers: {
       handlers.onText(msg.text, msg.audio_timestamp ?? 0);
     }
   };
-  ws.onclose = (e) => {
+  ws.onclose = () => {
     ended?.();
-    handlers.onClose(e.wasClean ? undefined : "Connection lost");
+    // Any close we didn't ask for is a lost lesson connection, even a "clean" one from the server.
+    handlers.onClose(closedByUs ? undefined : "Connection lost");
   };
+
+  function stop() {
+    closedByUs = true;
+    clearTimeout(idle);
+    ws.close();
+    ended?.();
+  }
 
   return {
     send(pcm) {
@@ -57,19 +71,21 @@ export function connectStt(handlers: {
     end() {
       return new Promise((resolve) => {
         if (!ready || ws.readyState !== WebSocket.OPEN) {
-          ws.close();
+          stop();
           return resolve();
         }
-        ended = resolve;
-        // The server only feeds audio to the model in ~560 ms batches and stops replying once it
-        // echoes END, so 1.2 s of silence first pushes the last real words through.
+        ended = () => {
+          ended = null;
+          resolve();
+        };
+        // The server feeds audio to the model in ~560 ms batches, so 1.2 s of silence pushes the
+        // last real words through. It echoes END once it has processed everything.
         for (let i = 0; i < 15; i++) ws.send(new ArrayBuffer(2560));
+        closedByUs = true;
         ws.send("END");
-        setTimeout(resolve, 4000);
+        idle = setTimeout(stop, 5000);
       });
     },
-    close() {
-      ws.close();
-    },
+    close: stop,
   };
 }

@@ -7,16 +7,16 @@ import { connectStt, warmStt, type Stt } from "@/lib/stt";
 import { splitSettled, type Sentence } from "@/lib/transcript";
 import type { LessonExport } from "@/app/api/export/route";
 import type { Todo } from "@/lib/todo";
+import type { Subject } from "@/lib/subject";
 
 export type Phase = "ready" | "warming" | "live" | "ended";
-export type Subject = "math" | "biology" | "chemistry" | "physics" | "history" | "geography" | "other";
 
 const DRAWABLE = 0.75;
 const NEW_DIAGRAM_GAP_S = 20;
 const DISMISS_S = 60;
 
 type DiagramReply = {
-  jev?: { drawable: number; subject: Subject };
+  jev?: { drawable: number };
   action?: "none" | "update" | "new_topic";
   kind?: Kind;
   ops?: Op[];
@@ -39,6 +39,7 @@ export function useLesson() {
   const [lessonExport, setLessonExport] = useState<LessonExport | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
 
   // Refs mirror state that async callbacks read, so they never see stale values.
   const r = useRef({
@@ -56,7 +57,7 @@ export function useLesson() {
     streak: 0,
     lastCreatedAt: -Infinity,
     quietUntil: -Infinity,
-    subjects: {} as Record<string, number>,
+    iconPicked: false,
     nextId: 1,
     lesson: 0, // bumped per lesson; async replies from an older lesson are dropped
     live: false, // between Start and End/Cancel; diagram checks only run while live
@@ -103,15 +104,14 @@ export function useLesson() {
         if (s.lesson !== lesson || !s.live) return;
         if (reply.jev) {
           s.streak = reply.jev.drawable >= DRAWABLE ? s.streak + 1 : 0;
-          s.subjects[reply.jev.subject] = (s.subjects[reply.jev.subject] ?? 0) + 1;
-          const top = Object.entries(s.subjects).sort((a, b) => b[1] - a[1])[0][0] as Subject;
-          setSubject(top);
         }
         if (s.pinned && !force) return;
         if (reply.action === "update" && s.current && reply.ops?.length) {
           setCur(applyOps(s.current, reply.ops));
         } else if (reply.action === "new_topic" && reply.kind && reply.ops?.length) {
           const next = applyOps(emptyDiagram(reply.kind, t), reply.ops);
+          // A diagram needs a title: Jev's same-topic check and the transcript thumbnail both use it.
+          next.title ||= next.nodes[0]?.label ?? next.events[0]?.label ?? next.curves[0]?.label ?? "Diagram";
           if (!isEmpty(next)) {
             fileAway(s.current);
             setCur(next);
@@ -130,6 +130,19 @@ export function useLesson() {
     },
     [fileAway],
   );
+
+  // Jev picks the lesson's subject, and so its icon, once: from the title at Start, or from the first sentences.
+  const pickIcon = useCallback((text: string) => {
+    const s = r.current;
+    s.iconPicked = true;
+    const lesson = s.lesson;
+    fetch("/api/subject", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
+      .then((res) => res.json())
+      .then(({ subject }: { subject?: Subject }) => {
+        if (subject && s.lesson === lesson) setSubject(subject);
+      })
+      .catch((e) => console.error("subject failed", e));
+  }, []);
 
   const settle = useCallback(
     (texts: string[]) => {
@@ -153,17 +166,37 @@ export function useLesson() {
               s.sentences = s.sentences.map((x) => (x.id === sentence.id ? { ...x, clean: text } : x));
               setSentences(s.sentences);
             }
-            if (todo && !s.todos.some((t) => t.text.toLowerCase() === todo.text.toLowerCase())) {
-              s.todos = [...s.todos, todo];
+            if (todo && !s.todos.some((t) => sameTodo(t, todo))) {
+              s.todos = [...s.todos, { ...todo, id: `t${s.nextId++}` }];
               setTodos(s.todos);
             }
           })
           .catch((e) => console.error("clean failed", e));
       }
+      if (!s.iconPicked && s.sentences.length >= 2) pickIcon(s.sentences.map((x) => x.raw).join(" "));
       if (added.length) void checkDiagram();
     },
-    [checkDiagram],
+    [checkDiagram, pickIcon],
   );
+
+  // Settles whatever is still pending. A lone closing mark (sent at the start of the next phrase)
+  // belongs to the last sentence rather than becoming a sentence of its own.
+  const settleRest = useCallback(() => {
+    const s = r.current;
+    const rest = s.pending.trim();
+    s.pending = "";
+    setPending("");
+    if (!rest) return;
+    if (/^[.?!]+$/.test(rest)) {
+      const last = s.sentences[s.sentences.length - 1];
+      if (last && !/[.?!]$/.test(last.raw)) {
+        s.sentences = s.sentences.map((x) => (x === last ? { ...x, raw: x.raw + rest } : x));
+        setSentences(s.sentences);
+      }
+      return;
+    }
+    settle([rest]);
+  }, [settle]);
 
   const stopAudio = () => {
     r.current.mic?.stop();
@@ -179,8 +212,13 @@ export function useLesson() {
     s.startedAt = Date.now();
     setStartedAt(s.startedAt);
     const mine = () => s.lesson === lesson && s.live; // ignore events from a cancelled lesson's socket
-    s.stt = connectStt({
-      onReady: () => mine() && setPhase((p) => (p === "warming" ? "live" : p)),
+    if (title.trim()) pickIcon(title.trim());
+    let gotReady = false;
+    const stt = (s.stt = connectStt({
+      onReady: () => {
+        gotReady = true;
+        if (mine()) setPhase((p) => (p === "warming" ? "live" : p));
+      },
       onText: (piece) => {
         if (!mine()) return;
         // A phrase after a pause can open with the previous one's comma; it has nothing to attach to.
@@ -199,17 +237,17 @@ export function useLesson() {
         if (done.length) settle(done);
       },
       onPause: () => {
-        if (!mine()) return;
-        const rest = s.pending.trim();
-        if (!rest) return;
-        s.pending = "";
-        setPending("");
-        settle([rest]);
+        if (mine()) settleRest();
       },
       onClose: (err) => {
-        if (err && mine()) setError("Lost the connection to speech-to-text. End the lesson to keep what you have.");
+        if (!err || !mine()) return;
+        setError(
+          gotReady
+            ? "Lost the connection to speech-to-text. End the lesson to keep what you have."
+            : "Couldn't reach speech-to-text. Cancel and try again.",
+        );
       },
-    });
+    }));
     try {
       const mic = await startMic((pcm, lvl) => {
         s.stt?.send(pcm);
@@ -219,8 +257,9 @@ export function useLesson() {
       s.mic = mic;
     } catch (e) {
       console.error("mic failed", e);
+      if (!mine()) return; // a cancelled lesson's prompt; the current lesson isn't affected
       s.live = false;
-      s.stt?.close();
+      stt.close();
       setError(
         e instanceof DOMException && e.name === "NotAllowedError"
           ? "Microphone blocked. Allow it in the address bar and try again."
@@ -228,7 +267,7 @@ export function useLesson() {
       );
       setPhase("ready");
     }
-  }, [settle]);
+  }, [settle, settleRest, pickIcon, title]);
 
   const cancel = useCallback(() => {
     stopAudio();
@@ -237,26 +276,10 @@ export function useLesson() {
     setPhase("ready");
   }, []);
 
-  const end = useCallback(async () => {
+  const buildExport = useCallback(async () => {
     const s = r.current;
-    if (!s.live || s.ending) return; // End clicked twice
-    s.ending = true;
     const lesson = s.lesson;
-    stopAudio();
-    await s.stt?.end(); // the last words still arrive during this wait, so stay live until it returns
-    s.live = false;
-    s.ending = false;
-    if (s.lesson !== lesson) return;
-    const rest = s.pending.trim();
-    s.pending = "";
-    setPending("");
-    if (rest) settle([rest]);
-    setEndedAt(Date.now());
-    fileAway(s.current);
-    setCur(null);
-    setPhase("ended");
-    // Let the last clean-ups land before building the summary.
-    await new Promise((res) => setTimeout(res, 1500));
+    setExportError(null);
     try {
       const res = await fetch("/api/export", {
         method: "POST",
@@ -275,7 +298,29 @@ export function useLesson() {
       console.error("export failed", e);
       if (s.lesson === lesson) setExportError("Couldn't build the summary.");
     }
-  }, [fileAway, settle, title]);
+  }, [title]);
+
+  const end = useCallback(async () => {
+    const s = r.current;
+    if (!s.live || s.ending) return; // End clicked twice
+    s.ending = true;
+    setEnding(true);
+    const lesson = s.lesson;
+    stopAudio();
+    await s.stt?.end(); // the last words still arrive during this wait, so stay live until it returns
+    s.live = false;
+    s.ending = false;
+    setEnding(false);
+    if (s.lesson !== lesson) return;
+    settleRest();
+    setEndedAt(Date.now());
+    fileAway(s.current);
+    setCur(null);
+    setPhase("ended");
+    // Let the last clean-ups land before building the summary.
+    await new Promise((res) => setTimeout(res, 1500));
+    if (s.lesson === lesson) await buildExport();
+  }, [fileAway, settleRest, buildExport]);
 
   const drawThis = useCallback(() => void checkDiagram(true), [checkDiagram]);
 
@@ -298,7 +343,7 @@ export function useLesson() {
       live: false,
       ending: false,
       pending: "", sentences: [], current: null, archive: [], todos: [], pinned: false, streak: 0,
-      lastCreatedAt: -Infinity, quietUntil: -Infinity, subjects: {}, queued: null,
+      lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null,
     });
     setSentences([]);
     setPending("");
@@ -317,6 +362,17 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, start, cancel, end, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, ending, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
+}
+
+// Same reminder said twice ("Worksheet due Friday" / "Photosynthesis worksheet due Friday").
+function sameTodo(a: Todo, b: Todo) {
+  if (a.kind !== b.kind) return false;
+  if (a.due && b.due && a.due.toLowerCase() === b.due.toLowerCase()) return true;
+  const words = (t: string) => new Set(t.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+  const wa = words(a.text);
+  const wb = words(b.text);
+  const shared = [...wa].filter((w) => wb.has(w)).length;
+  return shared / Math.min(wa.size, wb.size) >= 0.6;
 }

@@ -40,7 +40,18 @@ export async function POST(req: Request) {
       Array.isArray(e.sections) && Array.isArray(e.key_terms) &&
       Array.isArray(e.targets?.board?.posts) && Array.isArray(e.targets?.arcade?.questions) && Array.isArray(e.targets?.sandbox?.cards);
     if (!ok) throw new Error(`Summary is missing fields: ${JSON.stringify(e).slice(0, 300)}`);
-    return Response.json(e);
+    // Keep only well-formed items, so one bad entry can't break the Ended screen.
+    const str = (v: unknown) => typeof v === "string" && v.length > 0;
+    return Response.json({
+      ...e,
+      sections: e.sections.filter((x) => x && str(x.heading) && str(x.summary)).map((x) => ({ ...x, start_s: Number(x.start_s) || 0 })),
+      key_terms: e.key_terms.filter((x) => x && str(x.term) && str(x.definition)),
+      targets: {
+        board: { posts: e.targets.board.posts.filter((x) => x && str(x.subject) && str(x.body)) },
+        arcade: { ...e.targets.arcade, questions: e.targets.arcade.questions.filter((x) => x && str(x.q) && str(x.answer) && Array.isArray(x.distractors)) },
+        sandbox: { cards: e.targets.sandbox.cards.filter((x) => x && str(x.title) && str(x.body)) },
+      },
+    });
   } catch (e) {
     console.error("export failed", e);
     return Response.json({ error: String(e) }, { status: 502 });

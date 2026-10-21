@@ -33,13 +33,13 @@ export async function POST(req: Request) {
       const existing = todos.map((t) => t.text).join("; ") || "(empty)";
       const reply = await llmJson<{ todo: Omit<Todo, "id"> | null }>(
         TODO,
-        `Existing list: ${existing}\n\nTeacher said: ${text ?? sentence}`,
+        `Existing list: ${existing}\n\nTeacher said: ${[...context.slice(-1), text ?? sentence].join(" ")}`,
         200,
       );
       const t = reply.todo;
       if (t && typeof t.text === "string" && t.text.trim()) {
         todo = {
-          id: `t${Date.now()}`,
+          id: "", // the client assigns ids
           kind: TODO_KINDS.includes(t.kind) ? t.kind : "other",
           text: t.text.trim(),
           ...(typeof t.due === "string" && t.due && { due: t.due }),

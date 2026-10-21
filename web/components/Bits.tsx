@@ -1,5 +1,5 @@
 import type { Todo, TodoKind } from "@/lib/todo";
-import type { Subject } from "@/lib/useLesson";
+import type { Subject } from "@/lib/subject";
 
 // Small shared pieces: logo, icons, subject tile, mic level.
 
@@ -35,6 +35,10 @@ const PATHS: Record<string, string[]> = {
   homework: ["M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4", "M2 6h4", "M2 10h4", "M2 14h4", "M2 18h4", "M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"],
   bring: ["M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z", "M8 10h8", "M8 18h8", "M8 22v-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v6", "M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"],
   deadline: ["M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5", "M16 2v4", "M8 2v4", "M3 10h5", "M17.5 17.5 16 16.3V14", "M22 16a6 6 0 1 1-12 0 6 6 0 0 1 12 0z"],
+  palette: ["M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z", "M13.5 6.5h.01", "M17.5 10.5h.01", "M6.5 12.5h.01", "M8.5 7.5h.01"],
+  music: ["M9 18V5l12-2v13", "M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z", "M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"],
+  code: ["m16 18 6-6-6-6", "m8 6-6 6 6 6"],
+  languages: ["m5 8 6 6", "m4 14 6-6 2-3", "M2 5h12", "M7 2h1", "m22 22-5-10-5 10", "M14 18h6"],
   lesson: ["M2 3h20", "M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3", "m7 21 5-5 5 5", "M7 12l3-3 2 2 4-4"],
 };
 
@@ -55,7 +59,12 @@ const SUBJECT: Record<Subject, { icon: keyof typeof PATHS; bg: string; fg: strin
   physics: { icon: "atom", bg: "var(--grape-tint)", fg: "#520085" },
   history: { icon: "landmark", bg: "var(--canary-tint)", fg: "#913d00" },
   geography: { icon: "globe", bg: "var(--oceanic-tint)", fg: "#003f7c" },
-  other: { icon: "book", bg: "var(--canary-tint)", fg: "#913d00" },
+  literature: { icon: "book", bg: "var(--canary-tint)", fg: "#913d00" },
+  languages: { icon: "languages", bg: "var(--scarlet-tint)", fg: "#7c0000" },
+  art: { icon: "palette", bg: "var(--scarlet-tint)", fg: "#7c0000" },
+  music: { icon: "music", bg: "var(--grape-tint)", fg: "#520085" },
+  computing: { icon: "code", bg: "var(--oceanic-tint)", fg: "#003f7c" },
+  other: { icon: "lesson", bg: "var(--grape-tint)", fg: "#520085" },
 };
 
 export function SubjectTile({ subject, size = 48 }: { subject: Subject; size?: number }) {
