@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { DiagramView } from "@/components/Diagram";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { Bubbles } from "@/components/Bubbles";
@@ -194,17 +194,34 @@ export function Live({ l }: { l: L }) {
   const d = l.current;
 
   // The panel shows the live diagram unless the teacher steps back (‹ ›) through earlier ones.
-  const list = d ? [...l.archive, d] : l.archive;
+  const list = useMemo(() => (d ? [...l.archive, d] : l.archive), [d, l.archive]);
   const [view, setView] = useState<number | null>(null);
   const [open, setOpen] = useState<number | null>(null);
-  useEffect(() => setView(null), [d?.id]); // a new diagram brings the panel back to live
-  const shownIdx = view ?? (d ? list.length - 1 : null);
+  // Pinned: the panel rests on the pinned diagram instead of the newest one.
+  const pinnedIdx = l.pinnedId ? list.findIndex((x) => x.id === l.pinnedId) : -1;
+  const pinned = pinnedIdx >= 0;
+  useEffect(() => {
+    if (!l.pinnedId) setView(null); // a new diagram brings the panel back to live, unless one is pinned
+  }, [d?.id, l.pinnedId]);
+  const home = pinned ? pinnedIdx : d ? list.length - 1 : null;
+  const shownIdx = view ?? home;
   const panelD = shownIdx === null ? null : list[shownIdx];
-  const isLive = view === null && !!d;
+  const isLive = view === null && !!d && !pinned;
   const step = (by: number) => {
     const next = Math.min(list.length - 1, Math.max(0, (shownIdx ?? list.length) + by));
-    setView(d && next === list.length - 1 ? null : next);
+    setView(next === home ? null : next);
   };
+
+  // Diagrams drawn while pinned that haven't been looked at yet, for the green badge.
+  const [seen, setSeen] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    // Not pinned: the panel follows the newest diagram, so everything counts as seen.
+    // Only set state when something is actually new, or this effect (which depends on `seen`) loops.
+    if (!pinned) {
+      if (list.some((x) => !seen.has(x.id))) setSeen(new Set(list.map((x) => x.id)));
+    } else if (panelD && !seen.has(panelD.id)) setSeen((s) => new Set(s).add(panelD.id));
+  }, [pinned, list, panelD, seen]);
+  const unseen = pinned ? list.filter((x) => !seen.has(x.id)) : [];
 
   return (
     <div className="wall" style={{ height: "100vh", overflow: "hidden" }}>
@@ -291,8 +308,10 @@ export function Live({ l }: { l: L }) {
                 <span className="drawing-caption">Drawing…</span>
                 <StopButton onStop={l.stopDrawing} />
               </>
+            ) : l.listening ? (
+              <span className="drawing-caption">Listening…</span>
             ) : (
-              l.listening && <span className="drawing-caption">Listening…</span>
+              l.bubblesNote && <span className="bubbles-note">{l.bubblesNote}</span>
             )}
             <Bubbles size={92} mood={l.drawing ? "drawing" : l.listening ? "listening" : "idle"} />
           </div>
@@ -310,23 +329,40 @@ export function Live({ l }: { l: L }) {
             <h2 className="h2">{panelD?.title ?? ""}</h2>
             {view !== null && d && (
               <button className="btn btn-ghost" onClick={() => setView(null)}>
-                Back to live
+                {pinned ? "Back to pinned" : "Back to live"}
               </button>
             )}
             <button className="btn btn-ghost" onClick={l.drawThis} disabled={!l.sentences.length || l.drawing}>
               <Icon name="pen" />
               Draw this
             </button>
+            {panelD && (
+              <button
+                className="btn btn-ghost"
+                aria-pressed={panelD.id === l.pinnedId}
+                onClick={() => {
+                  setView(null);
+                  l.togglePin(panelD.id);
+                }}
+              >
+                <Icon name="pin" />
+                {panelD.id === l.pinnedId ? "Pinned" : "Pin"}
+              </button>
+            )}
             {isLive && (
-              <>
-                <button className="btn btn-ghost" aria-pressed={l.pinned} onClick={l.togglePin}>
-                  <Icon name="pin" />
-                  {l.pinned ? "Pinned" : "Pin"}
-                </button>
-                <button className="btn btn-ghost btn-icon" aria-label="Dismiss" onClick={l.dismiss}>
-                  <Icon name="x" />
-                </button>
-              </>
+              <button className="btn btn-ghost btn-icon" aria-label="Dismiss" onClick={l.dismiss}>
+                <Icon name="x" />
+              </button>
+            )}
+            {unseen.length > 0 && (
+              <button
+                className="unseen"
+                aria-label={`${unseen.length} new diagram${unseen.length > 1 ? "s" : ""} while pinned`}
+                title="New while pinned"
+                onClick={() => setView(list.indexOf(unseen[0]))}
+              >
+                {unseen.length}
+              </button>
             )}
           </div>
           {panelD ? (
@@ -363,7 +399,7 @@ export function Live({ l }: { l: L }) {
 function MuteButton({ muted, onToggle }: { muted: boolean; onToggle: () => void }) {
   return (
     <button className={muted ? "mute mute-on" : "mute"} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={onToggle}>
-      <Icon name={muted ? "micOff" : "mic"} size={18} />
+      <Icon name={muted ? "micOff" : "mic"} size={22} />
       {muted && "Muted"}
     </button>
   );

@@ -77,12 +77,12 @@ async function drawRequest(heard: string, said: string, current: Diagram | null,
     const [jev, asked, edits] = await Promise.all([
       route(ask, null),
       asksBubbles(ask),
-      current ? editsDiagram(ask, current.title) : Promise.resolve(0),
+      current ? editsDiagram(ask, said, describe(current)) : Promise.resolve(0),
     ]);
     // Bubbles answers any request (draw, show, explain…) with a diagram, but not thanks or mentions.
     if (asked < ASKED) {
       console.info("diagram", JSON.stringify({ path: "bubbles-ignored", ask, asked }));
-      return { jev, action: "none" };
+      return { jev, action: "none", ignored: true }; // not a request (thanks, a mention): stay quiet
     }
     send({ jev, drawing: true });
     if (current && edits >= ASKED) {
@@ -111,6 +111,15 @@ function ndjson(run: (send: (line: object) => void) => Promise<unknown>) {
     },
   });
   return new Response(body, { headers: { "Content-Type": "application/x-ndjson" } });
+}
+
+// "a graph titled 'Pythagoras theorem' showing: a, b, c, right angle", for Jev's edit check.
+function describe(d: Diagram) {
+  const labels = [
+    ...d.nodes.map((n) => n.label), ...d.events.map((e) => e.label), ...d.curves.map((c) => c.label ?? ""),
+    ...d.points.map((p) => p.label ?? ""), ...(d.segments ?? []).map((g) => g.label ?? ""), d.caption ?? "",
+  ].filter(Boolean);
+  return `a ${d.kind} titled '${d.title}'${labels.length ? ` showing: ${labels.slice(0, 12).join(", ")}` : ""}`;
 }
 
 function compact(d: Diagram) {

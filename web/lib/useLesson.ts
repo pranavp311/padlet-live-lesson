@@ -34,6 +34,7 @@ type DiagramReply = {
   kind?: Kind;
   ops?: Op[];
   error?: string;
+  ignored?: boolean; // a "Bubbles" mention that wasn't a request
 };
 
 export function useLesson() {
@@ -48,7 +49,8 @@ export function useLesson() {
   const [current, setCurrent] = useState<Diagram | null>(null);
   const [archive, setArchive] = useState<Diagram[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [pinned, setPinned] = useState(false);
+  // The pinned diagram stays on screen; new diagrams are still drawn and added behind it.
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [subject, setSubject] = useState<Subject>("other");
   const [lessonExport, setLessonExport] = useState<LessonExport | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -59,6 +61,8 @@ export function useLesson() {
   const [listening, setListening] = useState(false);
   // The server confirmed a diagram is being drawn (Jev decided): Bubbles draws, the board shows dots.
   const [drawing, setDrawing] = useState(false);
+  // Shown by Bubbles for a few seconds when a request to him produced nothing.
+  const [bubblesNote, setBubblesNote] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   // Catching up on speech held during a cold start: progress 0–1, or null. While set, the transcript is hidden.
   const [catchUp, setCatchUp] = useState<number | null>(null);
@@ -80,7 +84,7 @@ export function useLesson() {
     current: null as Diagram | null,
     archive: [] as Diagram[],
     todos: [] as Todo[],
-    pinned: false,
+    pinnedId: null as string | null,
     inFlight: false,
     queued: null as null | { force: boolean; ask?: string },
     wakeSeen: 0, // how many times "Bubbles" has been heard so far
@@ -109,6 +113,11 @@ export function useLesson() {
     setCurrent(d);
   };
 
+  const findDiagram = (id: string | null) => {
+    const s = r.current;
+    return id ? (s.current?.id === id ? s.current : s.archive.find((x) => x.id === id)) ?? null : null;
+  };
+
   const fileAway = useCallback((d: Diagram | null) => {
     if (!d || isEmpty(d)) return;
     r.current.archive = [...r.current.archive, { ...d, fresh: [] }];
@@ -122,7 +131,7 @@ export function useLesson() {
         s.queued = { force: force || !!s.queued?.force, ask: ask ?? s.queued?.ask };
         return;
       }
-      if (!s.live || (s.pinned && !force)) return;
+      if (!s.live) return;
       const lesson = s.lesson;
       const t = now();
       const recent = s.sentences.slice(-3).map((x) => x.clean ?? x.raw);
@@ -135,7 +144,8 @@ export function useLesson() {
         const res = await fetch("/api/diagram", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recent, current: s.current, allowCreate, force, ask }),
+          // A "Bubbles, …" request is about the diagram on screen, which is the pinned one while pinned.
+          body: JSON.stringify({ recent, current: (ask && findDiagram(s.pinnedId)) || s.current, allowCreate, force, ask }),
           signal: abort.signal,
         });
         // NDJSON: an early {"drawing": true} line (start the animation), then the result line.
@@ -152,7 +162,7 @@ export function useLesson() {
             const line = JSON.parse(buf.slice(0, nl));
             buf = buf.slice(nl + 1);
             if (line.drawing) {
-              if (s.lesson === lesson && s.live && !(s.pinned && !force)) {
+              if (s.lesson === lesson && s.live) {
                 setListening(false);
                 setDrawing(true);
               }
@@ -161,12 +171,25 @@ export function useLesson() {
         }
         if (reply.error) console.error("diagram", reply.error);
         if (s.lesson !== lesson || !s.live) return;
+        // A request to Bubbles that drew nothing shouldn't fail silently.
+        if (ask && !reply.ignored && !reply.ops?.length) {
+          setBubblesNote("I wasn't sure what to draw. Try naming it.");
+          setTimeout(() => setBubblesNote(null), 4500);
+        }
         if (reply.jev) {
           s.streak = reply.jev.drawable >= DRAWABLE ? s.streak + 1 : 0;
         }
-        if (s.pinned && !force) return;
-        if (reply.action === "update" && s.current && reply.ops?.length) {
-          setCur(applyOps(s.current, reply.ops));
+        if (reply.action === "update" && reply.ops?.length) {
+          const target = (ask && findDiagram(s.pinnedId)) || s.current;
+          // The pinned diagram is frozen, except when the teacher asks Bubbles to change it.
+          if (target && (target.id !== s.pinnedId || ask)) {
+            const next = applyOps(target, reply.ops);
+            if (target === s.current) setCur(next);
+            else {
+              s.archive = s.archive.map((x) => (x.id === target.id ? { ...next, fresh: [] } : x));
+              setArchive(s.archive);
+            }
+          }
         } else if (reply.action === "new_topic" && reply.kind && reply.ops?.length) {
           const next = applyOps(emptyDiagram(reply.kind, t), reply.ops);
           // A diagram needs a title: Jev's same-topic check and the transcript thumbnail both use it.
@@ -175,7 +198,6 @@ export function useLesson() {
             fileAway(s.current);
             setCur(next);
             s.lastCreatedAt = t;
-            setPinned((s.pinned = false));
           }
         }
       } catch (e) {
@@ -317,11 +339,17 @@ export function useLesson() {
   const listenForBubbles = useCallback(() => {
     const s = r.current;
     const heard = (s.sentences.map((x) => x.raw).join(" ") + " " + s.pending).match(WAKE)?.length ?? 0;
-    if (heard > s.wakeSeen && !s.summon) {
-      // Attentive the moment the name is heard; drawing only starts once the server confirms.
+    if (heard > s.wakeSeen) {
+      // Attentive the moment the name is heard; drawing only starts once the server confirms. Each new
+      // mention restarts the window at its own sentence, so "Thank you, Bubbles… Okay Bubbles, draw…"
+      // asks only for what follows the latest mention.
       const pendingHasName = WAKE.test(s.pending);
       WAKE.lastIndex = 0;
-      s.summon = { start: pendingHasName ? s.sentences.length : Math.max(0, s.sentences.length - 1) };
+      const start = pendingHasName ? s.sentences.length : Math.max(0, s.sentences.length - 1);
+      if (s.summon) {
+        clearTimeout(s.summon.timer);
+        s.summon.start = start;
+      } else s.summon = { start };
       setListening(true);
     }
     s.wakeSeen = heard;
@@ -543,16 +571,20 @@ export function useLesson() {
     setListening(false);
   }, []);
 
-  const togglePin = useCallback(() => {
-    r.current.pinned = !r.current.pinned;
-    setPinned(r.current.pinned);
+  // Pins diagram `id` (default: the newest); clicking Pin on the pinned diagram unpins it, and on
+  // another diagram moves the pin there.
+  const togglePin = useCallback((id?: string) => {
+    const s = r.current;
+    const target = id ?? s.current?.id ?? null;
+    s.pinnedId = s.pinnedId === target ? null : target;
+    setPinnedId(s.pinnedId);
   }, []);
 
   const dismiss = useCallback(() => {
     fileAway(r.current.current);
     setCur(null);
-    r.current.pinned = false;
-    setPinned(false);
+    r.current.pinnedId = null;
+    setPinnedId(null);
     r.current.quietUntil = now() + DISMISS_S;
   }, [fileAway]);
 
@@ -565,7 +597,7 @@ export function useLesson() {
       ending: false,
       subject: "other",
       catchingUp: false, cleans: [],
-      pending: "", sentences: [], current: null, archive: [], todos: [], pinned: false, streak: 0,
+      pending: "", sentences: [], current: null, archive: [], todos: [], pinnedId: null, streak: 0,
       lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null, wakeSeen: 0, summon: null,
     });
     setCatchUp(null);
@@ -575,7 +607,7 @@ export function useLesson() {
     setCurrent(null);
     setArchive([]);
     setTodos([]);
-    setPinned(false);
+    setPinnedId(null);
     setSubject("other");
     setLessonExport(null);
     setExportError(null);
@@ -586,8 +618,8 @@ export function useLesson() {
   }, []);
 
   return {
-    phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, stopDrawing, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinnedId, subject,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, bubblesNote, stopDrawing, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 

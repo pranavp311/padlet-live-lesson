@@ -282,9 +282,13 @@
 .thumb-img .diagram-caption { display: none; }
 /* Mute, in the card with the words being said */
 .para.now { position: relative; padding-right: 64px; }
-.mute { position: absolute; top: 12px; right: 12px; height: 36px; min-width: 36px; padding: 0 9px; border: 0; border-radius: 10px; background: transparent; color: var(--text-3); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--text-2); }
+.mute { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); height: 44px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text-3); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--text-2); }
 .mute:hover { background: var(--surface); color: #111; }
 .mute-on { background: var(--scarlet-tint); color: #b00020; }
 .mute-on:hover { background: #ffc8c8; color: #b00020; }
 .para.now.hint { color: var(--text-3); }
 .para.now:has(.mute-on) { padding-right: 112px; }
+/* New diagrams drawn while one is pinned */
+.unseen { position: absolute; top: -10px; right: -10px; z-index: 2; min-width: 28px; height: 28px; padding: 0 8px; border: 3px solid var(--wall); border-radius: 999px; background: #22a33b; color: #fff; font: inherit; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; animation: ll-in 400ms var(--ease) both; }
+.unseen:hover { background: #1b8a31; }
+.bubbles-note { max-width: 220px; padding: 8px 12px; border-radius: 12px 12px 4px 12px; background: #fff; box-shadow: var(--shadow-card); font-size: 13px; line-height: 18px; color: var(--text-2); animation: ll-fade 200ms var(--ease) both; }
