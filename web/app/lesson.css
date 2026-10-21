@@ -284,8 +284,10 @@
 @keyframes toast-in { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 .btn-create { background: var(--grape-strong); color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,.16); }
 .btn-create:hover { background: #7a00db; }
-.diagram-with-caption { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 0; }
-.diagram-art { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+/* Caption and drawing sit together as one block, centred; the drawing keeps its proportions and shrinks to fit. */
+.diagram-with-caption { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 0; }
+.diagram-art { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.diagram-art > svg { height: auto; max-height: 100%; }
 .diagram-caption { max-width: 100%; font-size: 18px; line-height: 24px; font-weight: 600; color: #111; text-align: center; }
 
 /* In thumbnails the caption is a small line, so the drawing keeps the space. */

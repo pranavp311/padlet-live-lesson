@@ -260,7 +260,7 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
       // evaluate can still throw (e.g. "m*x + b": undefined symbols), so a bad point becomes a gap.
       f = (x) => {
         try {
-          return Number(code.evaluate({ x }));
+          return Number(code.evaluate({ x, ln: Math.log })); // mathjs calls the natural log "log"
         } catch {
           return NaN;
         }
