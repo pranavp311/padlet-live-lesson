@@ -280,13 +280,15 @@ function Timeline({ d, still }: { d: Diagram; still: boolean }) {
   );
 }
 
-// Events in date order when every date reads as a year ("1914", "1914–1918", "500 BC"); otherwise as added.
+// Events in date order when every date reads as a plain year ("1914", "1914–1918", "500 BC", "28 June 1914");
+// otherwise (deep time, "10,000 BC") in the order the model sent them, which the prompt asks to be date order.
 function byDate<T extends { when: string }>(events: T[]) {
   const year = (w: string) => {
     const m = w.match(/-?\d{3,4}/) ?? w.match(/-?\d+/); // the year, not the day in "28 June 1914"
     if (!m) return null;
     return /\b(BC|BCE)\b/i.test(w) ? -Math.abs(+m[0]) : +m[0];
   };
+  if (events.some((e) => /ago|million|billion|thousand|\d{5,}|\d,\d{3}/i.test(e.when))) return events;
   const years = events.map((e) => year(e.when));
   if (years.some((y) => y === null)) return events;
   return events.map((e, i) => ({ e, y: years[i]! })).sort((a, b) => a.y - b.y).map((x) => x.e);
@@ -316,7 +318,8 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
   const ticks = (lo: number, hi: number) => {
     const out: number[] = [];
     const s = equal ? shared : Math.max(1, Math.round((hi - lo) / 10));
-    for (let v = Math.ceil(lo / s) * s; v <= hi; v += s) out.push(v);
+    const first = Math.ceil(lo / s);
+    for (let i = 0; i <= Math.floor(hi / s) - first && i <= 200; i++) out.push((first + i) * s);
     return out;
   };
 
@@ -795,7 +798,7 @@ function NumberLine({ d, still }: { d: Diagram; still: boolean }) {
   const H = top + (marks.some((m) => m.label) ? 96 : 60);
   const sx = sxRaw;
   const ticks: number[] = [];
-  for (let v = line.min; v <= line.max + 1e-9; v += line.step) ticks.push(+v.toFixed(6));
+  for (let i = 0; i <= Math.min(80, Math.round((line.max - line.min) / line.step)); i++) ticks.push(+(line.min + i * line.step).toFixed(6));
   const fresh = new Set(d.fresh);
   const anim = (id: string, pop = false) =>
     fresh.has(id) && !still ? (pop ? { transformBox: "fill-box" as const, transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : { animation: "ll-fade 600ms var(--ease) both" }) : undefined;
@@ -865,7 +868,7 @@ function BarChart({ d, still }: { d: Diagram; still: boolean }) {
   const H = plotTop + plotH + 70;
   const sy = (v: number) => plotTop + plotH - (v / top) * plotH;
   const grid: number[] = [];
-  for (let v = 0; v <= top + 1e-9; v += step) grid.push(+v.toFixed(6));
+  for (let i = 0; i <= Math.min(50, Math.round(top / step)); i++) grid.push(+(i * step).toFixed(6));
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
       {d.chart?.axis && (
@@ -1285,7 +1288,10 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
   const places = d.places ?? [];
   const fresh = new Set(d.fresh);
   // The view: around the places with a margin, never narrower than 30 by 20 degrees; the whole world if none.
-  const lons = places.map((p) => p.lon);
+  // Places on both sides of the 180° line (Siberia to Alaska) are seen across the Pacific, not round the world.
+  const across = places.length > 1 && Math.max(...places.map((p) => p.lon)) - Math.min(...places.map((p) => p.lon)) > 180;
+  const lonOf = (lon: number) => (across && lon < 0 ? lon + 360 : lon);
+  const lons = places.map((p) => lonOf(p.lon));
   const lats = places.map((p) => p.lat);
   let [lon0, lon1] = places.length ? [Math.min(...lons), Math.max(...lons)] : [-170, 190];
   let [lat0, lat1] = places.length ? [Math.min(...lats), Math.max(...lats)] : [-58, 82];
@@ -1314,12 +1320,22 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
   }
   const px = (lon: number) => (lon - lon0) * k * s;
   const py = (lat: number) => (lat1 - lat) * s;
-  const landPath = rings.map((r) => r.map(([lon, lat], i) => `${i ? "L" : "M"}${px(lon).toFixed(1)} ${py(lat).toFixed(1)}`).join("") + "Z").join("");
-  const at = (id: string) => places.find((p) => p.id === id);
+  // A coastline that crosses the 180° line starts a new stroke there instead of a line across the map; across the
+  // Pacific the world is drawn twice, side by side, so both shores show.
+  const landPath = (across ? [0, 360] : [0])
+    .flatMap((shift) =>
+      rings.map((r) => r.map(([lon, lat], i) => `${i && Math.abs(lon - r[i - 1][0]) <= 180 ? "L" : "M"}${px(lon + shift).toFixed(1)} ${py(lat).toFixed(1)}`).join("")),
+    )
+    .join("");
+  // A place by id, its longitude already moved across the Pacific when the view wraps.
+  const at = (id: string) => {
+    const p = places.find((x) => x.id === id);
+    return p && { ...p, lon: lonOf(p.lon) };
+  };
   // Each place's label goes above its pin unless that would hit the top edge or a label already placed.
-  const taken: [number, number, number, number][] = places.map((p) => [px(p.lon) - 11, py(p.lat) - 11, 22, 22]); // the pins
+  const taken: [number, number, number, number][] = places.map((p) => [px(lonOf(p.lon)) - 11, py(p.lat) - 11, 22, 22]); // the pins
   const labelBelow = places.map((p) => {
-    const [x, y] = [px(p.lon), py(p.lat)];
+    const [x, y] = [px(lonOf(p.lon)), py(p.lat)];
     const w = p.label.length * 9 + 24;
     const box = (below: boolean): [number, number, number, number] => [x - w / 2, below ? y + 16 : y - 46, w, 30];
     const hits = ([ax, ay, aw, ah]: number[]) => taken.some(([bx, by, bw, bh]) => ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah);
@@ -1340,7 +1356,7 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
       {(d.routes ?? []).map((r, _, all) => {
         const [a, b] = [at(r.from), at(r.to)];
         if (!a || !b) return null;
-        const [x1, y1, x2, y2] = [px(a.lon), py(a.lat), px(b.lon), py(b.lat)];
+        const [x1, y1, x2, y2] = [px(lonOf(a.lon)), py(a.lat), px(lonOf(b.lon)), py(b.lat)];
         // A gentle curve, bowed to the left of travel, stopping short of the pins.
         const len = Math.hypot(x2 - x1, y2 - y1) || 1;
         const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
@@ -1359,7 +1375,7 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
         );
       })}
       {places.map((p, i) => {
-        const [x, y] = [px(p.lon), py(p.lat)];
+        const [x, y] = [px(lonOf(p.lon)), py(p.lat)];
         const hot = fresh.has(p.id) && !still;
         const w = p.label.length * 9 + 24;
         const below = labelBelow[i];

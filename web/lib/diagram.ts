@@ -105,6 +105,8 @@ const str = (v: unknown): v is string => typeof v === "string" && v.trim().lengt
 const optStr = (v: unknown) => v === undefined || typeof v === "string";
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const range = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]) && v[0] < v[1];
+// Numbers a classroom diagram can use: big enough for populations and years, small enough to count ticks with.
+const sane = (v: unknown): v is number => num(v) && Math.abs(v) <= 1e9;
 const pair = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]);
 const ROLES = ["input", "process", "output", "other"];
 
@@ -118,6 +120,10 @@ function textFields(o: unknown): unknown {
     if (num(v[k])) v[k] = String(v[k]);
   }
   if (Array.isArray(v.sets)) v.sets = v.sets.map((x) => (num(x) ? String(x) : x));
+  const max = v.op === "set_caption" ? 140 : 80;
+  for (const k of ["label", "text", "note", "title", "when", "edge", "word"]) {
+    if (typeof v[k] === "string" && (v[k] as string).length > max) v[k] = (v[k] as string).slice(0, max - 1) + "…";
+  }
   return v;
 }
 
@@ -131,7 +137,8 @@ export function validOp(o: unknown): o is Op {
     case "relabel": return str(v.id) && str(v.label);
     case "add_edge": return str(v.from) && str(v.to) && (v.id === undefined || str(v.id)) && (v.label === undefined || typeof v.label === "string");
     case "add_event": return str(v.id) && str(v.when) && str(v.label);
-    case "set_axes": return range(v.x) && range(v.y);
+    case "set_axes":
+      return range(v.x) && range(v.y) && [...v.x, ...v.y].every(sane) && v.x[1] - v.x[0] >= 1e-6 && v.y[1] - v.y[0] >= 1e-6;
     case "add_curve": return str(v.id) && str(v.expr) && (v.label === undefined || typeof v.label === "string");
     case "add_point": return str(v.id) && num(v.x) && num(v.y) && (v.label === undefined || typeof v.label === "string");
     case "add_segment": return str(v.id) && pair(v.from) && pair(v.to) && (v.label === undefined || typeof v.label === "string");
@@ -145,10 +152,11 @@ export function validOp(o: unknown): o is Op {
     case "add_column": return str(v.id) && str(v.label);
     case "add_row": return str(v.id) && optStr(v.label);
     case "set_cell": return str(v.row) && str(v.col) && typeof v.text === "string";
-    case "set_range": return num(v.min) && num(v.max) && num(v.step) && v.min < v.max && v.step > 0 && (v.max - v.min) / v.step <= 40;
-    case "add_mark": return str(v.id) && num(v.value) && optStr(v.label);
-    case "add_jump": return str(v.id) && num(v.from) && num(v.to) && v.from !== v.to && optStr(v.label);
-    case "add_bar": return str(v.id) && str(v.label) && num(v.value) && v.value >= 0 && optStr(v.icon);
+    case "set_range":
+      return sane(v.min) && sane(v.max) && num(v.step) && v.min < v.max && v.step >= 0.001 && (v.max - v.min) / v.step <= 40;
+    case "add_mark": return str(v.id) && sane(v.value) && optStr(v.label);
+    case "add_jump": return str(v.id) && sane(v.from) && sane(v.to) && v.from !== v.to && optStr(v.label);
+    case "add_bar": return str(v.id) && str(v.label) && sane(v.value) && v.value >= 0 && optStr(v.icon);
     case "add_branch": return str(v.id) && str(v.label) && optStr(v.parent) && optStr(v.edge);
     case "add_word":
       return (
@@ -172,15 +180,33 @@ export function validOp(o: unknown): o is Op {
   }
 }
 
+// Puts each add_branch after its parent's when both are in the batch, keeping everything else where it was.
+function parentsFirst(ops: Op[]) {
+  const branches = ops.filter((o): o is Extract<Op, { op: "add_branch" }> => o.op === "add_branch");
+  const pending = new Map(branches.map((b) => [b.id, b]));
+  const ordered: Op[] = [];
+  while (pending.size) {
+    const ready = [...pending.values()].filter((b) => !b.parent || b.parent === b.id || !pending.has(b.parent));
+    for (const b of ready.length ? ready : [...pending.values()]) {
+      ordered.push(b);
+      pending.delete(b.id);
+    }
+  }
+  let k = 0;
+  return ops.map((o) => (o.op === "add_branch" ? ordered[k++] : o));
+}
+
 // Applies ops without mutating `d`. Malformed ops, and ops that point at missing parts, are skipped.
 export function applyOps(d: Diagram, raw: unknown[]): Diagram {
   // Ops that make something come before ops that refer to it, so an item sent before its Venn set (or a cell before
   // its row, a route before its place) isn't dropped. The sort is stable: order within each group is kept.
   const refers = new Set(["add_item", "set_cell", "add_route", "add_edge"]);
-  const ops = raw
-    .map(textFields)
-    .filter(validOp)
-    .sort((a, b) => Number(refers.has(a.op)) - Number(refers.has(b.op)));
+  const ops = parentsFirst(
+    raw
+      .map(textFields)
+      .filter(validOp)
+      .sort((a, b) => Number(refers.has(a.op)) - Number(refers.has(b.op))),
+  );
   const next: Diagram = {
     ...d,
     nodes: [...d.nodes],
@@ -328,8 +354,24 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
       case "add_branch":
         // A branch needs its parent drawn first (or no parent: the root); a second root becomes a branch of the first.
         {
+          const existing = next.branches!.find((b) => b.id === o.id);
+          const below = new Set([o.id]);
+          for (let grew = true; grew; ) {
+            grew = false;
+            for (const b of next.branches!) {
+              if (b.parent && below.has(b.parent) && !below.has(b.id)) {
+                below.add(b.id);
+                grew = true;
+              }
+            }
+          }
           const root = next.branches!.find((b) => !b.parent && b.id !== o.id);
-          const parent = o.parent && o.parent !== o.id && next.branches!.some((b) => b.id === o.parent) ? o.parent : root?.id;
+          const parent =
+            existing && !existing.parent
+              ? undefined
+              : o.parent && !below.has(o.parent) && next.branches!.some((b) => b.id === o.parent)
+                ? o.parent
+                : (existing?.parent ?? root?.id);
           put(next.branches!, { id: o.id, label: o.label, parent, edge: o.edge }, 15);
         }
         break;
@@ -361,10 +403,10 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.line = { min: o.min, max: o.max, step: o.step };
         break;
       case "add_mark":
-        put(next.marks!, { id: o.id, value: o.value, label: o.label });
+        put(next.marks!, { id: o.id, value: o.value, label: o.label }, 20);
         break;
       case "add_jump":
-        put(next.jumps!, { id: o.id, from: o.from, to: o.to, label: o.label });
+        put(next.jumps!, { id: o.id, from: o.from, to: o.to, label: o.label }, 10);
         break;
       case "set_caption":
         next.caption = o.text;
@@ -378,10 +420,10 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         put(next.sets!, { id: o.id, label: o.label }, 3);
         break;
       case "add_item":
-        put(next.items!, { id: o.id, label: o.label, sets: o.sets.filter((id) => next.sets!.some((x) => x.id === id)) }); // unknown sets: outside
+        put(next.items!, { id: o.id, label: o.label, sets: o.sets.filter((id) => next.sets!.some((x) => x.id === id)) }, 16); // unknown sets: outside
         break;
       case "add_letter":
-        put(next.letters!, { id: o.id, text: o.text.trim(), sound: o.sound, word: o.word });
+        put(next.letters!, { id: o.id, text: o.text.trim(), sound: o.sound, word: o.word }, 4);
         break;
     }
   }
@@ -391,7 +433,8 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
 export function isEmpty(d: Diagram) {
   return (
     !d.nodes.length && !d.events.length && !d.curves.length && !d.points.length && !d.segments?.length && !d.smiles &&
-    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length && !d.branches?.length && !d.words?.length && !d.parts?.length && !d.steps?.length && !d.places?.length
+    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length && !d.branches?.length && !d.words?.length && !d.parts?.length && !d.steps?.length && !d.places?.length &&
+    !d.line && !d.subject && !d.rows?.length
   );
 }
 
