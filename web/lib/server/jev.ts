@@ -43,7 +43,7 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
       type: "noul",
       instructions: "The teacher is explaining something that a simple diagram would make clearer right now",
       criteria: {
-        true: "A process, sequence, cycle, structure, events in time, a function, a molecule, a comparison of groups, or letters and the sounds they make is being explained or asked about",
+        true: "A process, sequence, cycle, structure, events in time, a function, a molecule, a comparison, data or amounts, an equation being solved, fractions, numbers on a line, places in the world, the parts of something, causes or ideas around a topic, or letters and the sounds they make is being explained or asked about",
         false: "Small talk, classroom management, or a definition with nothing to draw",
       },
     },

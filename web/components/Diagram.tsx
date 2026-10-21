@@ -283,7 +283,7 @@ function Timeline({ d, still }: { d: Diagram; still: boolean }) {
 // Events in date order when every date reads as a year ("1914", "1914–1918", "500 BC"); otherwise as added.
 function byDate<T extends { when: string }>(events: T[]) {
   const year = (w: string) => {
-    const m = w.match(/-?\d+/);
+    const m = w.match(/-?\d{3,4}/) ?? w.match(/-?\d+/); // the year, not the day in "28 June 1914"
     if (!m) return null;
     return /\b(BC|BCE)\b/i.test(w) ? -Math.abs(+m[0]) : +m[0];
   };
@@ -333,19 +333,34 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
         }
       };
     } catch {
-      return { c, path: "" }; // unparseable expression: skip the curve, keep the rest of the diagram
+      return { c, path: "", pts: [] as [number, number][] }; // unparseable expression: skip the curve, keep the rest of the diagram
     }
     let path = "";
     let pen = false;
+    const pts: [number, number][] = []; // drawn points inside the grid, to keep the legend off the curves
     for (let i = 0; i <= 240; i++) {
       const x = ax.x[0] + ((ax.x[1] - ax.x[0]) * i) / 240;
       const y = f(x);
       const ok = Number.isFinite(y) && y >= ax.y[0] - 50 && y <= ax.y[1] + 50;
       if (ok) path += `${pen ? "L" : "M"}${sx(x).toFixed(1)} ${sy(y).toFixed(1)}`;
+      if (ok && y >= ax.y[0] && y <= ax.y[1]) pts.push([sx(x), sy(y)]);
       pen = ok;
     }
-    return { c, path };
+    return { c, path, pts };
   });
+  // The legend goes in whichever corner of the grid the curves pass through least.
+  const legend = paths.filter(({ c }) => c.label);
+  const lw = Math.max(0, ...legend.map(({ c }) => (c.label ?? "").length)) * 8.5 + 44;
+  const lh = legend.length * 24 + 10;
+  const corners: [number, number][] = [
+    [pad + 8, pad + 8],
+    [W - pad - 8 - lw, pad + 8],
+    [pad + 8, H - pad - 8 - lh],
+    [W - pad - 8 - lw, H - pad - 8 - lh],
+  ];
+  const crossing = ([x, y]: [number, number]) =>
+    paths.reduce((n, p) => n + p.pts.filter(([px, py]) => px >= x && px <= x + lw && py >= y && py <= y + lh).length, 0);
+  const [lx, ly] = corners.reduce((best, c) => (crossing(c) < crossing(best) ? c : best), corners[0]);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" role="img" aria-label={d.title}>
@@ -390,14 +405,14 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
           />
         ))}
       </g>
-      {/* A legend in the top-left corner: labels at the curves' ends collide where curves leave the grid together. */}
-      {paths.some(({ c }) => c.label) && (
-        <g>
+      {/* A legend: labels at the curves' ends collide where curves leave the grid together. */}
+      {legend.length > 0 && (
+        <g transform={`translate(${lx} ${ly})`}>
           <rect
-            x={pad + 8}
-            y={pad + 8}
-            width={Math.max(...paths.map(({ c }) => (c.label ?? "").length)) * 8.5 + 44}
-            height={paths.filter(({ c }) => c.label).length * 24 + 10}
+            x={0}
+            y={0}
+            width={lw}
+            height={lh}
             rx={8}
             fill="#fff"
             fillOpacity={0.92}
@@ -408,8 +423,8 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
             .filter(({ c }) => c.label)
             .map(({ c, colour }, k) => (
               <g key={`l${c.id}`}>
-                <line x1={pad + 18} x2={pad + 36} y1={pad + 25 + k * 24} y2={pad + 25 + k * 24} stroke={colour} strokeWidth={3} strokeLinecap="round" />
-                <text x={pad + 44} y={pad + 25 + k * 24} dominantBaseline="central" fontSize={14} fontWeight={600} fill={colour}>
+                <line x1={10} x2={28} y1={17 + k * 24} y2={17 + k * 24} stroke={colour} strokeWidth={3} strokeLinecap="round" />
+                <text x={36} y={17 + k * 24} dominantBaseline="central" fontSize={14} fontWeight={600} fill={colour}>
                   {c.label}
                 </text>
               </g>
@@ -763,7 +778,13 @@ function NumberLine({ d, still }: { d: Diagram; still: boolean }) {
   const values = [...marks.map((m) => m.value), ...jumps.flatMap((j) => [j.from, j.to])];
   const lo = Math.min(0, ...values);
   const hi = Math.max(10, ...values);
-  const line = d.line ?? { min: Math.floor(lo), max: Math.ceil(hi), step: Math.max(1, Math.ceil((hi - lo) / 20)) };
+  if (!values.length) values.push(0);
+  const auto = { min: Math.floor(lo), max: Math.ceil(hi), step: Math.max(1, Math.ceil((hi - lo) / 20)) };
+  // The range stretches to take in every mark and jump ("now jump to 15" on a 0 to 10 line), never cutting one off.
+  const line = d.line
+    ? { min: Math.min(d.line.min, Math.floor(Math.min(...values, d.line.min))), max: Math.max(d.line.max, Math.ceil(Math.max(...values, d.line.max))), step: d.line.step }
+    : auto;
+  if ((line.max - line.min) / line.step > 40) line.step = Math.ceil((line.max - line.min) / 20);
   const W = 720;
   const pad = 40;
   const sxRaw = (v: number) => pad + ((v - line.min) / (line.max - line.min)) * (W - 2 * pad);
@@ -1240,7 +1261,13 @@ function Steps({ d, still }: { d: Diagram; still: boolean }) {
 
 // Coastlines (Natural Earth 1:110m land, public domain) as rings of [lon, lat]; fetched once, only when a map is drawn.
 let land: Promise<[number, number][][]> | null = null;
-const loadLand = () => (land ??= fetch("/maps/land.json").then((r) => r.json()));
+const loadLand = () =>
+  (land ??= fetch("/maps/land.json")
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`land.json ${r.status}`))))
+    .catch((e) => {
+      land = null; // try again next time a map is drawn
+      throw e;
+    }));
 
 // A map: the land around the places mentioned, pins with labels, and routes as dashed arrows between them.
 function MapView({ d, still }: { d: Diagram; still: boolean }) {

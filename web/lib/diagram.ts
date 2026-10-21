@@ -112,8 +112,12 @@ const ROLES = ["input", "process", "output", "other"];
 function textFields(o: unknown): unknown {
   if (!o || typeof o !== "object") return o;
   const v = { ...(o as Record<string, unknown>) };
-  // An arrow's ends are node ids; a jump's ends are numbers on the line and stay numbers.
-  for (const k of ["id", "label", "when", "title", ...(v.op === "add_edge" ? ["from", "to"] : [])]) if (num(v[k])) v[k] = String(v[k]);
+  // An arrow's or route's ends are ids; a jump's ends are numbers on the line and stay numbers.
+  const ends = v.op === "add_edge" || v.op === "add_route" ? ["from", "to"] : [];
+  for (const k of ["id", "label", "when", "title", "row", "col", "parent", "text", "note", "edge", "sound", "word", "axis", ...ends]) {
+    if (num(v[k])) v[k] = String(v[k]);
+  }
+  if (Array.isArray(v.sets)) v.sets = v.sets.map((x) => (num(x) ? String(x) : x));
   return v;
 }
 
@@ -204,6 +208,14 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
     fresh: [],
   };
   const has = (id: string) => next.nodes.some((n) => n.id === id);
+  // Adds a part, or replaces the one with the same id ("actually 9 chose soccer"); a new part only while under the cap.
+  const put = <T extends { id: string }>(xs: T[], x: T, cap = Infinity) => {
+    const i = xs.findIndex((y) => y.id === x.id);
+    if (i >= 0) xs[i] = x;
+    else if (xs.length < cap) xs.push(x);
+    else return;
+    next.fresh.push(x.id);
+  };
   for (const o of ops) {
     switch (o.op) {
       case "set_title":
@@ -263,7 +275,9 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.points = keep(next.points);
         next.segments = keep(next.segments);
         next.sets = keep(next.sets!);
-        next.items = keep(next.items!).map((x) => ({ ...x, sets: x.sets.filter((id) => id !== o.id) }));
+        next.items = keep(next.items!)
+          .filter((x) => !(x.sets.length === 1 && x.sets[0] === o.id))
+          .map((x) => ({ ...x, sets: x.sets.filter((id) => id !== o.id) }));
         next.letters = keep(next.letters!);
         next.columns = keep(next.columns!);
         next.rows = keep(next.rows!);
@@ -293,16 +307,10 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         break;
       }
       case "add_column":
-        if (next.columns!.length < 5 && !next.columns!.some((x) => x.id === o.id)) {
-          next.columns!.push({ id: o.id, label: o.label });
-          next.fresh.push(o.id);
-        }
+        put(next.columns!, { id: o.id, label: o.label }, 5);
         break;
       case "add_row":
-        if (next.rows!.length < 6 && !next.rows!.some((x) => x.id === o.id)) {
-          next.rows!.push({ id: o.id, label: o.label });
-          next.fresh.push(o.id);
-        }
+        put(next.rows!, { id: o.id, label: o.label }, 6);
         break;
       case "set_cell":
         // Cells for a row or column that doesn't exist (or was capped off) are dropped; a filled cell can be rewritten.
@@ -312,21 +320,17 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         }
         break;
       case "add_bar":
-        if (next.bars!.length < 8 && !next.bars!.some((x) => x.id === o.id)) {
-          next.bars!.push({ id: o.id, label: o.label, value: o.value, icon: o.icon });
-          next.fresh.push(o.id);
-        }
+        put(next.bars!, { id: o.id, label: o.label, value: o.value, icon: o.icon }, 8);
         break;
       case "set_chart":
         next.chart = { style: o.style ?? next.chart?.style ?? "bar", axis: o.axis ?? next.chart?.axis };
         break;
       case "add_branch":
         // A branch needs its parent drawn first (or no parent: the root); a second root becomes a branch of the first.
-        if (next.branches!.length < 15 && !next.branches!.some((x) => x.id === o.id)) {
-          const root = next.branches!.find((b) => !b.parent);
-          const parent = o.parent && next.branches!.some((b) => b.id === o.parent) ? o.parent : root?.id;
-          next.branches!.push({ id: o.id, label: o.label, parent, edge: o.edge });
-          next.fresh.push(o.id);
+        {
+          const root = next.branches!.find((b) => !b.parent && b.id !== o.id);
+          const parent = o.parent && o.parent !== o.id && next.branches!.some((b) => b.id === o.parent) ? o.parent : root?.id;
+          put(next.branches!, { id: o.id, label: o.label, parent, edge: o.edge }, 15);
         }
         break;
       case "set_subject":
@@ -334,55 +338,33 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.fresh.push("subject");
         break;
       case "add_part":
-        if (next.parts!.length < 10 && !next.parts!.some((x) => x.id === o.id)) {
-          next.parts!.push({ id: o.id, label: o.label, inside: o.inside ?? true, fills: o.fills });
-          next.fresh.push(o.id);
-        }
+        put(next.parts!, { id: o.id, label: o.label, inside: o.inside ?? true, fills: o.fills }, 10);
         break;
       case "add_place":
-        if (next.places!.length < 10 && !next.places!.some((x) => x.id === o.id)) {
-          next.places!.push({ id: o.id, label: o.label, lat: o.lat, lon: o.lon });
-          next.fresh.push(o.id);
-        }
+        put(next.places!, { id: o.id, label: o.label, lat: o.lat, lon: o.lon }, 10);
         break;
       case "add_route":
-        if (next.places!.some((x) => x.id === o.from) && next.places!.some((x) => x.id === o.to) && !next.routes!.some((x) => x.id === o.id)) {
-          next.routes!.push({ id: o.id, from: o.from, to: o.to, label: o.label });
-          next.fresh.push(o.id);
+        if (next.places!.some((x) => x.id === o.from) && next.places!.some((x) => x.id === o.to)) {
+          put(next.routes!, { id: o.id, from: o.from, to: o.to, label: o.label });
         }
         break;
       case "add_step":
-        if (next.steps!.length < 7 && !next.steps!.some((x) => x.id === o.id)) {
-          next.steps!.push({ id: o.id, text: o.text, note: o.note });
-          next.fresh.push(o.id);
-        }
+        put(next.steps!, { id: o.id, text: o.text, note: o.note }, 7);
         break;
       case "add_word":
-        if (next.words!.length < 4 && !next.words!.some((x) => x.id === o.id)) {
-          next.words!.push({ id: o.id, parts: o.parts.map((p) => p.trim()), mode: o.mode ?? "syllables" });
-          next.fresh.push(o.id);
-        }
+        put(next.words!, { id: o.id, parts: o.parts.map((p) => p.trim()), mode: o.mode ?? "syllables" }, 4);
         break;
       case "add_fraction":
-        if (next.fractions!.length < 4 && !next.fractions!.some((x) => x.id === o.id)) {
-          next.fractions!.push({ id: o.id, num: o.num, den: o.den, shape: o.shape ?? "bar", label: o.label });
-          next.fresh.push(o.id);
-        }
+        put(next.fractions!, { id: o.id, num: o.num, den: o.den, shape: o.shape ?? "bar", label: o.label }, 4);
         break;
       case "set_range":
         next.line = { min: o.min, max: o.max, step: o.step };
         break;
       case "add_mark":
-        if (!next.marks!.some((x) => x.id === o.id)) {
-          next.marks!.push({ id: o.id, value: o.value, label: o.label });
-          next.fresh.push(o.id);
-        }
+        put(next.marks!, { id: o.id, value: o.value, label: o.label });
         break;
       case "add_jump":
-        if (!next.jumps!.some((x) => x.id === o.id)) {
-          next.jumps!.push({ id: o.id, from: o.from, to: o.to, label: o.label });
-          next.fresh.push(o.id);
-        }
+        put(next.jumps!, { id: o.id, from: o.from, to: o.to, label: o.label });
         break;
       case "set_caption":
         next.caption = o.text;
@@ -393,24 +375,13 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.fresh.push("smiles");
         break;
       case "add_set":
-        // Three circles is the most a Venn diagram stays readable with.
-        if (next.sets!.length < 3 && !next.sets!.some((x) => x.id === o.id)) {
-          next.sets!.push({ id: o.id, label: o.label });
-          next.fresh.push(o.id);
-        }
+        put(next.sets!, { id: o.id, label: o.label }, 3);
         break;
       case "add_item":
-        if (!next.items!.some((x) => x.id === o.id)) {
-          const sets = o.sets.filter((id) => next.sets!.some((x) => x.id === id)); // unknown sets: outside
-          next.items!.push({ id: o.id, label: o.label, sets });
-          next.fresh.push(o.id);
-        }
+        put(next.items!, { id: o.id, label: o.label, sets: o.sets.filter((id) => next.sets!.some((x) => x.id === id)) }); // unknown sets: outside
         break;
       case "add_letter":
-        if (!next.letters!.some((x) => x.id === o.id)) {
-          next.letters!.push({ id: o.id, text: o.text.trim(), sound: o.sound, word: o.word });
-          next.fresh.push(o.id);
-        }
+        put(next.letters!, { id: o.id, text: o.text.trim(), sound: o.sound, word: o.word });
         break;
     }
   }
