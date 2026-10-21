@@ -19,7 +19,11 @@ export type LessonRecord = {
   lessonExport: LessonExport | null;
 };
 
-export type LessonSummary = Pick<LessonRecord, "id" | "title" | "subject" | "startedAt" | "endedAt"> & { diagrams: number };
+export type LessonSummary = Pick<LessonRecord, "id" | "title" | "subject" | "startedAt" | "endedAt"> & {
+  diagrams: number;
+  todos?: number; // older saved lessons don't have these two
+  cover?: Diagram; // the first diagram, shown on the dashboard card
+};
 
 const INDEX = "live-lesson:index";
 const KEY = (id: string) => `live-lesson:lesson:${id}`;
@@ -47,6 +51,7 @@ export function saveLesson(l: LessonRecord): boolean {
     localStorage.setItem(KEY(l.id), JSON.stringify({ ...l, archive: l.archive.map((d) => ({ ...d, fresh: [] })) }));
     const summary: LessonSummary = {
       id: l.id, title: l.title, subject: l.subject, startedAt: l.startedAt, endedAt: l.endedAt, diagrams: l.archive.length,
+      todos: l.todos.length, cover: l.archive[0] && { ...l.archive[0], fresh: [] },
     };
     localStorage.setItem(INDEX, JSON.stringify([summary, ...listLessons().filter((x) => x.id !== l.id)]));
     return true;

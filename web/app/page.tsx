@@ -8,7 +8,8 @@ import { useLesson } from "@/lib/useLesson";
 
 export default function Page() {
   const l = useLesson();
-  const [lessons, setLessons] = useState<LessonSummary[]>([]);
+  // null until read from localStorage, so the first render never claims there are no lessons.
+  const [lessons, setLessons] = useState<LessonSummary[] | null>(null);
   const [past, setPast] = useState<LessonRecord | null>(null);
 
   // Saved lessons live in localStorage, so read them after mount (the server render has none).
