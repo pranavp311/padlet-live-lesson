@@ -72,7 +72,11 @@ export async function POST(req: Request) {
 async function drawRequest(heard: string, said: string, current: Diagram | null, send: (line: object) => void) {
   // The speech model writes the name lowercase with no comma ("…theorem bubbles"), which Jev reads as the
   // word, not someone being addressed: 0.46 vs 0.98 for "…theorem, Bubbles." So write it as a name.
-  const ask = heard.replace(/(\w)\s+bubbles?\b/gi, "$1, Bubbles").replace(/\bbubbles?\b/gi, "Bubbles");
+  // Likewise at the start of a sentence: "Bubbles draw the water cycle" scored 0.29, "Bubbles, draw…" 0.9+.
+  const ask = heard
+    .replace(/(\w)\s+bubbles?\b/gi, "$1, Bubbles")
+    .replace(/(^|[.?!]\s+)bubbles?\s+(?=[a-z])/gi, "$1Bubbles, ")
+    .replace(/\bbubbles?\b/gi, "Bubbles");
   try {
     const [jev, asked, edits] = await Promise.all([
       route(ask, null),
