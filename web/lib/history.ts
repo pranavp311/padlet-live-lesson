@@ -38,7 +38,8 @@ function read<T>(key: string): T | null {
 }
 
 export function listLessons(): LessonSummary[] {
-  return read<LessonSummary[]>(INDEX) ?? [];
+  const list = read<LessonSummary[]>(INDEX);
+  return Array.isArray(list) ? list : []; // a hand-edited or foreign value would break every save
 }
 
 export function loadLesson(id: string): LessonRecord | null {

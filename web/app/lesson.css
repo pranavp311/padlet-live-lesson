@@ -315,5 +315,5 @@
 .editable:hover { background: rgba(148, 102, 232, .09); }
 .editing { outline: none; padding: 0 4px; margin: 0 -4px; border-radius: 8px 8px 3px 3px; background: rgba(148, 102, 232, .1); box-shadow: inset 0 -2px 0 var(--grape); color: #111; caret-color: var(--grape-strong); }
 .editing:empty::before { content: attr(data-placeholder); color: rgba(148, 102, 232, .55); }
-.edit-hint { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 2px 8px; vertical-align: middle; border-radius: 999px; background: var(--grape-tint); font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; color: #520085; white-space: nowrap; animation: ll-fade 200ms var(--ease) both; }
-.edit-hint kbd { font: inherit; padding: 0 5px; border-radius: 5px; background: #fff; box-shadow: 0 1px 0 rgba(82, 0, 133, .25); }
+.edit-hint { position: absolute; left: 20px; top: 0; transform: translateY(-50%); z-index: 1; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px var(--grape-tint), 0 4px 12px rgba(82, 0, 133, .12); font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; color: #520085; white-space: nowrap; pointer-events: none; animation: ll-fade 200ms var(--ease) both; }
+.edit-hint kbd { font: inherit; padding: 0 5px; border-radius: 5px; background: var(--grape-tint); }

@@ -19,12 +19,18 @@ const DRAWABLE = 0.75;
 const NEW_DIAGRAM_GAP_S = 20;
 const DISMISS_S = 60;
 const WAKE = /\bbubbles?\b/gi; // the mascot's name; the speech model writes it lowercase
+// How many times the name has been said so far.
+const countWake = (s: { sentences: Sentence[]; pending: string }) =>
+  (s.sentences.map((x) => x.raw).join(" ") + " " + s.pending).match(WAKE)?.length ?? 0;
+// What the teacher said, with their corrections.
+const said = (x: Sentence) => (x.edited ? x.clean! : x.raw);
 const SUMMON_QUIET_MS = 1500; // once a request has been said, fire when the teacher pauses or goes quiet this long
 const SUMMON_GIVE_UP_MS = 8000; // after "Bubbles", stop listening if no request follows within this long
 // Words that don't make a request on their own ("Hey Bubbles", "Okay so Bubbles").
 const FILLER = /\b(bubbles?|hey|hi|hello|okay|ok|so|um|uh|right|please)\b/gi;
-// A request that's clearly not finished yet ("could you help me draw", "a diagram of the").
-const UNFINISHED = /\b(draw|show|sketch|visuali[sz]e|diagram|help|me|us|with|of|for|about|a|an|the|and|to)\W*$/i;
+// A request that's clearly not finished yet ("could you help me draw", "show us", "a diagram of the"). "me" and
+// "us" only count straight after a verb: "draw the water cycle for me" is a whole request.
+const UNFINISHED = /\b((draw|show|help|give|tell|make) (me|us)|draw|show|sketch|visuali[sz]e|diagram|help|with|of|for|about|a|an|the|and|to)\W*$/i;
 const CLEANS_AT_ONCE = 2; // a cold start's backlog settles many sentences at once; don't fire them all together
 const LAND_MS = 1500; // how long the caught-up chunk's settle-in animation runs
 
@@ -139,13 +145,16 @@ export function useLesson() {
       s.inFlight = true;
       if (force || ask) setListening(true);
       const abort = (s.abort = new AbortController());
+      // A "Bubbles, …" request is about the diagram on screen, which is the pinned one while pinned. The reply
+      // applies to that diagram even if the pin moves while it's being drawn.
+      const about = (ask && findDiagram(s.pinnedId)) || s.current;
       try {
         const allowCreate = s.streak >= 1 && t - s.lastCreatedAt >= NEW_DIAGRAM_GAP_S && t >= s.quietUntil;
         const res = await fetch("/api/diagram", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // A "Bubbles, …" request is about the diagram on screen, which is the pinned one while pinned.
-          body: JSON.stringify({ recent, current: (ask && findDiagram(s.pinnedId)) || s.current, allowCreate, force, ask }),
+          body: JSON.stringify({ recent, current: about, allowCreate, force, ask }),
           signal: abort.signal,
         });
         // NDJSON: an early {"drawing": true} line (start the animation), then the result line.
@@ -173,18 +182,18 @@ export function useLesson() {
         if (s.lesson !== lesson || !s.live) return;
         // A request to Bubbles that drew nothing shouldn't fail silently.
         if (ask && !reply.ignored && !reply.ops?.length) {
-          setBubblesNote("I wasn't sure what to draw. Try naming it.");
+          setBubblesNote(reply.error ? "I couldn't draw that just now. Try again?" : "I wasn't sure what to draw. Try naming it.");
           setTimeout(() => setBubblesNote(null), 4500);
         }
-        if (reply.jev) {
+        if (reply.jev && !ask) { // a word to Bubbles ("thanks, Bubbles") says nothing about the lesson's pace
           s.streak = reply.jev.drawable >= DRAWABLE ? s.streak + 1 : 0;
         }
         if (reply.action === "update" && reply.ops?.length) {
-          const target = (ask && findDiagram(s.pinnedId)) || s.current;
+          const target = findDiagram(about?.id ?? null);
           // The pinned diagram is frozen, except when the teacher asks Bubbles to change it.
           if (target && (target.id !== s.pinnedId || ask)) {
             const next = applyOps(target, reply.ops);
-            if (target === s.current) setCur(next);
+            if (target.id === s.current?.id) setCur(next);
             else {
               s.archive = s.archive.map((x) => (x.id === target.id ? { ...next, fresh: [] } : x));
               setArchive(s.archive);
@@ -294,7 +303,7 @@ export function useLesson() {
   // What the teacher has said since Bubbles' name, and whether it's a whole request yet.
   const summonText = () => {
     const s = r.current;
-    return [...s.sentences.slice(s.summon!.start).map((x) => x.raw), s.pending].join(" ").trim();
+    return [...s.sentences.slice(s.summon!.start).map(said), s.pending].join(" ").trim();
   };
   const isRequest = (text: string) => {
     const words = text.replace(FILLER, " ").match(/[a-z0-9']+/gi) ?? [];
@@ -305,10 +314,10 @@ export function useLesson() {
     const s = r.current;
     if (!s.summon) return;
     clearTimeout(s.summon.timer);
+    settleRest(); // while still listening, so the request's last words don't start an automatic check
     const { start } = s.summon;
     s.summon = null;
-    settleRest();
-    const ask = s.sentences.slice(start).map((x) => x.raw).join(" ");
+    const ask = s.sentences.slice(start).map(said).join(" ");
     if (ask.trim()) void checkDiagram(true, ask);
     else setListening(false);
   }, [settleRest, checkDiagram]);
@@ -338,7 +347,7 @@ export function useLesson() {
 
   const listenForBubbles = useCallback(() => {
     const s = r.current;
-    const heard = (s.sentences.map((x) => x.raw).join(" ") + " " + s.pending).match(WAKE)?.length ?? 0;
+    const heard = countWake(s);
     if (heard > s.wakeSeen) {
       // Attentive the moment the name is heard; drawing only starts once the server confirms. Each new
       // mention restarts the window at its own sentence, so "Thank you, Bubbles… Okay Bubbles, draw…"
@@ -453,12 +462,21 @@ export function useLesson() {
   }, [settle, settleRest, pickIcon, caughtUp, title, awaitRequest, listenForBubbles]);
 
   const cancel = useCallback(() => {
+    const s = r.current;
     stopAudio();
-    r.current.live = false;
-    r.current.cleans = [];
-    r.current.stt?.close();
+    s.live = false;
+    s.stt?.close();
+    // Nothing from the cancelled start carries into the next one.
+    clearTimeout(s.summon?.timer);
+    Object.assign(s, { cleans: [], pending: "", sentences: [], muted: false, summon: null, wakeSeen: 0, queued: null });
+    setPending("");
+    setSentences([]);
+    setMuted(false);
+    setListening(false);
+    setDrawing(false);
     setPhase("ready");
   }, []);
+
 
   // Saves the finished lesson to this browser's history; called again once the summary arrives.
   const save = useCallback(
@@ -543,43 +561,27 @@ export function useLesson() {
   const editSentence = useCallback((id: number, text: string) => {
     const s = r.current;
     const clean = text.trim();
-    s.sentences = clean
-      ? s.sentences.map((x) => (x.id === id ? { ...x, clean, edited: true } : x))
-      : s.sentences.filter((x) => x.id !== id);
+    const i = s.sentences.findIndex((x) => x.id === id);
+    if (i < 0 || clean === (s.sentences[i].clean ?? s.sentences[i].raw)) return; // unchanged: still due its tidy-up
+    if (clean) s.sentences = s.sentences.map((x) => (x.id === id ? { ...x, clean, edited: true } : x));
+    else {
+      s.sentences = s.sentences.filter((x) => x.id !== id);
+      // Keep Bubbles' bookkeeping in step: his request starts at a sentence index, and a deleted "Bubbles"
+      // mustn't hide the next one.
+      if (s.summon && s.summon.start > i) s.summon.start--;
+      s.wakeSeen = countWake(s);
+    }
     setSentences(s.sentences);
   }, []);
 
-  // The teacher corrects the words still arriving. Editing takes them out of the stream; words said
-  // meanwhile keep arriving after them, and saving settles the corrected words as a sentence.
-  const editingPending = useRef<string | null>(null);
-  const beginEditPending = useCallback(() => {
+  // The teacher corrects the words still arriving: they settle as a sentence now, keeping their place and
+  // time, so words said meanwhile continue after them. Returns the sentence to edit.
+  const editPending = useCallback(() => {
     const s = r.current;
-    editingPending.current = s.pending.trim();
-    s.pending = "";
-    setPending("");
-    return editingPending.current;
-  }, []);
-  const finishEditPending = useCallback(
-    (text: string | null) => {
-      const s = r.current;
-      const before = editingPending.current;
-      editingPending.current = null;
-      if (before === null) return;
-      if (text === null) {
-        // Cancelled: put the words back in front of anything said meanwhile.
-        s.pending = [before, s.pending].filter(Boolean).join(" ");
-        setPending(s.pending);
-        return;
-      }
-      const clean = text.trim();
-      if (!clean) return;
-      const id = s.nextId;
-      settle([clean]);
-      s.sentences = s.sentences.map((x) => (x.id === id ? { ...x, clean, edited: true } : x));
-      setSentences(s.sentences);
-    },
-    [settle],
-  );
+    const id = s.nextId;
+    settleRest();
+    return s.sentences.some((x) => x.id === id) ? id : null;
+  }, [settleRest]);
 
   const toggleMute = useCallback(() => {
     r.current.muted = !r.current.muted;
@@ -644,6 +646,8 @@ export function useLesson() {
     });
     setCatchUp(null);
     setLanding(null);
+    setListening(false);
+    setDrawing(false);
     setSentences([]);
     setPending("");
     setCurrent(null);
@@ -661,7 +665,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinnedId, subject,
-    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, bubblesNote, stopDrawing, editSentence, beginEditPending, finishEditPending, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, bubblesNote, stopDrawing, editSentence, editPending, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 

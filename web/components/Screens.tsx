@@ -193,9 +193,23 @@ export function Live({ l }: { l: L }) {
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
   const d = l.current;
 
-  // Which bit of the transcript the teacher is correcting: a sentence id, the words still arriving, or none.
-  const [editing, setEditing] = useState<number | "pending" | null>(null);
-  const [pendingDraft, setPendingDraft] = useState("");
+  // The sentence the teacher is correcting, and what they've typed so far: kept here so the text survives
+  // its card regrouping (a new paragraph or diagram re-splits the cards) while they type.
+  const [editing, setEditing] = useState<number | null>(null);
+  const draft = useRef<{ id: number; text: string } | null>(null);
+  const editingAtPress = useRef(false);
+  const stopEditing = (id: number, value: string | null) => {
+    if (value !== null) l.editSentence(id, value);
+    draft.current = null;
+    setEditing((e) => (e === id ? null : e));
+  };
+  // A sentence scrolled out of the transcript while being corrected: keep what was typed and stop editing.
+  const editingShown =
+    editing === null || shown.slice(-8).some((b) => b.kind === "para" && b.sentences.some((x) => x.id === editing));
+  useEffect(() => {
+    if (editingShown || editing === null) return;
+    stopEditing(editing, draft.current?.id === editing ? draft.current.text : null);
+  });
 
   // The panel shows the live diagram unless the teacher steps back (‹ ›) through earlier ones.
   const list = useMemo(() => (d ? [...l.archive, d] : l.archive), [d, l.archive]);
@@ -279,15 +293,15 @@ export function Live({ l }: { l: L }) {
             const text = b.sentences.map((s) => s.clean ?? s.raw).join(" ");
             const landed = l.landing !== null && (b.sentences[0]?.id ?? 0) < l.landing; // part of the caught-up chunk
             const startPending = () => {
-              if (editing === "pending") return;
-              setPendingDraft(l.beginEditPending());
-              setEditing("pending");
+              const id = l.editPending();
+              if (id !== null) setEditing(id);
             };
             // A click anywhere on a card edits its last sentence (the rough words on the live card), except
             // the strip beside the mute button.
             const editCard = (e: MouseEvent<HTMLParagraphElement>) => {
               const t = e.target as HTMLElement;
-              if (editing !== null || t.closest(".editable, .editing, .mute")) return;
+              // A press that ended an edit (its blur saved it) only saves; it doesn't open another.
+              if (editingAtPress.current || t.closest(".editable, .editing, .mute")) return;
               if (isNow) {
                 const pad = parseFloat(getComputedStyle(e.currentTarget).paddingRight);
                 if (e.clientX > e.currentTarget.getBoundingClientRect().right - pad) return;
@@ -300,6 +314,7 @@ export function Live({ l }: { l: L }) {
                 key={b.sentences[0]?.id ?? "now"}
                 className={`para ${isNow ? "now" : age === 1 ? "old1" : "old2"}${landed ? " landed" : ""}`}
                 style={landed ? ({ "--i": k } as CSSProperties) : undefined}
+                onPointerDown={() => (editingAtPress.current = editing !== null)}
                 onClick={editCard}
               >
                 {b.sentences[0] && (
@@ -312,30 +327,17 @@ export function Live({ l }: { l: L }) {
                     {j > 0 && " "}
                     <EditableText
                       text={x.clean ?? x.raw}
+                      draft={draft.current?.id === x.id ? draft.current.text : undefined}
                       editing={editing === x.id}
                       onStart={() => setEditing(x.id)}
-                      onDone={(v) => {
-                        if (v !== null) l.editSentence(x.id, v);
-                        setEditing(null);
-                      }}
+                      onType={(text) => (draft.current = { id: x.id, text })}
+                      onDone={(v) => stopEditing(x.id, v)}
                     />
                   </Fragment>
                 ))}
                 {isNow && (
                   <>
-                    {text && (l.pending || editing === "pending") ? " " : ""}
-                    {editing === "pending" && (
-                      <EditableText
-                        text={pendingDraft}
-                        editing
-                        onStart={() => {}}
-                        onDone={(v) => {
-                          l.finishEditPending(v);
-                          setEditing(null);
-                        }}
-                      />
-                    )}
-                    {editing === "pending" && l.pending ? " " : ""}
+                    {text && l.pending ? " " : ""}
                     {l.pending.trim() && (
                       <span
                         className="rough editable"
@@ -343,11 +345,12 @@ export function Live({ l }: { l: L }) {
                         tabIndex={0}
                         title="Click to correct"
                         onClick={startPending}
+                        onKeyDown={(e) => e.key === "Enter" && startPending()}
                       >
                         {l.pending.trim()}
                       </span>
                     )}
-                    {!l.muted && editing !== "pending" && <span className="caret" aria-hidden="true" />}
+                    {!l.muted && editing === null && <span className="caret" aria-hidden="true" />}
                     <MuteButton muted={l.muted} onToggle={l.toggleMute} />
                   </>
                 )}
@@ -470,13 +473,20 @@ function MuteButton({ muted, onToggle }: { muted: boolean; onToggle: () => void 
 // Transcript text the teacher can correct in place: click to edit; Enter or clicking away saves, Escape
 // cancels (onDone gets null). Saving an empty sentence removes it.
 function EditableText({
-  text, editing, onStart, onDone,
-}: { text: string; editing: boolean; onStart: () => void; onDone: (value: string | null) => void }) {
+  text, draft, editing, onStart, onType, onDone,
+}: {
+  text: string;
+  draft?: string; // typed before this box remounted
+  editing: boolean;
+  onStart: () => void;
+  onType: (text: string) => void;
+  onDone: (value: string | null) => void;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   const done = useRef(false);
   // Frozen while editing, so a tidy-up landing mid-edit can't replace the text under the cursor.
   const [frozen, setFrozen] = useState<string | null>(null);
-  if (editing && frozen === null) setFrozen(text);
+  if (editing && frozen === null) setFrozen(draft ?? text);
   if (!editing && frozen !== null) setFrozen(null);
   useEffect(() => {
     if (!editing || !ref.current) return;
@@ -515,6 +525,7 @@ function EditableText({
       onInput={(e) => {
         // Keep :empty working for the placeholder once everything is deleted.
         if (!e.currentTarget.textContent) e.currentTarget.innerHTML = "";
+        onType(e.currentTarget.textContent ?? "");
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {

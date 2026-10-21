@@ -104,7 +104,7 @@ export function SendPage({
           {lessonTitle}
         </button>
         <span className="spacer" />
-        <button className="btn btn-create" disabled={!n || tooMany} onClick={() => onSend(draft)}>
+        <button className="btn btn-create" disabled={!n || tooMany} onClick={() => onSend(withoutBlanks(draft))}>
           Create {look.thing}
         </button>
       </header>
@@ -231,12 +231,7 @@ export function SendPage({
                       <textarea rows={2} aria-label={`Question ${i + 1}`} placeholder="Question" value={x.q} autoFocus onChange={(e) => q.patch(i, { q: e.target.value })} />
                       <input aria-label={`Answer ${i + 1}`} placeholder="Answer" value={x.answer} onChange={(e) => q.patch(i, { answer: e.target.value })} />
                       {USES_WRONG_ANSWERS.has(gameType) && (
-                        <input
-                          aria-label={`Wrong answers ${i + 1}`}
-                          placeholder="Wrong answers, separated by commas"
-                          value={x.distractors.join(", ")}
-                          onChange={(e) => q.patch(i, { distractors: e.target.value.split(",").map((s) => s.trimStart()) })}
-                        />
+                        <WrongAnswers label={`Wrong answers ${i + 1}`} value={x.distractors} onChange={(distractors) => q.patch(i, { distractors })} />
                       )}
                     </>,
                     () => q.remove(i),
@@ -429,3 +424,26 @@ const GAMES: [string, string, ReactNode][] = [
   ["word-search", "Word search", g(<><rect x="10" y="4" width="28" height="24" rx="3" fill="#fff" /><path d="M14 12h20M14 20h20" stroke="rgba(0,0,0,.15)" /><path d="M14 12h14" stroke="#9466e8" strokeWidth="4" opacity=".5" /></>)],
   ["crossword", "Crossword", g(<>{[[10, 12], [18, 12], [26, 12], [34, 12], [18, 4], [18, 20]].map(([x, y], i) => <rect key={i} x={x} y={y} width="8" height="8" fill="#fff" />)}</>)],
 ];
+
+// Typed as one comma-separated line. The text is kept as typed, so a trailing ", " can be deleted.
+function WrongAnswers({ label, value, onChange }: { label: string; value: string[]; onChange: (next: string[]) => void }) {
+  const [text, setText] = useState(value.filter(Boolean).join(", "));
+  return (
+    <input
+      aria-label={label}
+      placeholder="Wrong answers, separated by commas"
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean));
+      }}
+    />
+  );
+}
+
+// Posts, questions and cards added but left empty aren't created.
+const withoutBlanks = (t: Targets): Targets => ({
+  board: { ...t.board, posts: t.board.posts.filter((p) => p.subject.trim() || p.body.trim()) },
+  arcade: { ...t.arcade, questions: t.arcade.questions.filter((q) => q.q.trim() && q.answer.trim()) },
+  sandbox: { cards: t.sandbox.cards.filter((c) => c.title.trim() || c.body.trim()) },
+});
