@@ -59,6 +59,8 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
         venn: "Comparing two or three groups: what they share and what belongs to only one",
         letters: "Letters, the sounds letters make (phonics), spelling, the alphabet, or splitting a word into syllables or parts",
         tree: "Branching possibilities or a classification: a probability tree, a family tree, a classification key or a factor tree",
+        parts: "The parts of one thing to label: a cell, an organ, a flower, a volcano, the Earth's layers",
+        math: "Working through steps: solving an equation, simplifying, or balancing a chemical equation",
         web: "A main idea in the middle with ideas or details around it: a mind map, word web or brainstorm",
         table: "Comparing things across several features in rows and columns, or a chart to fill in (T-chart, KW-L chart, place value, Punnett square)",
         chart: "Amounts or data to compare: how many of each thing, as a bar chart or pictograph",

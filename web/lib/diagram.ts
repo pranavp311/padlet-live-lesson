@@ -1,7 +1,7 @@
 // Diagram spec and the typed changes ("ops") the LLM returns. The model never writes drawing code:
 // it adds parts by id, and our renderers decide layout, colour and motion.
 
-export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters", "table", "numberline", "chart", "fraction", "tree", "web"] as const;
+export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters", "table", "numberline", "chart", "fraction", "tree", "web", "parts", "math"] as const;
 export type Kind = (typeof KINDS)[number];
 export type Role = "input" | "process" | "output" | "other";
 
@@ -40,6 +40,11 @@ export type Diagram = {
   branches?: { id: string; label: string; parent?: string; edge?: string }[];
   // Words split into parts ("but-ter-fly") under the letters, as syllables, sounds or word parts.
   words?: { id: string; parts: string[]; mode: "syllables" | "sounds" | "parts" }[];
+  // Labelled parts of one thing (a plant cell, the heart): its outline, parts inside or on the edge, labels around it.
+  subject?: { label: string; shape: "cell" | "circle" | "oval" | "layers" };
+  parts?: { id: string; label: string; inside: boolean; fills?: boolean }[];
+  // Worked steps (algebra, a balanced equation), lined up on their "=" or arrow.
+  steps?: { id: string; text: string; note?: string }[];
   caption?: string; // a line under the diagram, e.g. a formula
   fresh: string[]; // ids added by the latest change, drawn highlighted
 };
@@ -70,7 +75,10 @@ export type Op =
   | { op: "set_chart"; style?: "bar" | "pictograph"; axis?: string }
   | { op: "add_fraction"; id: string; num: number; den: number; shape?: "bar" | "circle"; label?: string }
   | { op: "add_branch"; id: string; label: string; parent?: string; edge?: string }
-  | { op: "add_word"; id: string; parts: string[]; mode?: "syllables" | "sounds" | "parts" };
+  | { op: "add_word"; id: string; parts: string[]; mode?: "syllables" | "sounds" | "parts" }
+  | { op: "set_subject"; label: string; shape?: "cell" | "circle" | "oval" | "layers" }
+  | { op: "add_part"; id: string; label: string; inside?: boolean; fills?: boolean }
+  | { op: "add_step"; id: string; text: string; note?: string };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
   return {
@@ -138,6 +146,10 @@ export function validOp(o: unknown): o is Op {
         str(v.id) && Array.isArray(v.parts) && v.parts.length >= 1 && v.parts.length <= 8 && v.parts.every((x) => str(x)) &&
         (v.mode === undefined || v.mode === "syllables" || v.mode === "sounds" || v.mode === "parts")
       );
+    case "set_subject": return str(v.label) && (v.shape === undefined || ["cell", "circle", "oval", "layers"].includes(v.shape as string));
+    case "add_part":
+      return str(v.id) && str(v.label) && (v.inside === undefined || typeof v.inside === "boolean") && (v.fills === undefined || typeof v.fills === "boolean");
+    case "add_step": return str(v.id) && str(v.text) && optStr(v.note);
     case "set_chart": return (v.style === undefined || v.style === "bar" || v.style === "pictograph") && optStr(v.axis);
     case "add_fraction":
       return (
@@ -171,6 +183,8 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
     fractions: [...(d.fractions ?? [])],
     branches: [...(d.branches ?? [])],
     words: [...(d.words ?? [])],
+    parts: [...(d.parts ?? [])],
+    steps: [...(d.steps ?? [])],
     fresh: [],
   };
   const has = (id: string) => next.nodes.some((n) => n.id === id);
@@ -255,6 +269,8 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         }
         next.branches = next.branches!.filter((b) => !gone.has(b.id));
         next.words = keep(next.words!);
+        next.parts = keep(next.parts!);
+        next.steps = keep(next.steps!);
         if (o.id === "caption") next.caption = undefined;
         break;
       }
@@ -292,6 +308,22 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
           const root = next.branches!.find((b) => !b.parent);
           const parent = o.parent && next.branches!.some((b) => b.id === o.parent) ? o.parent : root?.id;
           next.branches!.push({ id: o.id, label: o.label, parent, edge: o.edge });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "set_subject":
+        next.subject = { label: o.label, shape: o.shape ?? next.subject?.shape ?? "cell" };
+        next.fresh.push("subject");
+        break;
+      case "add_part":
+        if (next.parts!.length < 10 && !next.parts!.some((x) => x.id === o.id)) {
+          next.parts!.push({ id: o.id, label: o.label, inside: o.inside ?? true, fills: o.fills });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "add_step":
+        if (next.steps!.length < 7 && !next.steps!.some((x) => x.id === o.id)) {
+          next.steps!.push({ id: o.id, text: o.text, note: o.note });
           next.fresh.push(o.id);
         }
         break;
@@ -358,7 +390,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
 export function isEmpty(d: Diagram) {
   return (
     !d.nodes.length && !d.events.length && !d.curves.length && !d.points.length && !d.segments?.length && !d.smiles &&
-    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length && !d.branches?.length && !d.words?.length
+    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length && !d.branches?.length && !d.words?.length && !d.parts?.length && !d.steps?.length
   );
 }
 
@@ -376,4 +408,6 @@ export const KIND_LABEL: Record<Kind, string> = {
   fraction: "Fractions",
   tree: "Tree",
   web: "Mind map",
+  parts: "Labelled parts",
+  math: "Steps",
 };

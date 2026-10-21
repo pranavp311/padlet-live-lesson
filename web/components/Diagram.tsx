@@ -61,6 +61,10 @@ function Drawing({ d, still }: { d: Diagram; still: boolean }) {
       return <Tree d={d} still={still} />;
     case "web":
       return <MindMap d={d} still={still} />;
+    case "parts":
+      return <Parts d={d} still={still} />;
+    case "math":
+      return <Steps d={d} still={still} />;
   }
 }
 
@@ -1083,6 +1087,144 @@ function MindMap({ d, still }: { d: Diagram; still: boolean }) {
           <g key={b.id} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
             <rect x={n.x - w / 2} y={n.y - h / 2} width={w} height={h} rx={h / 2} fill={isRoot ? "var(--grape-strong)" : "#fff"} stroke={n.colour} strokeWidth={isRoot ? 0 : 3} />
             <Lines x={n.x} y={n.y} lines={wrap(b.label, Math.floor((w - 20) / (size * 0.56)))} size={size} weight={700} fill={isRoot ? "#fff" : "#111"} lh={size * 1.15} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// Labelled parts: the thing's outline with its name, inside parts as coloured blobs within it, and every part's
+// label outside with a leader line, alternating left and right.
+function Parts({ d, still }: { d: Diagram; still: boolean }) {
+  const parts = d.parts ?? [];
+  const fresh = new Set(d.fresh);
+  const shape = d.subject?.shape ?? "cell";
+  const anchor = new Map<string, [number, number]>();
+  const [cx, cy] = [400, 260];
+  const [rx, ry] = shape === "circle" || shape === "layers" ? [190, 190] : shape === "oval" ? [240, 160] : [230, 175];
+  // What fills the inside (cytoplasm) is the outline's own colour, so it gets no blob: its label points at a gap.
+  const inside = parts.filter((p) => p.inside && !p.fills);
+  parts.filter((p) => p.inside && p.fills).forEach((p, i) => anchor.set(p.id, [cx - rx * 0.62 + i * 30, cy + ry * 0.5]));
+  const edge = parts.filter((p) => !p.inside);
+  // Inside parts spread on a smaller ring (the first one in the middle, like a nucleus); edge parts sit on the outline.
+  inside.forEach((p, i) => {
+    if (i === 0) return anchor.set(p.id, [cx, cy]);
+    const a = (2 * Math.PI * (i - 1)) / Math.max(1, inside.length - 1) - Math.PI / 3;
+    anchor.set(p.id, [cx + rx * 0.58 * Math.cos(a), cy + ry * 0.58 * Math.sin(a)]);
+  });
+  edge.forEach((p, i) => {
+    // The outermost layer at the outline, each next one a little inside it (cell wall, then membrane).
+    const a = (2 * Math.PI * i) / Math.max(1, edge.length) + Math.PI / 5;
+    anchor.set(p.id, [cx + (rx - i * 12) * Math.cos(a), cy + (ry - i * 12) * Math.sin(a)]);
+  });
+  // Layers: rings inside one another, outside first; each label points into its own band.
+  const layers = shape === "layers";
+  const ring = (i: number) => rx * (1 - i / Math.max(1, parts.length));
+  if (layers) parts.forEach((p, i) => anchor.set(p.id, [cx + (ring(i) - (ring(i) - ring(i + 1)) / 2) * Math.cos(-Math.PI / 4 + i * 0.35), cy + (ring(i) - (ring(i) - ring(i + 1)) / 2) * Math.sin(-Math.PI / 4 + i * 0.35)]));
+  // Labels in two columns, each on the side its part is on, spread evenly down the side.
+  // Labels go on the side their part is on, sorted top to bottom by where they point, so leader lines don't cross.
+  const byY = (a: (typeof parts)[number], b: (typeof parts)[number]) => anchor.get(a.id)![1] - anchor.get(b.id)![1];
+  const left = layers ? [] : parts.filter((p) => anchor.get(p.id)![0] < cx || (anchor.get(p.id)![0] === cx && parts.indexOf(p) % 2 === 0)).sort(byY);
+  const right = parts.filter((p) => !left.includes(p)).sort(byY);
+  const labelY = (k: number, n: number) => cy - ry + 10 + ((2 * ry - 20) * (k + 0.5)) / Math.max(1, n);
+  const W = 800;
+  const H = 2 * cy;
+  const colour = (i: number) => BUBBLE[i % BUBBLE.length];
+  const hot = (id: string) => fresh.has(id) && !still;
+  const label = (p: (typeof parts)[number], side: "l" | "r", k: number, n: number) => {
+    const [ax, ay] = anchor.get(p.id)!;
+    const ly = labelY(k, n);
+    const lx = side === "l" ? 80 : W - 80;
+    const i = parts.indexOf(p);
+    return (
+      <g key={p.id} style={hot(p.id) ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
+        <polyline points={`${ax},${ay} ${side === "l" ? lx + 84 : lx - 84},${ly} ${lx + (side === "l" ? 74 : -74)},${ly}`} fill="none" stroke="#3d1a78" strokeWidth={1.8} />
+        <circle cx={ax} cy={ay} r={4} fill="#3d1a78" />
+        <rect x={lx - 74} y={ly - 21} width={148} height={42} rx={21} fill={colour(i).light} stroke={colour(i).mid} strokeWidth={2} />
+        <Lines x={lx} y={ly} lines={wrap(p.label, 14)} size={17} weight={700} fill={colour(i).ink} lh={18} />
+      </g>
+    );
+  };
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      {layers ? (
+        parts.map((p, i) => (
+          <circle key={`r${p.id}`} cx={cx} cy={cy} r={ring(i)} fill={colour(i).mid} fillOpacity={0.75} stroke="#fff" strokeWidth={3} style={hot(p.id) ? { animation: "ll-fade 600ms var(--ease) both" } : undefined} />
+        ))
+      ) : (
+        <>
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="var(--park-tint)" stroke="#78d96f" strokeWidth={shape === "cell" ? 10 : 4} style={hot("subject") ? { animation: "ll-fade 600ms var(--ease) both" } : undefined} />
+          {shape === "cell" && <ellipse cx={cx} cy={cy} rx={rx - 12} ry={ry - 12} fill="none" stroke="#a8e8a2" strokeWidth={3} />}
+        </>
+      )}
+      {!layers && inside.map((p) => {
+        const [x, y] = anchor.get(p.id)!;
+        const c = colour(parts.indexOf(p));
+        const r = p === inside[0] ? 46 : 26;
+        return (
+          <g key={`b${p.id}`} style={hot(p.id) ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
+            <ellipse cx={x} cy={y} rx={r * 1.25} ry={r} fill={c.mid} fillOpacity={0.55} stroke={c.ink} strokeWidth={2} />
+          </g>
+        );
+      })}
+      {left.map((p, k) => label(p, "l", k, left.length))}
+      {right.map((p, k) => label(p, "r", k, right.length))}
+      {d.subject && (
+        <text x={cx} y={cy + ry + 34} textAnchor="middle" fontSize={20} fontWeight={700} fill="#1d5a17">
+          {d.subject.label}
+        </text>
+      )}
+    </svg>
+  );
+}
+
+// Worked steps, one per line, lined up on their "=" (or arrow) so the working reads down the page; notes on the right.
+function Steps({ d, still }: { d: Diagram; still: boolean }) {
+  const steps = d.steps ?? [];
+  const fresh = new Set(d.fresh);
+  const size = 34;
+  const ch = size * 0.56; // average character width at this size
+  const split = (t: string) => {
+    const m = t.match(/\s*(=|→|⇒|<|>|≤|≥)\s*/);
+    return m ? [t.slice(0, m.index), m[1], t.slice(m.index! + m[0].length)] : [t, "", ""];
+  };
+  const rows = steps.map((s) => ({ s, parts: split(s.text) }));
+  const leftW = Math.max(60, ...rows.map((r) => r.parts[0].length * ch));
+  const rightW = Math.max(60, ...rows.map((r) => r.parts[2].length * ch));
+  const noteW = Math.max(0, ...steps.map((s) => (s.note ? s.note.length * 9 + 40 : 0)));
+  const mid = 30 + leftW + 30;
+  const W = mid + 30 + rightW + 30 + noteW;
+  const rowH = 70;
+  const H = Math.max(1, steps.length) * rowH + 20;
+  const last = steps[steps.length - 1]?.id;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      {rows.map(({ s, parts: [l, op, r] }, i) => {
+        const y = 10 + i * rowH + rowH / 2;
+        const hot = fresh.has(s.id) && !still;
+        const gap = op === "=" ? 18 : 30; // an arrow is wider than "="
+        return (
+          <g key={s.id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
+            {s.id === last && steps.length > 1 && <rect x={10} y={y - rowH / 2 + 6} width={mid + 30 + rightW + 10} height={rowH - 12} rx={14} fill="var(--grape-tint)" />}
+            <text x={op ? mid - gap : 30} y={y} textAnchor={op ? "end" : "start"} dominantBaseline="central" fontSize={size} fontWeight={600} fill="#111">
+              {l}
+            </text>
+            {op && (
+              <>
+                <text x={mid} y={y} textAnchor="middle" dominantBaseline="central" fontSize={size} fontWeight={600} fill="var(--grape-strong)">
+                  {op}
+                </text>
+                <text x={mid + gap} y={y} dominantBaseline="central" fontSize={size} fontWeight={600} fill="#111">
+                  {r}
+                </text>
+              </>
+            )}
+            {s.note && (
+              <text x={mid + 30 + rightW + 40} y={y} dominantBaseline="central" fontSize={17} fill="#6b6f76">
+                {s.note}
+              </text>
+            )}
           </g>
         );
       })}
