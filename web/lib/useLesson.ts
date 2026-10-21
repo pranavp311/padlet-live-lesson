@@ -42,6 +42,7 @@ export function useLesson() {
   const [startedAt, setStartedAt] = useState(0);
   const [endedAt, setEndedAt] = useState(0);
   const [level, setLevel] = useState(0);
+  const [muted, setMuted] = useState(false);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [pending, setPending] = useState("");
   const [current, setCurrent] = useState<Diagram | null>(null);
@@ -84,6 +85,7 @@ export function useLesson() {
     queued: null as null | { force: boolean; ask?: string },
     wakeSeen: 0, // how many times "Bubbles" has been heard so far
     abort: null as AbortController | null, // the diagram request in flight, so Stop can cancel it
+    muted: false,
     summon: null as null | { start: number; timer?: ReturnType<typeof setTimeout> },
     streak: 0,
     lastCreatedAt: -Infinity,
@@ -353,8 +355,9 @@ export function useLesson() {
     let mic: Mic;
     try {
       mic = await startMic((pcm, lvl) => {
-        s.stt?.send(pcm);
-        setLevel(lvl);
+        // Muted: send silence instead, so the server's timeline (and sentence times) stay in step.
+        s.stt?.send(s.muted ? new ArrayBuffer(pcm.byteLength) : pcm);
+        setLevel(s.muted ? 0 : lvl);
       });
     } catch (e) {
       console.warn("mic unavailable", e); // expected (refused or missing), shown as a notice
@@ -508,6 +511,11 @@ export function useLesson() {
 
   const drawThis = useCallback(() => void checkDiagram(true), [checkDiagram]);
 
+  const toggleMute = useCallback(() => {
+    r.current.muted = !r.current.muted;
+    setMuted(r.current.muted);
+  }, []);
+
   // Edits from the send review panel are kept with the lesson.
   const updateTargets = useCallback(
     (targets: LessonExport["targets"]) => {
@@ -550,7 +558,9 @@ export function useLesson() {
 
   const reset = useCallback(() => {
     r.current.lesson++;
+    setMuted(false);
     Object.assign(r.current, {
+      muted: false,
       live: false,
       ending: false,
       subject: "other",
@@ -577,7 +587,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, stopDrawing, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, stopDrawing, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 

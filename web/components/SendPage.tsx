@@ -130,7 +130,7 @@ export function SendPage({
                     aria-pressed={layout === v}
                     onClick={() => setDraft((d) => ({ ...d, board: { ...d.board, layout: v } }))}
                   >
-                    <span className="pick-art">
+                    <span className="pick-art" style={{ background: LAYOUT_TINT[v] }}>
                       <Art />
                     </span>
                     <span className="t17">{label}</span>
@@ -176,9 +176,11 @@ export function SendPage({
             <section className="send-section">
               <h2 className="send-h">Game</h2>
               <div className="pick-grid five">
-                {GAMES.map(([v, label, art]) => (
+                {GAMES.map(([v, label, art], i) => (
                   <button key={v} type="button" className="pick pick-small" aria-pressed={gameType === v} onClick={() => setArcade({ gameType: v })}>
-                    <span className="pick-art">{art}</span>
+                    <span className="pick-art" style={{ background: GAME_TINTS[i % GAME_TINTS.length] }}>
+                      {art}
+                    </span>
                     <span className="t14 pick-label">{label}</span>
                   </button>
                 ))}
@@ -358,37 +360,50 @@ function BoardPreview<T>({
   );
 }
 
-// Small pictures for the choices. Posts are white cards on a tinted board, like Padlet's format picker.
-const POST = { fill: "#fff", stroke: "rgba(0,0,0,.12)" };
+// Small pictures for the choices, colour-coded like Padlet's format picker, in pastels: each layout has
+// its own tinted board, with white posts carrying a picture block and text lines.
+const Post = ({ x, y, w, h, img, tone }: { x: number; y: number; w: number; h: number; img?: number; tone: string }) => (
+  <g>
+    <rect x={x} y={y} width={w} height={h} rx="3" fill="#fff" />
+    {img ? <rect x={x + 3} y={y + 3} width={w - 6} height={img} rx="2" fill={tone} /> : null}
+    <rect x={x + 3} y={y + (img ? img + 6 : 4)} width={w * 0.6} height="2.5" rx="1" fill="rgba(0,0,0,.25)" />
+    <rect x={x + 3} y={y + (img ? img + 11 : 9)} width={w * 0.8} height="2" rx="1" fill="rgba(0,0,0,.12)" />
+  </g>
+);
 const WallArt = () => (
   <svg viewBox="0 0 120 80" aria-hidden="true">
-    {[[8, 8, 30], [8, 42, 30], [45, 8, 20], [45, 32, 40], [82, 8, 40], [82, 52, 20]].map(([x, y, h], i) => (
-      <rect key={i} x={x} y={y} width="30" height={h} rx="4" {...POST} />
-    ))}
+    <Post x={6} y={6} w={34} h={34} img={16} tone="#ffb3b3" />
+    <Post x={43} y={6} w={34} h={22} tone="#ffb3b3" />
+    <Post x={80} y={6} w={34} h={40} img={22} tone="#ff9e9e" />
+    <Post x={6} y={44} w={34} h={30} tone="#ffb3b3" />
+    <Post x={43} y={32} w={34} h={42} img={24} tone="#ff8a8a" />
+    <Post x={80} y={50} w={34} h={24} tone="#ffb3b3" />
   </svg>
 );
 const ColumnsArt = () => (
   <svg viewBox="0 0 120 80" aria-hidden="true">
-    {[8, 45, 82].map((x) => (
+    {[6, 44, 82].map((x, i) => (
       <g key={x}>
-        <rect x={x} y="6" width="30" height="8" rx="3" fill="rgba(120,72,16,.18)" />
-        <rect x={x} y="18" width="30" height="18" rx="4" {...POST} />
-        <rect x={x} y="40" width="30" height="14" rx="4" {...POST} />
+        <rect x={x} y="6" width="32" height="7" rx="2.5" fill="#ffb27a" />
+        <Post x={x} y={17} w={32} h={i === 1 ? 26 : 32} img={i === 1 ? 0 : 14} tone="#ffc8a0" />
+        <Post x={x} y={i === 1 ? 47 : 53} w={32} h={i === 1 ? 28 : 22} img={i === 1 ? 10 : 0} tone="#ffc8a0" />
       </g>
     ))}
   </svg>
 );
 const TimelineArt = () => (
   <svg viewBox="0 0 120 80" aria-hidden="true">
-    <line x1="6" y1="40" x2="114" y2="40" stroke="rgba(0,0,0,.25)" strokeWidth="2" />
-    {[14, 50, 86].map((x, i) => (
+    <line x1="4" y1="64" x2="116" y2="64" stroke="#3fae4a" strokeWidth="1.5" strokeDasharray="3 3" />
+    {[[8, 6, 40, 16], [44, 22, 24, 0], [80, 10, 36, 14]].map(([x, y, h, img]) => (
       <g key={x}>
-        <circle cx={x + 10} cy="40" r="3" fill="#9466e8" />
-        <rect x={x} y={i % 2 ? 46 : 10} width="20" height="24" rx="4" {...POST} />
+        <Post x={x} y={y} w={32} h={h} img={img} tone="#a8e6ad" />
+        <path d={`M${x + 16} ${y + h}v${64 - y - h - 4}`} stroke="#3fae4a" strokeWidth="1" />
+        <circle cx={x + 16} cy="64" r="3" fill="#3fae4a" />
       </g>
     ))}
   </svg>
 );
+const LAYOUT_TINT: Record<Layout, string> = { wall: "#ffe3e3", columns: "#ffe8d6", timeline: "#e3f7e4" };
 const LAYOUTS: [Layout, string, string, () => ReactNode][] = [
   ["wall", "Wall", "Posts in a tidy brick layout", WallArt],
   ["columns", "Columns", "A column for each section", ColumnsArt],
@@ -400,6 +415,8 @@ const g = (children: ReactNode) => (
     {children}
   </svg>
 );
+// Padlet's palette in pastels, one per game picture.
+const GAME_TINTS = ["#ffe3e3", "#ffe8d6", "#fff4ce", "#e3f7e4", "#dcefff", "#eed8ff", "#ffe0ec"];
 const GAMES: [string, string, ReactNode][] = [
   ["multiple-choice-v2", "Multiple choice", g(<>{[8, 16, 24].map((y) => <g key={y}><circle cx="14" cy={y} r="2.5" fill={y === 16 ? "#9466e8" : "none"} stroke={y === 16 ? "#9466e8" : "#5c3a10"} /><path d={`M20 ${y}h16`} /></g>)}</>)],
   ["flashcards", "Flashcards", g(<><rect x="12" y="6" width="22" height="16" rx="3" fill="#fff" /><rect x="16" y="10" width="22" height="16" rx="3" fill="#fff4ce" /></>)],

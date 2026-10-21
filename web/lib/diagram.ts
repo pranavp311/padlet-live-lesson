@@ -18,6 +18,7 @@ export type Diagram = {
   points: { id: string; x: number; y: number; label?: string }[];
   segments: { id: string; from: [number, number]; to: [number, number]; label?: string }[];
   smiles?: string;
+  caption?: string; // a line under the diagram, e.g. a formula
   fresh: string[]; // ids added by the latest change, drawn highlighted
 };
 
@@ -31,7 +32,8 @@ export type Op =
   | { op: "add_curve"; id: string; expr: string; label?: string }
   | { op: "add_point"; id: string; x: number; y: number; label?: string }
   | { op: "add_segment"; id: string; from: [number, number]; to: [number, number]; label?: string }
-  | { op: "set_smiles"; smiles: string };
+  | { op: "set_smiles"; smiles: string }
+  | { op: "set_caption"; text: string };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
   return {
@@ -70,6 +72,7 @@ export function validOp(o: unknown): o is Op {
     case "add_point": return str(v.id) && num(v.x) && num(v.y) && (v.label === undefined || typeof v.label === "string");
     case "add_segment": return str(v.id) && pair(v.from) && pair(v.to) && (v.label === undefined || typeof v.label === "string");
     case "set_smiles": return str(v.smiles);
+    case "set_caption": return str(v.text);
     default: return false;
   }
 }
@@ -136,6 +139,10 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
           next.segments.push({ id: o.id, from: o.from, to: o.to, label: o.label });
           next.fresh.push(o.id);
         }
+        break;
+      case "set_caption":
+        next.caption = o.text;
+        next.fresh.push("caption");
         break;
       case "set_smiles":
         next.smiles = o.smiles;

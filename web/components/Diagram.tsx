@@ -19,6 +19,21 @@ const NODE_H = 56;
 const nodeW = (label: string) => Math.max(140, Math.min(240, label.length * 9.5 + 40));
 
 export function DiagramView({ d, still = false }: { d: Diagram; still?: boolean }) {
+  if (!d.caption) return <Drawing d={d} still={still} />;
+  return (
+    <span className="diagram-with-caption">
+      {/* On top, under the title: it reads first and never sits under Bubbles in the corner. */}
+      <span className="diagram-caption" style={d.fresh.includes("caption") && !still ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}>
+        {d.caption}
+      </span>
+      <span className="diagram-art">
+        <Drawing d={d} still={still} />
+      </span>
+    </span>
+  );
+}
+
+function Drawing({ d, still }: { d: Diagram; still: boolean }) {
   switch (d.kind) {
     case "flow":
       return <Flow d={d} still={still} />;

@@ -74,20 +74,33 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
   };
 }
 
-// Probability that a sentence addressed to Bubbles is really a request for a diagram or visual
-// (not, say, "Bubbles is a funny name").
-export async function asksForVisual(text: string): Promise<number> {
+// Probability that the teacher is actually asking Bubbles for something (Bubbles answers with a diagram),
+// not thanking him or talking about him. Measured: "Bubbles, could you explain/draw …" 0.93–0.97;
+// "Thank you Bubbles… as Bubbles drew here…" 0.35; "Bubbles is a funny name" 0.05.
+export async function asksBubbles(text: string): Promise<number> {
   const a = await ask(text, {
-    visual: {
+    asked: {
       type: "noul",
-      instructions: "The teacher is asking Bubbles to draw, show or visualise something",
+      instructions: "The teacher is asking Bubbles, the class's drawing helper, to draw, show, explain, write or add something",
       criteria: {
-        true: "A request to draw, show, sketch, visualise or diagram a topic",
-        false: "Bubbles is only mentioned, greeted, or talked about",
+        true: "A direct request to Bubbles, e.g. 'Bubbles, could you draw…', 'Bubbles, explain…', 'Help me visualise X, Bubbles' or 'Hey Bubbles. Show us…'",
+        false: "Thanking Bubbles, talking about Bubbles or what it drew, or a request to the students",
       },
     },
   });
-  return a.visual.noul;
+  return a.asked.noul;
+}
+
+// Probability that a request to Bubbles is about changing or adding to the diagram already on screen
+// ("write the formula underneath our drawing") rather than asking for a new one.
+export async function editsDiagram(text: string, onScreen: string): Promise<number> {
+  const a = await ask(text, {
+    edits: {
+      type: "noul",
+      instructions: `The teacher is asking to change, label or add something to the diagram already on screen ("${onScreen}") rather than draw a new one`,
+    },
+  });
+  return a.edits.noul;
 }
 
 // Picks the lesson's subject (and so its icon) from the title, or the first sentences if there's no title.

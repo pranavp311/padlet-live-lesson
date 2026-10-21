@@ -1,8 +1,9 @@
-import { asksForVisual, route, type Route } from "@/lib/server/jev";
+import { asksBubbles, editsDiagram, route, type Route } from "@/lib/server/jev";
 import { llmJson } from "@/lib/server/llm";
 import type { Diagram, Kind, Op } from "@/lib/diagram";
 
 const DRAWABLE = 0.75;
+const ASKED = 0.7; // Jev's probability that a "Bubbles, …" sentence really asks him for something, or asks for an edit
 
 const OPS: Record<Kind, string> = {
   flow: `{"op":"add_node","id":"sun","label":"Sunlight","role":"input|process|output|other"}, {"op":"add_edge","from":"sun","to":"leaf","label":"optional"}, {"op":"relabel","id":"sun","label":"..."}`,
@@ -15,7 +16,7 @@ const OPS: Record<Kind, string> = {
 const SYSTEM = (kind: Kind) => `You draw a ${kind} diagram live while a teacher talks, for a projected classroom screen.
 You never write drawing code. You return changes to the diagram as ops:
 ${OPS[kind]}
-plus {"op":"set_title","title":"Short title"}.
+plus {"op":"set_title","title":"Short title"} and {"op":"set_caption","text":"a² + b² = c²"} (one short line shown under the diagram, e.g. a formula or key fact).
 Rules: labels are 1-3 words; at most 8 nodes or events in total; only add what the teacher has actually said; reuse existing ids; never repeat existing parts.
 Return {"action":"update"|"new_topic"|"none","ops":[...]}. Use "new_topic" only when the teacher has clearly moved to a different topic than the current diagram; then ops describe the new diagram. Use "none" when nothing new is worth drawing.`;
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   const { recent, current, allowCreate, force, ask } = (await req.json()) as Body;
   const said = recent.join(" ");
   return ndjson(async (send) => {
-    if (ask) return send(await drawRequest(ask, said, send));
+    if (ask) return send(await drawRequest(ask, said, current, send));
 
     let jev: Route;
     try {
@@ -65,17 +66,35 @@ export async function POST(req: Request) {
   });
 }
 
-// The teacher said Bubbles' name: Jev checks it's really a request for a visual and picks the kind;
-// only then does the client get "drawing" (and Bubbles start drawing). It's always a new diagram.
-async function drawRequest(ask: string, said: string, send: (line: object) => void) {
+// The teacher said Bubbles' name: Jev checks it's really a request for a visual, whether it's about the
+// diagram already on screen ("…underneath our drawing"), and picks the kind; only then does the client
+// get "drawing" (and Bubbles start drawing). It adds to the diagram on screen, or draws a new one.
+async function drawRequest(heard: string, said: string, current: Diagram | null, send: (line: object) => void) {
+  // The speech model writes the name lowercase with no comma ("…theorem bubbles"), which Jev reads as the
+  // word, not someone being addressed: 0.46 vs 0.98 for "…theorem, Bubbles." So write it as a name.
+  const ask = heard.replace(/(\w)\s+bubbles?\b/gi, "$1, Bubbles").replace(/\bbubbles?\b/gi, "Bubbles");
   try {
-    const [jev, visual] = await Promise.all([route(ask, null), asksForVisual(ask)]);
-    if (visual < 0.5) return { jev, action: "none" };
+    const [jev, asked, edits] = await Promise.all([
+      route(ask, null),
+      asksBubbles(ask),
+      current ? editsDiagram(ask, current.title) : Promise.resolve(0),
+    ]);
+    // Bubbles answers any request (draw, show, explain…) with a diagram, but not thanks or mentions.
+    if (asked < ASKED) {
+      console.info("diagram", JSON.stringify({ path: "bubbles-ignored", ask, asked }));
+      return { jev, action: "none" };
+    }
     send({ jev, drawing: true });
+    if (current && edits >= ASKED) {
+      const user = `Current diagram:\n${JSON.stringify(compact(current))}\n\nThe teacher asked you, Bubbles, to change or add to this diagram: "${ask}"\nReturn action "update" with ops that add to it (use set_caption for a formula or line of text under it); use your own knowledge for the content.`;
+      const reply = await llmJson<LlmReply>(SYSTEM(current.kind), user, 800);
+      console.info("diagram", JSON.stringify({ path: "bubbles-edit", ask, asked, edits, kind: current.kind }));
+      return { jev, action: "update", kind: current.kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
+    }
     const kind: Kind = jev.kind !== "none" ? jev.kind : "flow";
     const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\nEarlier in the lesson: ${said}`;
     const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
-    console.info("diagram", JSON.stringify({ path: "bubbles", ask, jev, visual, kind }));
+    console.info("diagram", JSON.stringify({ path: "bubbles", ask, jev, asked, edits, kind }));
     return { jev, action: "new_topic", kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
   } catch (e) {
     console.error("bubbles request failed", e);
@@ -95,5 +114,5 @@ function ndjson(run: (send: (line: object) => void) => Promise<unknown>) {
 }
 
 function compact(d: Diagram) {
-  return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles };
+  return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, caption: d.caption };
 }

@@ -211,10 +211,13 @@ export function Live({ l }: { l: L }) {
       <header className="hdr">
         <Brand />
         <span className="spacer" />
-        <div className="pill">
+        <div className={l.muted ? "pill pill-muted" : "pill"}>
           <span className="rec" />
           <span className="tnum">{formatClock(secs)}</span>
-          <MicBars level={l.level} />
+          {l.muted ? <span className="muted-label">Muted</span> : <MicBars level={l.level} />}
+          <button className="mute" aria-pressed={l.muted} aria-label={l.muted ? "Unmute" : "Mute"} title={l.muted ? "Unmute" : "Mute"} onClick={l.toggleMute}>
+            <Icon name={l.muted ? "micOff" : "mic"} size={18} />
+          </button>
         </div>
         <button className="btn btn-dark" onClick={() => void l.end()} disabled={l.ending}>
           {l.ending ? "Ending…" : "End lesson"}
