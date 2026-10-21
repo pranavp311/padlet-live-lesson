@@ -290,7 +290,7 @@
    top with the drawing centred far below it. Small cards keep the drawing filling their fixed box. */
 :is(.dpanel-body, .viewer-body) .diagram-with-caption { justify-content: center; gap: 12px; }
 :is(.dpanel-body, .viewer-body) .diagram-art { flex: 0 1 auto; }
-:is(.dpanel-body, .viewer-body) .diagram-art > svg { height: auto; max-height: 100%; }
+:is(.dpanel-body, .viewer-body) .diagram-art > svg { height: auto; max-height: 100% !important; } /* beats each drawing's own px cap; its max-width still stops small ones blowing up */
 .diagram-caption { max-width: 100%; font-size: 18px; line-height: 24px; font-weight: 600; color: #111; text-align: center; }
 
 /* In thumbnails the caption is a small line, so the drawing keeps the space. */

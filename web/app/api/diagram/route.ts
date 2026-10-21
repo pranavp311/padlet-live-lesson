@@ -70,13 +70,7 @@ export async function POST(req: Request) {
 // diagram already on screen ("…underneath our drawing"), and picks the kind; only then does the client
 // get "drawing" (and Bubbles start drawing). It adds to the diagram on screen, or draws a new one.
 async function drawRequest(heard: string, said: string, current: Diagram | null, send: (line: object) => void) {
-  // The speech model writes the name lowercase with no comma ("…theorem bubbles"), which Jev reads as the
-  // word, not someone being addressed: 0.46 vs 0.98 for "…theorem, Bubbles." So write it as a name.
-  // Likewise at the start of a sentence: "Bubbles draw the water cycle" scored 0.29, "Bubbles, draw…" 0.9+.
-  const ask = heard
-    .replace(/(\w)\s+bubbles?\b/gi, "$1, Bubbles")
-    .replace(/(^|[.?!]\s+)bubbles?\s+(?=[a-z])/gi, "$1Bubbles, ")
-    .replace(/\bbubbles?\b/gi, "Bubbles");
+  const ask = asName(heard);
   try {
     const [jev, asked, edits] = await Promise.all([
       route(ask, null),
@@ -96,7 +90,10 @@ async function drawRequest(heard: string, said: string, current: Diagram | null,
       return { jev, action: "update", kind: current.kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
     }
     const kind: Kind = jev.kind !== "none" ? jev.kind : "flow";
-    const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\nEarlier in the lesson: ${said}`;
+    // The diagram on screen goes in too: a request that only adds a line of text to it ("write the formula") should
+    // come back as just set_caption, which is applied to it below, rather than a redraw.
+    const onScreen = current ? `\nOn screen now: ${JSON.stringify(compact(current))}\nIf the request only adds a line of text to that diagram, return only set_caption.` : "";
+    const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\nEarlier in the lesson: ${said}${onScreen}`;
     const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
     const ops = Array.isArray(reply.ops) ? reply.ops : [];
     // Only a line of text ("write the formula underneath") is an edit Jev scored low: it goes under the diagram on screen.
@@ -124,6 +121,21 @@ function ndjson(run: (send: (line: object) => void) => Promise<unknown>) {
 }
 
 // "a graph titled 'Pythagoras theorem' showing: a, b, c, right angle", for Jev's edit check.
+// The speech model writes the name lowercase with no commas, which Jev reads as the word, not someone being
+// addressed: "…theorem bubbles" 0.46 vs "…theorem, Bubbles" 0.98; "Bubbles draw the water cycle" 0.29 vs
+// "Bubbles, draw…" 0.97. Write it as a name, except where it's the ordinary word ("air bubbles", "bubble sort").
+const NOT_NAME_BEFORE = /^(the|a|an|air|soap|gas|water|of|these|those|some|tiny|small|big|little|many|blow|blowing|in|with)$/i;
+const NOT_NAME_AFTER = /^\s+(sort|tea|wrap|gum|chart|bath|rise|rises|form|forms|pop|pops|burst|bursts)\b/i;
+function asName(text: string) {
+  return text.replace(/(\b\w+\s+)?\bbubbles?\b/gi, (m, before: string | undefined, at: number, all: string) => {
+    const next = all.slice(at + m.length);
+    if ((before && NOT_NAME_BEFORE.test(before.trim())) || NOT_NAME_AFTER.test(next)) return m;
+    // "…theorem, Bubbles" after a word; "Bubbles, draw…" when it opens a sentence and words follow.
+    if (before) return `${before.trimEnd()}, Bubbles`;
+    return /^\s+[a-z]/i.test(next) ? "Bubbles," : "Bubbles";
+  });
+}
+
 function describe(d: Diagram) {
   const labels = [
     ...d.nodes.map((n) => n.label), ...d.events.map((e) => e.label), ...d.curves.map((c) => c.label ?? ""),

@@ -29,13 +29,13 @@ const SUMMON_QUIET_MS = 1500; // once a request has been said, fire when the tea
 // stop) only after this long without speech. While the teacher talks, sentences settle at the model's own
 // punctuation, with what was said before them as context.
 const SETTLE_AFTER_PAUSE_MS = 10000;
-const SUMMON_GIVE_UP_MS = 8000;
-const DIAGRAM_TIMEOUT_MS = 30000; // after "Bubbles", stop listening if no request follows within this long
+const SUMMON_GIVE_UP_MS = 8000; // after "Bubbles", stop waiting for more of the request after this long without speech
+const DIAGRAM_TIMEOUT_MS = 30000; // a diagram request that hasn't answered by now has failed
 // Words that don't make a request on their own ("Hey Bubbles", "Okay so Bubbles").
 const FILLER = /\b(bubbles?|hey|hi|hello|okay|ok|so|um|uh|right|please|can|could|would|will|you)\b/gi;
 // A request that's clearly not finished yet ("could you help me draw", "show us", "a diagram of the"). "me" and
 // "us" only count straight after a verb: "draw the water cycle for me" is a whole request.
-const UNFINISHED = /\b((draw|show|help|give|tell|make) (me|us)|draw|show|sketch|visuali[sz]e|help|with|of|for|about|a|an|the|and|or|but|to|then|that|how|between|into|in|on|from|like)\W*$/i;
+const UNFINISHED = /\b((draw|show|help|give|tell|make) (me|us)|draw|show|sketch|visuali[sz]e|help|diagram|picture|with|of|for|about|a|an|the|and|or|but|to|then|that|how|between|into|in|on|from|like)\W*$/i;
 const CLEANS_AT_ONCE = 2; // a cold start's backlog settles many sentences at once; don't fire them all together
 const LAND_MS = 1500; // how long the caught-up chunk's settle-in animation runs
 
@@ -347,7 +347,6 @@ export function useLesson() {
     else setListening(false);
   }, [settleRest, checkDiagram]);
 
-  // Bubbles heard his name but no request followed: stop listening.
   // The window ran out. Anything said after the name goes to Jev, which knows a request from a remark better
   // than these word rules; only a bare "Hey Bubbles" is dropped.
   const giveUpSummon = useCallback(() => {

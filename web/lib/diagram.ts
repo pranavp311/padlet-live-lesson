@@ -57,6 +57,14 @@ const range = (v: unknown): v is [number, number] => Array.isArray(v) && v.lengt
 const pair = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]);
 const ROLES = ["input", "process", "output", "other"];
 
+// Models often write a year or an id as a number ("when": 1914); those are text here, not a reason to drop the op.
+function textFields(o: unknown): unknown {
+  if (!o || typeof o !== "object") return o;
+  const v = { ...(o as Record<string, unknown>) };
+  for (const k of ["id", "label", "when", "title", "from", "to"]) if (num(v[k])) v[k] = String(v[k]);
+  return v;
+}
+
 // LLM output is untrusted: drop any op whose fields have the wrong shape, so the renderers never see them.
 export function validOp(o: unknown): o is Op {
   if (!o || typeof o !== "object") return false;
@@ -79,7 +87,7 @@ export function validOp(o: unknown): o is Op {
 
 // Applies ops without mutating `d`. Malformed ops, and ops that point at missing parts, are skipped.
 export function applyOps(d: Diagram, raw: unknown[]): Diagram {
-  const ops = raw.filter(validOp);
+  const ops = raw.map(textFields).filter(validOp);
   const next: Diagram = {
     ...d,
     nodes: [...d.nodes],
