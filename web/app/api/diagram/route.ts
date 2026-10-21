@@ -10,7 +10,7 @@ const OPS: Record<Kind, string> = {
   cycle: `{"op":"add_node","id":"evap","label":"Evaporation","role":"process"} in cycle order, {"op":"add_edge","from":"evap","to":"cond"}; close the loop with an edge back to the first node`,
   timeline: `{"op":"add_event","id":"e1","when":"1914","label":"War begins"} in date order`,
   graph: `{"op":"set_axes","x":[-5,5],"y":[-2,10]}, {"op":"add_curve","id":"f","expr":"x^2 - 2x + 1","label":"y = x² − 2x + 1"} (expr in mathjs syntax using x), {"op":"add_point","id":"v","x":1,"y":0,"label":"vertex"}, and for geometry {"op":"add_segment","id":"a","from":[0,0],"to":[3,0],"label":"a = 3"} (shapes are made of segments; set axes so the shape fits with a margin)`,
-  molecule: `{"op":"set_smiles","smiles":"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O"} (valid SMILES)`,
+  molecule: `{"op":"set_smiles","smiles":"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O"} (one valid SMILES for one compound; never a reaction with ">>": for a reaction draw the main product and put the equation in set_caption)`,
   venn: `{"op":"add_set","id":"mammals","label":"Mammals"} (2 or 3 sets), then {"op":"add_item","id":"whale","label":"Whale","sets":["mammals","sea"]} (an item in several sets sits in their overlap; "sets":[] puts it outside all of them); at most 4 items per region; put what the sets share in the overlap`,
   letters: `{"op":"add_letter","id":"m","text":"Mm","sound":"/m/","word":"moon"}: text is the letter in upper and lower case ("Ss"), or a letter group as written ("sh", "ai"); sound is the sound between slashes; word is a short example word that contains it. One add_letter per letter or sound the teacher is talking about (at most 4). "What letter makes the sound s?" draws "Ss"`,
 };
@@ -19,6 +19,7 @@ const SYSTEM = (kind: Kind) => `You draw a ${kind} diagram live while a teacher 
 You never write drawing code. You return changes to the diagram as ops:
 ${OPS[kind]}
 plus {"op":"set_title","title":"Short title"} and {"op":"set_caption","text":"a² + b² = c²"} (one short line shown under the diagram, e.g. a formula or key fact).
+To take a part off when the teacher asks ("no, remove that"), use {"op":"remove","id":"…"} with its id ("caption" removes the caption).
 Rules: labels are 1-3 words; at most 8 nodes or events in total; only add what the teacher has actually said; reuse existing ids; never repeat existing parts.
 Return {"action":"update"|"new_topic"|"none","ops":[...]}. Use "new_topic" only when the teacher has clearly moved to a different topic than the current diagram; then ops describe the new diagram. Use "none" when nothing new is worth drawing.`;
 

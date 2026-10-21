@@ -90,10 +90,38 @@ function Node({
         strokeWidth={2}
         filter={`url(#${sid}-${hot ? "shf" : "sh"})`}
       />
-      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={17} fontWeight={600} fill="#111">
-        {label}
-      </text>
+      <Lines x={x} y={y} lines={wrap(label, Math.floor((w - 24) / 9.5))} size={17} weight={600} fill="#111" />
     </g>
+  );
+}
+
+// Splits a label into at most `max` lines of about `width` characters, ending in "…" if it doesn't fit.
+export function wrap(text: string, width: number, max = 2) {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/)) {
+    if (line && (line + " " + word).length > width) {
+      lines.push(line);
+      line = word;
+    } else line = line ? line + " " + word : word;
+  }
+  if (line) lines.push(line);
+  if (lines.length > max) lines.splice(max - 1, lines.length, lines.slice(max - 1).join(" ").slice(0, width - 1) + "…");
+  return lines;
+}
+
+// Lines of text centred on (x, y).
+function Lines({
+  x, y, lines, size, weight, fill, lh = size * 1.2,
+}: { x: number; y: number; lines: string[]; size: number; weight?: number; fill: string; lh?: number }) {
+  return (
+    <text x={x} textAnchor="middle" fontSize={size} fontWeight={weight} fill={fill}>
+      {lines.map((l, i) => (
+        <tspan key={i} x={x} y={y + (i - (lines.length - 1) / 2) * lh} dominantBaseline="central">
+          {l}
+        </tspan>
+      ))}
+    </text>
   );
 }
 
@@ -215,7 +243,7 @@ function Timeline({ d, still }: { d: Diagram; still: boolean }) {
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
       <Defs id={sid} />
       <line x1={20} y1={mid} x2={W - 20} y2={mid} stroke={EDGE} strokeWidth={2} markerEnd={`url(#${sid}-a)`} />
-      {d.events.map((e, i) => {
+      {byDate(d.events).map((e, i) => {
         const x = 20 + step / 2 + i * step;
         const up = i % 2 === 0;
         const hot = fresh.has(e.id) && !still;
@@ -226,13 +254,27 @@ function Timeline({ d, still }: { d: Diagram; still: boolean }) {
             <circle cx={x} cy={mid} r={7} fill={hot ? "var(--grape)" : "#fff"} stroke={hot ? "var(--grape)" : EDGE} strokeWidth={2} />
             <rect x={x - 80} y={cardY} width={160} height={84} rx={12} fill="var(--canary-tint)" stroke={hot ? "var(--grape)" : "none"} strokeWidth={2} filter={`url(#${sid}-sh)`} />
             <text x={x} y={cardY + 30} textAnchor="middle" fontSize={20} fontWeight={600} fill="#111">{e.when}</text>
-            <text x={x} y={cardY + 58} textAnchor="middle" fontSize={15} fill="rgba(0,0,0,.6)">{e.label}</text>
+            <Lines x={x} y={cardY + 57} lines={wrap(e.label, 18)} size={15} lh={17} fill="rgba(0,0,0,.6)" />
           </g>
         );
       })}
     </svg>
   );
 }
+
+// Events in date order when every date reads as a year ("1914", "1914–1918", "500 BC"); otherwise as added.
+function byDate<T extends { when: string }>(events: T[]) {
+  const year = (w: string) => {
+    const m = w.match(/-?\d+/);
+    if (!m) return null;
+    return /\b(BC|BCE)\b/i.test(w) ? -Math.abs(+m[0]) : +m[0];
+  };
+  const years = events.map((e) => year(e.when));
+  if (years.some((y) => y === null)) return events;
+  return events.map((e, i) => ({ e, y: years[i]! })).sort((a, b) => a.y - b.y).map((x) => x.e);
+}
+
+const CURVE_COLOURS = ["#111", "#8b00f9", "#3992de", "#ff4081"];
 
 function Graph({ d, still }: { d: Diagram; still: boolean }) {
   const pad = 28;
@@ -295,15 +337,30 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
       {ticks(ax.y[0], ax.y[1]).map((v) => (
         <line key={`y${v}`} y1={sy(v)} y2={sy(v)} x1={pad} x2={W - pad} stroke="#ebecef" />
       ))}
+      {/* Numbers along the axes (or the edges when an axis is off screen), leaving out 0 where the axes cross. */}
+      {ticks(ax.x[0], ax.x[1])
+        .filter((v) => v !== 0 || !(ax.y[0] <= 0 && ax.y[1] >= 0))
+        .map((v) => (
+          <text key={`nx${v}`} x={sx(v)} y={(ax.y[0] <= 0 && ax.y[1] >= 0 ? sy(0) : H - pad) + 16} textAnchor="middle" fontSize={12} fill="#6b6f76">
+            {v}
+          </text>
+        ))}
+      {ticks(ax.y[0], ax.y[1])
+        .filter((v) => v !== 0)
+        .map((v) => (
+          <text key={`ny${v}`} x={(ax.x[0] <= 0 && ax.x[1] >= 0 ? sx(0) : pad) - 6} y={sy(v)} textAnchor="end" dominantBaseline="central" fontSize={12} fill="#6b6f76">
+            {v}
+          </text>
+        ))}
       {ax.x[0] <= 0 && ax.x[1] >= 0 && <line x1={sx(0)} x2={sx(0)} y1={pad} y2={H - pad} stroke="#94969b" strokeWidth={1.5} />}
       {ax.y[0] <= 0 && ax.y[1] >= 0 && <line y1={sy(0)} y2={sy(0)} x1={pad} x2={W - pad} stroke="#94969b" strokeWidth={1.5} />}
       <g clipPath={`url(#clip-${d.id})`}>
-        {paths.map(({ c, path }) => (
+        {paths.map(({ c, path }, i) => (
           <path
             key={c.id}
             d={path}
             fill="none"
-            stroke="#111"
+            stroke={CURVE_COLOURS[i % CURVE_COLOURS.length]}
             strokeWidth={3}
             strokeLinecap="round"
             pathLength={1}
@@ -311,6 +368,32 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
           />
         ))}
       </g>
+      {/* A legend in the top-left corner: labels at the curves' ends collide where curves leave the grid together. */}
+      {paths.some(({ c }) => c.label) && (
+        <g>
+          <rect
+            x={pad + 8}
+            y={pad + 8}
+            width={Math.max(...paths.map(({ c }) => (c.label ?? "").length)) * 8.5 + 44}
+            height={paths.filter(({ c }) => c.label).length * 24 + 10}
+            rx={8}
+            fill="#fff"
+            fillOpacity={0.92}
+            stroke="#ebecef"
+          />
+          {paths
+            .map(({ c }, i) => ({ c, colour: CURVE_COLOURS[i % CURVE_COLOURS.length] }))
+            .filter(({ c }) => c.label)
+            .map(({ c, colour }, k) => (
+              <g key={`l${c.id}`}>
+                <line x1={pad + 18} x2={pad + 36} y1={pad + 25 + k * 24} y2={pad + 25 + k * 24} stroke={colour} strokeWidth={3} strokeLinecap="round" />
+                <text x={pad + 44} y={pad + 25 + k * 24} dominantBaseline="central" fontSize={14} fontWeight={600} fill={colour}>
+                  {c.label}
+                </text>
+              </g>
+            ))}
+        </g>
+      )}
       {(d.segments ?? []).map((g, _, all) => {
         const hot = fresh.has(g.id) && !still;
         const [x1, y1, x2, y2] = [sx(g.from[0]), sy(g.from[1]), sx(g.to[0]), sy(g.to[1])];
@@ -339,7 +422,7 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
           <g key={p.id} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
             <circle cx={sx(p.x)} cy={sy(p.y)} r={hot ? 8 : 6} fill="var(--grape)" stroke="#fff" strokeWidth={2} />
             {p.label && (
-              <text x={sx(p.x)} y={sy(p.y) + 26} textAnchor="middle" fontSize={14} fontWeight={600} fill="#111" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+              <text x={sx(p.x)} y={sy(p.y) + (Math.abs(sy(p.y) - sy(0)) < 4 ? -14 : 26)} textAnchor="middle" fontSize={14} fontWeight={600} fill="#111" stroke="#fff" strokeWidth={5} paintOrder="stroke">
                 {p.label}
               </text>
             )}
@@ -376,10 +459,15 @@ function Molecule({ d, still }: { d: Diagram; still: boolean }) {
     };
   }, [d.smiles]);
 
+  if (failed || !d.smiles)
+    return (
+      <svg viewBox="0 0 480 160" width="100%" height="100%" role="img" aria-label={d.title}>
+        <Lines x={240} y={80} lines={wrap(d.title || "Molecule", 24)} size={30} weight={700} fill="#111" />
+      </svg>
+    );
   return (
     <svg
       ref={ref}
-      visibility={failed ? "hidden" : undefined}
       viewBox="0 0 480 400"
       width="100%"
       height="100%"

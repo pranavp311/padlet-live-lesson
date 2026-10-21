@@ -41,7 +41,8 @@ export type Op =
   | { op: "add_set"; id: string; label: string }
   | { op: "add_item"; id: string; label: string; sets: string[] }
   | { op: "add_letter"; id: string; text: string; sound?: string; word?: string }
-  | { op: "set_caption"; text: string };
+  | { op: "set_caption"; text: string }
+  | { op: "remove"; id: string };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
   return {
@@ -94,6 +95,7 @@ export function validOp(o: unknown): o is Op {
     case "add_letter":
       return str(v.id) && str(v.text) && v.text.trim().length <= 4 && optStr(v.sound) && optStr(v.word);
     case "set_caption": return str(v.text);
+    case "remove": return str(v.id);
     default: return false;
   }
 }
@@ -164,6 +166,21 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
           next.fresh.push(o.id);
         }
         break;
+      case "remove": {
+        // "Take that off": the part with this id, and any arrows to or from it.
+        const keep = <T extends { id: string }>(xs: T[]) => xs.filter((x) => x.id !== o.id);
+        next.nodes = keep(next.nodes);
+        next.edges = next.edges.filter((e) => e.id !== o.id && e.from !== o.id && e.to !== o.id);
+        next.events = keep(next.events);
+        next.curves = keep(next.curves);
+        next.points = keep(next.points);
+        next.segments = keep(next.segments);
+        next.sets = keep(next.sets!);
+        next.items = keep(next.items!).map((x) => ({ ...x, sets: x.sets.filter((id) => id !== o.id) }));
+        next.letters = keep(next.letters!);
+        if (o.id === "caption") next.caption = undefined;
+        break;
+      }
       case "set_caption":
         next.caption = o.text;
         next.fresh.push("caption");
