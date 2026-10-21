@@ -6,7 +6,7 @@ import { DiagramViewer } from "@/components/DiagramViewer";
 import { Bubbles } from "@/components/Bubbles";
 import { SendPanel, type Target } from "@/components/SendPanel";
 import type { LessonExport } from "@/app/api/export/route";
-import { Brand, Icon, MicBars, SubjectTile, TodoItem } from "@/components/Bits";
+import { Brand, Icon, MicBars, Notice, SubjectTile, TodoItem } from "@/components/Bits";
 import { KIND_LABEL, type Diagram } from "@/lib/diagram";
 import { formatClock, type Sentence } from "@/lib/transcript";
 import { downloadBlob, slug, transcriptText } from "@/lib/files";
@@ -33,12 +33,12 @@ export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[]; 
           }}
         >
           <input className="input" aria-label="Lesson title" placeholder="Lesson title" value={l.title} onChange={(e) => l.setTitle(e.target.value)} />
-          <button className="cta" type="submit">
+          <button className="cta" type="submit" disabled={l.starting}>
             <Icon name="mic" size={22} />
-            Start lesson
+            {l.starting ? "Waiting for microphone…" : "Start lesson"}
           </button>
         </form>
-        {l.error && <p className="err">{l.error}</p>}
+        {l.error && <Notice error={l.error} action="Try again" onAction={() => void l.start()} onDismiss={l.clearError} />}
         <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <h1 className="h1">Lessons</h1>
           {lessons.length ? (
@@ -83,7 +83,7 @@ export function Warming({ l }: { l: L }) {
             <div className="progress">
               <div />
             </div>
-            {l.error ? <p className="err">{l.error}</p> : <p className="muted">Getting ready… start talking anytime.</p>}
+            {l.error ? <Notice error={l.error} action="Back" onAction={l.cancel} /> : <p className="muted">Getting ready… start talking anytime.</p>}
           </div>
         </div>
       </main>
@@ -166,7 +166,7 @@ export function Live({ l }: { l: L }) {
       <div className="lesson-head">
         <SubjectTile subject={l.subject} />
         <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-          {l.error ? <span className="eyebrow err">{l.error}</span> : <span className="eyebrow">Live lesson · {today()}</span>}
+          <span className="eyebrow">Live lesson · {today()}</span>
           <h1 className="h1">{l.title || d?.title || "Live lesson"}</h1>
         </div>
         {l.todos.length > 0 && (
@@ -177,6 +177,11 @@ export function Live({ l }: { l: L }) {
           </div>
         )}
       </div>
+      {l.error && (
+        <div className="live-notice">
+          <Notice error={l.error} action="End lesson" onAction={() => void l.end()} />
+        </div>
+      )}
       <main className="live">
         <section className="transcript" aria-label="Transcript" aria-live="polite">
           {/* Speech held during a cold start is written up out of sight, then lands in one go. */}

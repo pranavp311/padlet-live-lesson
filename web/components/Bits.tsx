@@ -1,5 +1,6 @@
 import type { Todo, TodoKind } from "@/lib/todo";
 import type { Subject } from "@/lib/subject";
+import type { LessonError } from "@/lib/useLesson";
 
 // Small shared pieces: logo, icons, subject tile, mic level.
 
@@ -42,6 +43,8 @@ const PATHS: Record<string, string[]> = {
   right: ["m9 18 6-6-6-6"],
   history: ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5", "M12 7v5l4 2"],
   text: ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6", "M16 13H8", "M16 17H8", "M10 9H8"],
+  micOff: ["M2 2l20 20", "M18.89 13.23A7.12 7.12 0 0 0 19 12v-2", "M5 10v2a7 7 0 0 0 12 5", "M15 9.34V5a3 3 0 0 0-5.68-1.33", "M9 9v3a3 3 0 0 0 5.12 2.12", "M12 19v3"],
+  wifiOff: ["M12 20h.01", "M8.5 16.43a5 5 0 0 1 7 0", "M5 12.86a10 10 0 0 1 5.17-2.69", "M19 12.86a10 10 0 0 0-2-1.47", "M2 8.82a15 15 0 0 1 4.17-2.65", "M10.66 5c4.01-.36 8.14.9 11.34 3.76", "M2 2l20 20"],
   lesson: ["M2 3h20", "M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3", "m7 21 5-5 5 5", "M7 12l3-3 2 2 4-4"],
 };
 
@@ -114,5 +117,56 @@ export function TodoItem({ todo, size = 28 }: { todo: Todo; size?: number }) {
       </span>
       {todo.text}
     </span>
+  );
+}
+
+const NOTICE: Record<LessonError, { icon: keyof typeof PATHS; title: string; body: string }> = {
+  "mic-blocked": {
+    icon: "micOff",
+    title: "Microphone is blocked",
+    body: "Click the icon at the left of the address bar, turn Microphone on, then try again.",
+  },
+  "mic-failed": {
+    icon: "micOff",
+    title: "Couldn't start the microphone",
+    body: "Check one is connected and not in use by another app.",
+  },
+  "stt-unreachable": {
+    icon: "wifiOff",
+    title: "Can't reach speech-to-text",
+    body: "Check your connection, then start again.",
+  },
+  "stt-lost": {
+    icon: "wifiOff",
+    title: "Connection lost",
+    body: "The transcript has stopped. End the lesson to keep what you have.",
+  },
+};
+
+// An error, in the app's card style: tinted icon tile, short title, what to do next, one action.
+export function Notice({
+  error, action, onAction, onDismiss,
+}: { error: LessonError; action?: string; onAction?: () => void; onDismiss?: () => void }) {
+  const n = NOTICE[error];
+  return (
+    <div className="notice" role="alert">
+      <span className="notice-icon">
+        <Icon name={n.icon} size={22} />
+      </span>
+      <span className="notice-text">
+        <span className="notice-title">{n.title}</span>
+        <span className="notice-body">{n.body}</span>
+      </span>
+      {action && onAction && (
+        <button type="button" className="btn btn-dark" onClick={onAction}>
+          {action}
+        </button>
+      )}
+      {onDismiss && (
+        <button type="button" className="btn btn-ghost btn-icon" aria-label="Dismiss" onClick={onDismiss}>
+          <Icon name="x" />
+        </button>
+      )}
+    </div>
   );
 }

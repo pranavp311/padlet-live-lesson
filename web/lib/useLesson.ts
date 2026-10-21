@@ -11,6 +11,9 @@ import type { Subject } from "@/lib/subject";
 import { saveLesson } from "@/lib/history";
 
 export type Phase = "ready" | "warming" | "live" | "ended";
+// What went wrong, for the error notice: the microphone was refused or failed, or speech-to-text was
+// unreachable while warming or dropped mid-lesson.
+export type LessonError = "mic-blocked" | "mic-failed" | "stt-unreachable" | "stt-lost";
 
 const DRAWABLE = 0.75;
 const NEW_DIAGRAM_GAP_S = 20;
@@ -43,7 +46,8 @@ export function useLesson() {
   const [subject, setSubject] = useState<Subject>("other");
   const [lessonExport, setLessonExport] = useState<LessonExport | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LessonError | null>(null);
+  const [starting, setStarting] = useState(false); // waiting on the browser's microphone prompt
   const [ending, setEnding] = useState(false);
   const [drawing, setDrawing] = useState(false); // a "Draw this" or Bubbles request is in flight
   const [summoned, setSummoned] = useState(false); // Bubbles heard its name and is drawing
@@ -82,6 +86,7 @@ export function useLesson() {
     lesson: 0, // bumped per lesson; async replies from an older lesson are dropped
     live: false, // between Start and End/Cancel; diagram checks only run while live
     ending: false,
+    starting: false,
     endedAt: 0,
     subject: "other" as Subject,
   });
@@ -301,19 +306,41 @@ export function useLesson() {
   };
 
   const start = useCallback(async () => {
-    setError(null);
-    setPhase("warming");
     const s = r.current;
+    if (s.starting) return;
+    // Ask for the microphone first, still on the start page, so a refusal never flashes the warming
+    // screen or opens a speech connection.
+    s.starting = true;
+    setStarting(true);
+    setError(null);
+    let mic: Mic;
+    try {
+      mic = await startMic((pcm, lvl) => {
+        s.stt?.send(pcm);
+        setLevel(lvl);
+      });
+    } catch (e) {
+      console.warn("mic unavailable", e); // expected (refused or missing), shown as a notice
+      setError(e instanceof DOMException && e.name === "NotAllowedError" ? "mic-blocked" : "mic-failed");
+      return;
+    } finally {
+      s.starting = false;
+      setStarting(false);
+    }
+
+    setPhase("warming");
     const lesson = ++s.lesson;
     s.live = true;
     s.startedAt = Date.now();
     setStartedAt(s.startedAt);
+    s.mic = mic;
+    s.audioZero = now();
     Object.assign(s, { heard: 0, catchingUp: false, cleans: [] });
     setCatchUp(null);
     const mine = () => s.lesson === lesson && s.live; // ignore events from a cancelled lesson's socket
     if (title.trim()) pickIcon(title.trim());
     let gotReady = false;
-    const stt = (s.stt = connectStt({
+    s.stt = connectStt({
       onReady: () => {
         gotReady = true;
         if (mine()) setPhase((p) => (p === "warming" ? "live" : p));
@@ -352,33 +379,9 @@ export function useLesson() {
       onClose: (err) => {
         if (!err || !mine()) return;
         caughtUp(); // show what arrived before the connection dropped
-        setError(
-          gotReady
-            ? "Lost the connection to speech-to-text. End the lesson to keep what you have."
-            : "Couldn't reach speech-to-text. Cancel and try again.",
-        );
+        setError(gotReady ? "stt-lost" : "stt-unreachable");
       },
-    }));
-    try {
-      const mic = await startMic((pcm, lvl) => {
-        s.stt?.send(pcm);
-        setLevel(lvl);
-      });
-      if (!mine()) return mic.stop(); // cancelled while the permission prompt was open
-      s.mic = mic;
-      s.audioZero = now();
-    } catch (e) {
-      console.error("mic failed", e);
-      if (!mine()) return; // a cancelled lesson's prompt; the current lesson isn't affected
-      s.live = false;
-      stt.close();
-      setError(
-        e instanceof DOMException && e.name === "NotAllowedError"
-          ? "Microphone blocked. Allow it in the address bar and try again."
-          : "Couldn't start the microphone.",
-      );
-      setPhase("ready");
-    }
+    });
   }, [settle, settleRest, pickIcon, caughtUp, title, fireSummon, listenForBubbles]);
 
   const cancel = useCallback(() => {
@@ -537,7 +540,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinned, subject,
-    lessonExport, exportError, error, ending, drawing, summoned, stopDrawing, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, drawing, summoned, stopDrawing, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 
