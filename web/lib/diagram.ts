@@ -1,7 +1,7 @@
 // Diagram spec and the typed changes ("ops") the LLM returns. The model never writes drawing code:
 // it adds parts by id, and our renderers decide layout, colour and motion.
 
-export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters", "table", "numberline", "chart", "fraction", "tree", "web", "parts", "math"] as const;
+export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters", "table", "numberline", "chart", "fraction", "tree", "web", "parts", "math", "map"] as const;
 export type Kind = (typeof KINDS)[number];
 export type Role = "input" | "process" | "output" | "other";
 
@@ -45,6 +45,9 @@ export type Diagram = {
   parts?: { id: string; label: string; inside: boolean; fills?: boolean }[];
   // Worked steps (algebra, a balanced equation), lined up on their "=" or arrow.
   steps?: { id: string; text: string; note?: string }[];
+  // Map: real places by latitude and longitude, and routes between them (a river's course, a journey, trade).
+  places?: { id: string; label: string; lat: number; lon: number }[];
+  routes?: { id: string; from: string; to: string; label?: string }[];
   caption?: string; // a line under the diagram, e.g. a formula
   fresh: string[]; // ids added by the latest change, drawn highlighted
 };
@@ -78,7 +81,9 @@ export type Op =
   | { op: "add_word"; id: string; parts: string[]; mode?: "syllables" | "sounds" | "parts" }
   | { op: "set_subject"; label: string; shape?: "cell" | "circle" | "oval" | "layers" }
   | { op: "add_part"; id: string; label: string; inside?: boolean; fills?: boolean }
-  | { op: "add_step"; id: string; text: string; note?: string };
+  | { op: "add_step"; id: string; text: string; note?: string }
+  | { op: "add_place"; id: string; label: string; lat: number; lon: number }
+  | { op: "add_route"; id: string; from: string; to: string; label?: string };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
   return {
@@ -150,6 +155,9 @@ export function validOp(o: unknown): o is Op {
     case "add_part":
       return str(v.id) && str(v.label) && (v.inside === undefined || typeof v.inside === "boolean") && (v.fills === undefined || typeof v.fills === "boolean");
     case "add_step": return str(v.id) && str(v.text) && optStr(v.note);
+    case "add_place":
+      return str(v.id) && str(v.label) && num(v.lat) && num(v.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180;
+    case "add_route": return str(v.id) && str(v.from) && str(v.to) && optStr(v.label);
     case "set_chart": return (v.style === undefined || v.style === "bar" || v.style === "pictograph") && optStr(v.axis);
     case "add_fraction":
       return (
@@ -162,7 +170,13 @@ export function validOp(o: unknown): o is Op {
 
 // Applies ops without mutating `d`. Malformed ops, and ops that point at missing parts, are skipped.
 export function applyOps(d: Diagram, raw: unknown[]): Diagram {
-  const ops = raw.map(textFields).filter(validOp);
+  // Ops that make something come before ops that refer to it, so an item sent before its Venn set (or a cell before
+  // its row, a route before its place) isn't dropped. The sort is stable: order within each group is kept.
+  const refers = new Set(["add_item", "set_cell", "add_route", "add_edge"]);
+  const ops = raw
+    .map(textFields)
+    .filter(validOp)
+    .sort((a, b) => Number(refers.has(a.op)) - Number(refers.has(b.op)));
   const next: Diagram = {
     ...d,
     nodes: [...d.nodes],
@@ -185,6 +199,8 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
     words: [...(d.words ?? [])],
     parts: [...(d.parts ?? [])],
     steps: [...(d.steps ?? [])],
+    places: [...(d.places ?? [])],
+    routes: [...(d.routes ?? [])],
     fresh: [],
   };
   const has = (id: string) => next.nodes.some((n) => n.id === id);
@@ -271,6 +287,8 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.words = keep(next.words!);
         next.parts = keep(next.parts!);
         next.steps = keep(next.steps!);
+        next.places = keep(next.places!);
+        next.routes = next.routes!.filter((r) => r.id !== o.id && r.from !== o.id && r.to !== o.id);
         if (o.id === "caption") next.caption = undefined;
         break;
       }
@@ -318,6 +336,18 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
       case "add_part":
         if (next.parts!.length < 10 && !next.parts!.some((x) => x.id === o.id)) {
           next.parts!.push({ id: o.id, label: o.label, inside: o.inside ?? true, fills: o.fills });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "add_place":
+        if (next.places!.length < 10 && !next.places!.some((x) => x.id === o.id)) {
+          next.places!.push({ id: o.id, label: o.label, lat: o.lat, lon: o.lon });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "add_route":
+        if (next.places!.some((x) => x.id === o.from) && next.places!.some((x) => x.id === o.to) && !next.routes!.some((x) => x.id === o.id)) {
+          next.routes!.push({ id: o.id, from: o.from, to: o.to, label: o.label });
           next.fresh.push(o.id);
         }
         break;
@@ -390,7 +420,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
 export function isEmpty(d: Diagram) {
   return (
     !d.nodes.length && !d.events.length && !d.curves.length && !d.points.length && !d.segments?.length && !d.smiles &&
-    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length && !d.branches?.length && !d.words?.length && !d.parts?.length && !d.steps?.length
+    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length && !d.bars?.length && !d.fractions?.length && !d.branches?.length && !d.words?.length && !d.parts?.length && !d.steps?.length && !d.places?.length
   );
 }
 
@@ -410,4 +440,5 @@ export const KIND_LABEL: Record<Kind, string> = {
   web: "Mind map",
   parts: "Labelled parts",
   math: "Steps",
+  map: "Map",
 };

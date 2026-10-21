@@ -65,6 +65,8 @@ function Drawing({ d, still }: { d: Diagram; still: boolean }) {
       return <Parts d={d} still={still} />;
     case "math":
       return <Steps d={d} still={still} />;
+    case "map":
+      return <MapView d={d} still={still} />;
   }
 }
 
@@ -680,7 +682,7 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
             fill="#111"
             style={fresh.has(it.id) && !still ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}
           >
-            {it.label}
+            {wrap(it.label, 16, 1)[0] /* a region is narrow: one line, shortened with "…" */}
           </text>
         )),
       )}
@@ -1230,5 +1232,134 @@ function Steps({ d, still }: { d: Diagram; still: boolean }) {
       })}
     </svg>
   );
+}
+
+// Coastlines (Natural Earth 1:110m land, public domain) as rings of [lon, lat]; fetched once, only when a map is drawn.
+let land: Promise<[number, number][][]> | null = null;
+const loadLand = () => (land ??= fetch("/maps/land.json").then((r) => r.json()));
+
+// A map: the land around the places mentioned, pins with labels, and routes as dashed arrows between them.
+function MapView({ d, still }: { d: Diagram; still: boolean }) {
+  const sid = useSid();
+  const [rings, setRings] = useState<[number, number][][]>([]);
+  useEffect(() => {
+    let live = true;
+    loadLand()
+      .then((r) => live && setRings(r))
+      .catch((e) => console.error("map outline failed", e));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const places = d.places ?? [];
+  const fresh = new Set(d.fresh);
+  // The view: around the places with a margin, never narrower than 30 by 20 degrees; the whole world if none.
+  const lons = places.map((p) => p.lon);
+  const lats = places.map((p) => p.lat);
+  let [lon0, lon1] = places.length ? [Math.min(...lons), Math.max(...lons)] : [-170, 190];
+  let [lat0, lat1] = places.length ? [Math.min(...lats), Math.max(...lats)] : [-58, 82];
+  const grow = (a: number, b: number, min: number, margin: number): [number, number] => {
+    const span = Math.max(min, (b - a) * (1 + 2 * margin));
+    const mid = (a + b) / 2;
+    return [mid - span / 2, mid + span / 2];
+  };
+  if (places.length) {
+    [lon0, lon1] = grow(lon0, lon1, 30, 0.35);
+    [lat0, lat1] = grow(lat0, lat1, 20, 0.35);
+  }
+  const k = Math.cos((((lat0 + lat1) / 2) * Math.PI) / 180); // a degree of longitude shrinks away from the equator
+  const W = 720;
+  let s = W / ((lon1 - lon0) * k);
+  let H = (lat1 - lat0) * s;
+  // Keep the shape between landscape and portrait: show more latitude when it's too flat, more longitude when
+  // it's too tall (a river running north), never cutting off a place.
+  if (H < 380) {
+    [lat0, lat1] = grow(lat0, lat1, 380 / s, 0);
+    H = 380;
+  } else if (H > 640) {
+    H = 640;
+    s = H / (lat1 - lat0);
+    [lon0, lon1] = grow(lon0, lon1, W / (s * k), 0);
+  }
+  const px = (lon: number) => (lon - lon0) * k * s;
+  const py = (lat: number) => (lat1 - lat) * s;
+  const landPath = rings.map((r) => r.map(([lon, lat], i) => `${i ? "L" : "M"}${px(lon).toFixed(1)} ${py(lat).toFixed(1)}`).join("") + "Z").join("");
+  const at = (id: string) => places.find((p) => p.id === id);
+  // Each place's label goes above its pin unless that would hit the top edge or a label already placed.
+  const taken: [number, number, number, number][] = places.map((p) => [px(p.lon) - 11, py(p.lat) - 11, 22, 22]); // the pins
+  const labelBelow = places.map((p) => {
+    const [x, y] = [px(p.lon), py(p.lat)];
+    const w = p.label.length * 9 + 24;
+    const box = (below: boolean): [number, number, number, number] => [x - w / 2, below ? y + 16 : y - 46, w, 30];
+    const hits = ([ax, ay, aw, ah]: number[]) => taken.some(([bx, by, bw, bh]) => ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah);
+    const below = y < 60 || hits(box(false));
+    taken.push(box(below));
+    return below;
+  });
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      <Defs id={sid} />
+      <clipPath id={`${sid}-view`}>
+        <rect x={0} y={0} width={W} height={H} rx={16} />
+      </clipPath>
+      <g clipPath={`url(#${sid}-view)`}>
+        <rect x={0} y={0} width={W} height={H} fill="var(--oceanic-tint)" />
+        <path d={landPath} fill="#eef9e8" stroke="#a9d9a0" strokeWidth={1.5} strokeLinejoin="round" fillRule="evenodd" />
+      </g>
+      {(d.routes ?? []).map((r, _, all) => {
+        const [a, b] = [at(r.from), at(r.to)];
+        if (!a || !b) return null;
+        const [x1, y1, x2, y2] = [px(a.lon), py(a.lat), px(b.lon), py(b.lat)];
+        // A gentle curve, bowed to the left of travel, stopping short of the pins.
+        const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+        const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
+        const [sx1, sy1, sx2, sy2] = [x1 + ux * 14, y1 + uy * 14, x2 - ux * 16, y2 - uy * 16];
+        const [cx, cy] = [(x1 + x2) / 2 + uy * len * 0.18, (y1 + y2) / 2 - ux * len * 0.18];
+        const hot = fresh.has(r.id) && !still;
+        return (
+          <g key={r.id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
+            <path d={`M${sx1} ${sy1}Q${cx} ${cy} ${sx2} ${sy2}`} fill="none" stroke="var(--grape-strong)" strokeWidth={3} strokeDasharray="8 7" strokeLinecap="round" markerEnd={`url(#${sid}-af)`} />
+            {r.label && showRouteLabel(r, all, at, px, py) && (
+              <text x={(sx1 + 2 * cx + sx2) / 4} y={(sy1 + 2 * cy + sy2) / 4 - 10} textAnchor="middle" fontSize={16} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+                {r.label}
+              </text>
+            )}
+          </g>
+        );
+      })}
+      {places.map((p, i) => {
+        const [x, y] = [px(p.lon), py(p.lat)];
+        const hot = fresh.has(p.id) && !still;
+        const w = p.label.length * 9 + 24;
+        const below = labelBelow[i];
+        return (
+          <g key={p.id} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
+            <circle cx={x} cy={y} r={9} fill={BUBBLE[i % BUBBLE.length].mid} stroke="#fff" strokeWidth={3} />
+            <rect x={x - w / 2} y={below ? y + 16 : y - 46} width={w} height={30} rx={15} fill="#fff" stroke={BUBBLE[i % BUBBLE.length].mid} strokeWidth={2} />
+            <text x={x} y={below ? y + 31 : y - 31} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={700} fill="#111">
+              {p.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// Legs of one route often share a label ("Silk Road" on each): show it once, on the longest leg.
+function showRouteLabel(
+  r: { id: string; from: string; to: string; label?: string },
+  all: { id: string; from: string; to: string; label?: string }[],
+  at: (id: string) => { lat: number; lon: number } | undefined,
+  px: (lon: number) => number,
+  py: (lat: number) => number,
+) {
+  const len = (x: { from: string; to: string }) => {
+    const [a, b] = [at(x.from), at(x.to)];
+    return a && b ? Math.hypot(px(b.lon) - px(a.lon), py(b.lat) - py(a.lat)) : 0;
+  };
+  const same = all.filter((x) => x.label === r.label);
+  const longest = same.reduce((best, x) => (len(x) > len(best) ? x : best), same[0]);
+  return longest.id === r.id && len(r) >= 80; // a label on a very short leg would sit on the pins
 }
 

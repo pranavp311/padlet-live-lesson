@@ -20,6 +20,7 @@ const OPS: Record<Kind, string> = {
   web: `{"op":"add_branch","id":"main","label":"Plants"} for the main idea in the middle (no parent), then {"op":"add_branch","id":"roots","label":"Roots","parent":"main"} for ideas around it, and details under those (parent: their idea); at most 15 branches, 1-3 words each`,
   parts: `{"op":"set_subject","label":"Plant cell","shape":"cell"|"circle"|"oval"|"layers"} (layers: something made of layers inside one another, like the Earth, the atmosphere or skin; list its parts from the outside in), then {"op":"add_part","id":"nucleus","label":"Nucleus","inside":true} for each part (inside: true for parts within it, false for its outer layers like the cell wall or skin; the large central part, like the nucleus, first; "fills":true for what fills the inside, like cytoplasm); at most 10 parts, labels 1-3 words`,
   math: `{"op":"add_step","id":"s1","text":"2x + 3 = 11","note":"subtract 3"} one per line of working, in order (at most 7); write maths with Unicode: x², √, ×, ÷, ½, H₂O, →; each step on one line, e.g. "2H₂ + O₂ → 2H₂O"; note is a short reason for that step`,
+  map: `{"op":"add_place","id":"cairo","label":"Cairo","lat":30.0,"lon":31.2} for each real place (at most 10; real latitude and longitude in degrees), {"op":"add_route","id":"r1","from":"khartoum","to":"cairo","label":"Nile flows north"} between places (a river's course, a journey, a trade route); add places before routes that use them`,
   letters: `{"op":"add_letter","id":"m","text":"Mm","sound":"/m/","word":"moon"}: text is the letter in upper and lower case ("Ss"), or a letter group as written ("sh", "ai"); sound is the sound between slashes; word is a short example word that contains it. One add_letter per letter or sound the teacher is talking about (at most 4). "What letter makes the sound s?" draws "Ss". To split a word up, {"op":"add_word","id":"butterfly","parts":["but","ter","fly"],"mode":"syllables"|"sounds"|"parts"} (sounds: "c","a","t"; parts: prefix, root, suffix "un","help","ful"); add_word needs no add_letter`,
 };
 
@@ -156,7 +157,7 @@ function describe(d: Diagram) {
     ...(d.jumps ?? []).map((x) => x.label ?? ""), ...(d.bars ?? []).map((x) => x.label),
     ...(d.fractions ?? []).map((x) => `${x.num}/${x.den}`), ...(d.branches ?? []).map((x) => x.label),
     ...(d.words ?? []).map((x) => x.parts.join("-")), d.subject?.label ?? "", ...(d.parts ?? []).map((x) => x.label),
-    ...(d.steps ?? []).map((x) => x.text), d.caption ?? "",
+    ...(d.steps ?? []).map((x) => x.text), ...(d.places ?? []).map((x) => x.label), d.caption ?? "",
   ].filter(Boolean);
   return `a ${d.kind} titled '${d.title}'${labels.length ? ` showing: ${labels.slice(0, 12).join(", ")}` : ""}`;
 }
@@ -165,5 +166,5 @@ function compact(d: Diagram) {
   return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, sets: d.sets, items: d.items, letters: d.letters,
     columns: d.columns, rows: d.rows, cells: d.cells, line: d.line, marks: d.marks, jumps: d.jumps,
     bars: d.bars, chart: d.chart, fractions: d.fractions, branches: d.branches, words: d.words,
-    subject: d.subject, parts: d.parts, steps: d.steps, caption: d.caption };
+    subject: d.subject, parts: d.parts, steps: d.steps, places: d.places, routes: d.routes, caption: d.caption };
 }
