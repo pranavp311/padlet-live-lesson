@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/Bits";
 import type { LessonExport } from "@/app/api/export/route";
 import type { Diagram } from "@/lib/diagram";
 
-// Review and edit what goes to Arcade, Sandbox or Board before sending. Shapes and limits follow
-// padlet-integration-brief.md; the send itself is still mocked.
+// Review what goes to Arcade, Sandbox or Board before sending. Kept quiet on purpose: settings are one
+// row of pills and items are one line each; clicking an item opens just that one for editing.
+// Shapes and limits follow padlet-integration-brief.md; the send itself is still mocked.
 
 export type Target = "board" | "arcade" | "sandbox";
 type Targets = LessonExport["targets"];
@@ -34,10 +35,12 @@ export function SendPanel({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Targets>(targets);
+  const [open, setOpen] = useState<number | null>(null); // the one item being edited
 
   useEffect(() => {
     if (target) {
       setDraft(structuredClone(targets));
+      setOpen(null);
       if (!dialog.current?.open) dialog.current?.showModal();
     } else dialog.current?.close();
   }, [target, targets]);
@@ -45,29 +48,43 @@ export function SendPanel({
   const a = draft.arcade;
   const gameType = a.gameType ?? "multiple-choice-v2";
   const setArcade = (p: Partial<Targets["arcade"]>) => setDraft((d) => ({ ...d, arcade: { ...d.arcade, ...p } }));
-  const setQ = (i: number, p: Partial<Targets["arcade"]["questions"][number]>) =>
-    setArcade({ questions: a.questions.map((q, j) => (j === i ? { ...q, ...p } : q)) });
   const cards = draft.sandbox.cards;
   const setCards = (next: typeof cards) => setDraft((d) => ({ ...d, sandbox: { cards: next } }));
   const posts = draft.board.posts;
   const setPosts = (next: typeof posts) => setDraft((d) => ({ ...d, board: { ...d.board, posts: next } }));
-  const move = <T,>(list: T[], i: number, by: number) => {
-    const next = [...list];
-    const [x] = next.splice(i, 1);
-    next.splice(Math.max(0, Math.min(list.length - 1, i + by)), 0, x);
-    return next;
-  };
 
-  const count =
-    target === "arcade" ? `${a.questions.length} question${a.questions.length === 1 ? "" : "s"}`
-    : target === "sandbox" ? `${cards.length} card${cards.length === 1 ? "" : "s"}`
-    : `${posts.length} post${posts.length === 1 ? "" : "s"}`;
+  // Shared list operations, so each target only says how a row reads and how it's edited.
+  function list<T>(items: T[], set: (next: T[]) => void) {
+    return {
+      remove: (i: number) => {
+        set(items.filter((_, j) => j !== i));
+        setOpen(null);
+      },
+      move: (i: number, by: number) => {
+        const next = [...items];
+        const [x] = next.splice(i, 1);
+        next.splice(i + by, 0, x);
+        set(next);
+        setOpen(i + by);
+      },
+      patch: (i: number, p: Partial<T>) => set(items.map((x, j) => (j === i ? { ...x, ...p } : x))),
+      add: (blank: T) => {
+        set([...items, blank]);
+        setOpen(items.length);
+      },
+    };
+  }
+  const q = list(a.questions, (questions) => setArcade({ questions }));
+  const c = list(cards, setCards);
+  const p = list(posts, setPosts);
+
+  const n = target === "arcade" ? a.questions.length : target === "sandbox" ? cards.length : posts.length;
+  const noun = target === "arcade" ? "question" : target === "sandbox" ? "card" : "post";
   const tooMany = target === "sandbox" && cards.length > SANDBOX_CARD_LIMIT;
-  const empty = target === "arcade" ? !a.questions.length : target === "sandbox" ? !cards.length : !posts.length;
   const name = target === "arcade" ? "Arcade" : target === "sandbox" ? "Sandbox" : "Board";
 
   return (
-    <dialog ref={dialog} className="side" onClose={onClose}>
+    <dialog ref={dialog} className="side" onClose={onClose} onClick={(e) => e.target === e.currentTarget && onClose()}>
       {target && (
         <form
           className="side-inner"
@@ -86,109 +103,140 @@ export function SendPanel({
           <div className="side-body">
             {target === "arcade" && (
               <>
-                <label className="field">
-                  <span>Topic</span>
-                  <textarea rows={3} value={a.prompt} onChange={(e) => setArcade({ prompt: e.target.value })} />
-                </label>
-                <label className="field">
-                  <span>Grade</span>
-                  <select value={a.grade ?? "any"} onChange={(e) => setArcade({ grade: e.target.value })}>
-                    {GRADES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
-                </label>
-                <div className="field">
-                  <span>Game</span>
-                  <div className="chips">
-                    {GAME_TYPES.map(([v, l]) => (
-                      <button type="button" key={v} className="chip-btn" aria-pressed={gameType === v} onClick={() => setArcade({ gameType: v })}>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
+                <input className="topic" aria-label="Topic" value={a.prompt} onChange={(e) => setArcade({ prompt: e.target.value })} />
+                <div className="pills">
+                  <PillSelect label="Game" value={gameType} options={GAME_TYPES} onChange={(v) => setArcade({ gameType: v })} />
+                  <PillSelect label="Grade" value={a.grade ?? "any"} options={GRADES} onChange={(v) => setArcade({ grade: v })} />
+                  <button
+                    type="button"
+                    className="pill-toggle"
+                    aria-pressed={a.attachTranscript ?? true}
+                    onClick={() => setArcade({ attachTranscript: !(a.attachTranscript ?? true) })}
+                  >
+                    {(a.attachTranscript ?? true) && <Icon name="check" size={14} />}
+                    Transcript
+                  </button>
                 </div>
-                <label className="toggle">
-                  <input type="checkbox" checked={a.attachTranscript ?? true} onChange={(e) => setArcade({ attachTranscript: e.target.checked })} />
-                  Attach the lesson transcript
-                </label>
-                <ListHead label="Questions" count={a.questions.length} onAdd={() => setArcade({ questions: [...a.questions, { q: "", answer: "", distractors: ["", "", ""] }] })} />
-                {a.questions.map((q, i) => (
-                  <div key={i} className="item">
-                    <ItemTools n={i + 1} onRemove={() => setArcade({ questions: a.questions.filter((_, j) => j !== i) })} />
-                    <textarea rows={2} aria-label={`Question ${i + 1}`} placeholder="Question" value={q.q} onChange={(e) => setQ(i, { q: e.target.value })} />
-                    <input aria-label={`Answer ${i + 1}`} placeholder="Answer" value={q.answer} onChange={(e) => setQ(i, { answer: e.target.value })} />
-                    {USES_WRONG_ANSWERS.has(gameType) && (
-                      <input
-                        aria-label={`Wrong answers ${i + 1}`}
-                        placeholder="Wrong answers, separated by commas"
-                        value={q.distractors.join(", ")}
-                        onChange={(e) => setQ(i, { distractors: e.target.value.split(",").map((x) => x.trimStart()) })}
-                      />
-                    )}
-                  </div>
-                ))}
+                <ListLabel label="Questions" count={a.questions.length} />
+                <div className="rows">
+                  {a.questions.map((x, i) => (
+                    <Row
+                      key={i}
+                      n={i + 1}
+                      open={open === i}
+                      onOpen={() => setOpen(i)}
+                      onClose={() => setOpen(null)}
+                      onRemove={() => q.remove(i)}
+                      primary={x.q}
+                      secondary={x.answer}
+                      placeholder="New question"
+                    >
+                      <textarea rows={2} aria-label={`Question ${i + 1}`} placeholder="Question" value={x.q} autoFocus onChange={(e) => q.patch(i, { q: e.target.value })} />
+                      <input aria-label={`Answer ${i + 1}`} placeholder="Answer" value={x.answer} onChange={(e) => q.patch(i, { answer: e.target.value })} />
+                      {USES_WRONG_ANSWERS.has(gameType) && (
+                        <input
+                          aria-label={`Wrong answers ${i + 1}`}
+                          placeholder="Wrong answers, separated by commas"
+                          value={x.distractors.join(", ")}
+                          onChange={(e) => q.patch(i, { distractors: e.target.value.split(",").map((s) => s.trimStart()) })}
+                        />
+                      )}
+                    </Row>
+                  ))}
+                </div>
+                <button type="button" className="add" onClick={() => q.add({ q: "", answer: "", distractors: ["", "", ""] })}>
+                  <Icon name="plus" size={16} />
+                  Add question
+                </button>
               </>
             )}
 
             {target === "sandbox" && (
               <>
-                <ListHead
+                <ListLabel
                   label="Cards"
                   count={cards.length}
-                  note={tooMany ? `Sandbox allows ${SANDBOX_CARD_LIMIT} cards on the free plan` : `of ${SANDBOX_CARD_LIMIT}`}
+                  note={tooMany ? `The free plan allows ${SANDBOX_CARD_LIMIT}` : `of ${SANDBOX_CARD_LIMIT}`}
                   warn={tooMany}
-                  onAdd={() => setCards([...cards, { title: "", body: "" }])}
                 />
-                {cards.map((c, i) => {
-                  const d = diagrams.find((x) => x.id === c.diagram_id);
-                  return (
-                    <div key={i} className="item">
-                      <ItemTools
+                <div className="rows">
+                  {cards.map((x, i) => {
+                    const d = diagrams.find((g) => g.id === x.diagram_id);
+                    return (
+                      <Row
+                        key={i}
                         n={i + 1}
-                        onUp={i > 0 ? () => setCards(move(cards, i, -1)) : undefined}
-                        onDown={i < cards.length - 1 ? () => setCards(move(cards, i, 1)) : undefined}
-                        onRemove={() => setCards(cards.filter((_, j) => j !== i))}
-                      />
-                      <input aria-label={`Card ${i + 1} title`} placeholder="Title" value={c.title} onChange={(e) => setCards(cards.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} />
-                      <textarea rows={3} aria-label={`Card ${i + 1} text`} placeholder="Text" value={c.body} onChange={(e) => setCards(cards.map((x, j) => (j === i ? { ...x, body: e.target.value } : x)))} />
-                      {d && (
-                        <span className="item-attach">
-                          Diagram: {d.title}
-                          <button type="button" className="link" onClick={() => setCards(cards.map((x, j) => (j === i ? { ...x, diagram_id: undefined } : x)))}>
-                            Remove
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                        open={open === i}
+                        onOpen={() => setOpen(i)}
+                        onClose={() => setOpen(null)}
+                        onRemove={() => c.remove(i)}
+                        onUp={i > 0 ? () => c.move(i, -1) : undefined}
+                        onDown={i < cards.length - 1 ? () => c.move(i, 1) : undefined}
+                        primary={x.title}
+                        secondary={d ? `Diagram: ${d.title}` : x.body}
+                        placeholder="New card"
+                      >
+                        <input aria-label={`Card ${i + 1} title`} placeholder="Title" value={x.title} autoFocus onChange={(e) => c.patch(i, { title: e.target.value })} />
+                        <textarea rows={3} aria-label={`Card ${i + 1} text`} placeholder="Text" value={x.body} onChange={(e) => c.patch(i, { body: e.target.value })} />
+                        {d && (
+                          <span className="row-attach">
+                            Diagram: {d.title}
+                            <button type="button" className="link" onClick={() => c.patch(i, { diagram_id: undefined })}>
+                              Remove
+                            </button>
+                          </span>
+                        )}
+                      </Row>
+                    );
+                  })}
+                </div>
+                <button type="button" className="add" onClick={() => c.add({ title: "", body: "" })}>
+                  <Icon name="plus" size={16} />
+                  Add card
+                </button>
               </>
             )}
 
             {target === "board" && (
               <>
-                <div className="field">
-                  <span>Layout</span>
-                  <div className="chips">
-                    {LAYOUTS.map(([v, l]) => (
-                      <button type="button" key={v} className="chip-btn" aria-pressed={(draft.board.layout ?? "wall") === v} onClick={() => setDraft((d) => ({ ...d, board: { ...d.board, layout: v } }))}>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
+                <div className="segmented" role="radiogroup" aria-label="Layout">
+                  {LAYOUTS.map(([v, l]) => (
+                    <button
+                      type="button"
+                      key={v}
+                      role="radio"
+                      aria-checked={(draft.board.layout ?? "wall") === v}
+                      onClick={() => setDraft((d) => ({ ...d, board: { ...d.board, layout: v } }))}
+                    >
+                      {l}
+                    </button>
+                  ))}
                 </div>
-                <ListHead label="Posts" count={posts.length} onAdd={() => setPosts([...posts, { subject: "", body: "" }])} />
-                {posts.map((p, i) => (
-                  <div key={i} className="item">
-                    <ItemTools
+                <ListLabel label="Posts" count={posts.length} />
+                <div className="rows">
+                  {posts.map((x, i) => (
+                    <Row
+                      key={i}
                       n={i + 1}
-                      onUp={i > 0 ? () => setPosts(move(posts, i, -1)) : undefined}
-                      onDown={i < posts.length - 1 ? () => setPosts(move(posts, i, 1)) : undefined}
-                      onRemove={() => setPosts(posts.filter((_, j) => j !== i))}
-                    />
-                    <input aria-label={`Post ${i + 1} subject`} placeholder="Subject" value={p.subject} onChange={(e) => setPosts(posts.map((x, j) => (j === i ? { ...x, subject: e.target.value } : x)))} />
-                    <textarea rows={2} aria-label={`Post ${i + 1} text`} placeholder="Text" value={p.body} onChange={(e) => setPosts(posts.map((x, j) => (j === i ? { ...x, body: e.target.value } : x)))} />
-                  </div>
-                ))}
+                      open={open === i}
+                      onOpen={() => setOpen(i)}
+                      onClose={() => setOpen(null)}
+                      onRemove={() => p.remove(i)}
+                      onUp={i > 0 ? () => p.move(i, -1) : undefined}
+                      onDown={i < posts.length - 1 ? () => p.move(i, 1) : undefined}
+                      primary={x.subject}
+                      secondary={x.body}
+                      placeholder="New post"
+                    >
+                      <input aria-label={`Post ${i + 1} subject`} placeholder="Subject" value={x.subject} autoFocus onChange={(e) => p.patch(i, { subject: e.target.value })} />
+                      <textarea rows={2} aria-label={`Post ${i + 1} text`} placeholder="Text" value={x.body} onChange={(e) => p.patch(i, { body: e.target.value })} />
+                    </Row>
+                  ))}
+                </div>
+                <button type="button" className="add" onClick={() => p.add({ subject: "", body: "" })}>
+                  <Icon name="plus" size={16} />
+                  Add post
+                </button>
               </>
             )}
           </div>
@@ -197,8 +245,9 @@ export function SendPanel({
             <button type="button" className="btn btn-soft" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-dark" disabled={empty || tooMany}>
-              Send {count}
+            <button type="submit" className="btn btn-dark" disabled={!n || tooMany}>
+              Send {n} {noun}
+              {n === 1 ? "" : "s"}
             </button>
           </div>
         </form>
@@ -207,37 +256,84 @@ export function SendPanel({
   );
 }
 
-function ListHead({ label, count, note, warn, onAdd }: { label: string; count: number; note?: string; warn?: boolean; onAdd: () => void }) {
+function PillSelect({ label, value, options, onChange }: { label: string; value: string; options: string[][]; onChange: (v: string) => void }) {
   return (
-    <div className="list-head">
-      <span className="t17">{label}</span>
-      <span className={`t14 tnum${warn ? " err" : ""}`}>
+    <label className="pill-select">
+      <span className="sr">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ListLabel({ label, count, note, warn }: { label: string; count: number; note?: string; warn?: boolean }) {
+  return (
+    <div className="list-label">
+      {label}
+      <span className={`tnum${warn ? " err" : ""}`}>
         {count} {note}
       </span>
-      <span className="spacer" />
-      <button type="button" className="btn btn-ghost" onClick={onAdd}>
-        + Add
-      </button>
     </div>
   );
 }
 
-function ItemTools({ n, onUp, onDown, onRemove }: { n: number; onUp?: () => void; onDown?: () => void; onRemove: () => void }) {
+// One item: a single quiet line until clicked, then just that item's fields.
+function Row({
+  n, open, onOpen, onClose, onRemove, onUp, onDown, primary, secondary, placeholder, children,
+}: {
+  n: number;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onRemove: () => void;
+  onUp?: () => void;
+  onDown?: () => void;
+  primary: string;
+  secondary?: string;
+  placeholder: string;
+  children: ReactNode;
+}) {
+  if (open) {
+    return (
+      <div className="row row-open">
+        {children}
+        <div className="row-actions">
+          {onUp && (
+            <button type="button" className="icon-btn" aria-label={`Move ${n} up`} onClick={onUp}>
+              ↑
+            </button>
+          )}
+          {onDown && (
+            <button type="button" className="icon-btn" aria-label={`Move ${n} down`} onClick={onDown}>
+              ↓
+            </button>
+          )}
+          <button type="button" className="link" onClick={onRemove}>
+            Remove
+          </button>
+          <span className="spacer" />
+          <button type="button" className="btn btn-soft" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="item-tools">
-      <span className="t14 tnum">{n}</span>
-      <span className="spacer" />
-      {onUp && (
-        <button type="button" className="icon-btn" aria-label={`Move ${n} up`} onClick={onUp}>
-          ↑
-        </button>
-      )}
-      {onDown && (
-        <button type="button" className="icon-btn" aria-label={`Move ${n} down`} onClick={onDown}>
-          ↓
-        </button>
-      )}
-      <button type="button" className="icon-btn" aria-label={`Remove ${n}`} onClick={onRemove}>
+    <div className="row">
+      <button type="button" className="row-main" onClick={onOpen}>
+        <span className="row-n tnum">{n}</span>
+        <span className="row-text">
+          <span className={primary ? "row-1" : "row-1 row-empty"}>{primary || placeholder}</span>
+          {secondary && <span className="row-2">{secondary}</span>}
+        </span>
+      </button>
+      <button type="button" className="icon-btn row-x" aria-label={`Remove ${n}`} onClick={onRemove}>
         <Icon name="x" size={16} />
       </button>
     </div>

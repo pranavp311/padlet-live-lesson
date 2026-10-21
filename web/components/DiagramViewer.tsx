@@ -30,6 +30,7 @@ export function DiagramViewer({
       ref={dialog}
       className="dialog viewer"
       onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight") go(1);
         if (e.key === "ArrowLeft") go(-1);

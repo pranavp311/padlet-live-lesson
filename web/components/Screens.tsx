@@ -66,7 +66,7 @@ export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[] |
         )}
       </main>
 
-      <dialog ref={dialog} className="dialog new-dialog" onClose={() => setAsking(false)}>
+      <dialog ref={dialog} className="dialog new-dialog" onClose={() => setAsking(false)} onClick={(e) => e.target === e.currentTarget && setAsking(false)}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -565,7 +565,7 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
           }}
         />
       )}
-      <dialog ref={dialog} className="dialog" onClose={() => setViewing(null)}>
+      <dialog ref={dialog} className="dialog" onClose={() => setViewing(null)} onClick={(e) => e.target === e.currentTarget && setViewing(null)}>
         <div className="dialog-head">
           <h2 className="h2">{viewing && targets.find((t) => t.key === viewing)?.name} payload</h2>
           <button className="btn btn-ghost btn-icon" aria-label="Close" onClick={() => setViewing(null)}>
