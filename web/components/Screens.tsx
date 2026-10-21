@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { DiagramView } from "@/components/Diagram";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { Bubbles } from "@/components/Bubbles";
-import { SendPanel, type Target } from "@/components/SendPanel";
+import { SendPage, TARGET_LOOK, type Target } from "@/components/SendPage";
+import { Created, Toast, demoNote } from "@/components/Created";
 import type { LessonExport } from "@/app/api/export/route";
 import { Brand, Icon, MicBars, Notice, SubjectTile, TodoItem } from "@/components/Bits";
 import { KIND_LABEL, type Diagram } from "@/lib/diagram";
@@ -391,15 +392,11 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
   const [openDiagram, setOpenDiagram] = useState<number | null>(null);
   const title = l.title || e?.title || "Lesson";
   const mins = Math.max(1, Math.round((l.endedAt - l.startedAt) / 60000));
-  const [sent, setSent] = useState<Partial<Record<Target, boolean>>>({});
+  const [created, setCreated] = useState<Partial<Record<Target, boolean>>>({});
   const [reviewing, setReviewing] = useState<Target | null>(null);
-  const [viewing, setViewing] = useState<Target | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    if (viewing) dialog.current?.showModal();
-    else dialog.current?.close();
-  }, [viewing]);
+  const [celebrating, setCelebrating] = useState<Target | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const hideToast = useCallback(() => setToast(null), []);
 
   const downloadTranscript = () =>
     downloadBlob(new Blob([transcriptText(title, l.startedAt, l.sentences)], { type: "text/plain" }), `${slug(title)}-transcript.txt`);
@@ -409,6 +406,25 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
     { key: "arcade", name: "Arcade", icon: "game", bg: "var(--scarlet-tint)", fg: "#7c0000", count: e ? `${e.targets.arcade.questions.length} questions` : undefined },
     { key: "sandbox", name: "Sandbox", icon: "cards", bg: "var(--park-tint)", fg: "#004e00", count: e ? `${e.targets.sandbox.cards.length} cards` : undefined },
   ];
+
+  if (reviewing && e) {
+    return (
+      <SendPage
+        target={reviewing}
+        lessonTitle={title}
+        sections={e.sections}
+        targets={e.targets}
+        diagrams={l.archive}
+        onBack={() => setReviewing(null)}
+        onSend={(next) => {
+          l.updateTargets?.(next);
+          setCreated((s) => ({ ...s, [reviewing]: true }));
+          setCelebrating(reviewing);
+          setReviewing(null);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="wall">
@@ -442,19 +458,19 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
                   {t.count ? <span className="t14">{t.count}</span> : <span className="skel" style={{ height: 14, width: 72, marginTop: 3 }} />}
                 </div>
               </div>
-              {sent[t.key] ? (
+              {created[t.key] ? (
                 <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span className="sent">
                     <Icon name="check" />
-                    Sent
+                    Created
                   </span>
-                  <button className="link" onClick={() => setViewing(t.key)}>
-                    View payload
+                  <button className="btn btn-soft" onClick={() => setToast(demoNote(t.key))}>
+                    Go to {TARGET_LOOK[t.key].name}
                   </button>
                 </div>
               ) : (
                 <button className="btn btn-dark" disabled={!e} onClick={() => setReviewing(t.key)}>
-                  Send
+                  Create
                 </button>
               )}
             </div>
@@ -552,28 +568,15 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
       </main>
 
       <DiagramViewer diagrams={l.archive} index={openDiagram} onIndex={setOpenDiagram} onClose={() => setOpenDiagram(null)} />
-      {e && (
-        <SendPanel
-          target={reviewing}
-          targets={e.targets}
-          diagrams={l.archive}
-          onClose={() => setReviewing(null)}
-          onSend={(next) => {
-            l.updateTargets?.(next);
-            setSent((s) => ({ ...s, [reviewing!]: true }));
-            setReviewing(null);
-          }}
-        />
-      )}
-      <dialog ref={dialog} className="dialog" onClose={() => setViewing(null)} onClick={(e) => e.target === e.currentTarget && setViewing(null)}>
-        <div className="dialog-head">
-          <h2 className="h2">{viewing && targets.find((t) => t.key === viewing)?.name} payload</h2>
-          <button className="btn btn-ghost btn-icon" aria-label="Close" onClick={() => setViewing(null)}>
-            <Icon name="x" />
-          </button>
-        </div>
-        <pre>{viewing && e && JSON.stringify(e.targets[viewing], null, 2)}</pre>
-      </dialog>
+      <Created
+        target={celebrating}
+        onDone={() => setCelebrating(null)}
+        onGo={() => {
+          setToast(demoNote(celebrating!));
+          setCelebrating(null);
+        }}
+      />
+      <Toast text={toast} onHide={hideToast} />
     </div>
   );
 }
