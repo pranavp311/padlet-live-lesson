@@ -1,7 +1,8 @@
 // Turns the server's append-only text pieces into settled sentences plus the words still being said.
 // A sentence settles once its . ? or ! is followed by more speech; the rest settles on End lesson.
 
-export type Sentence = { id: number; raw: string; clean?: string; t: number };
+// `edited`: the teacher corrected it, so the automatic tidy-up must never overwrite `clean`.
+export type Sentence = { id: number; raw: string; clean?: string; t: number; edited?: boolean };
 
 const BOUNDARY = /[.?!]["')\]]?\s+(?=\S)/g;
 

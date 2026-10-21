@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { DiagramView } from "@/components/Diagram";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { Bubbles } from "@/components/Bubbles";
@@ -193,6 +193,10 @@ export function Live({ l }: { l: L }) {
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
   const d = l.current;
 
+  // Which bit of the transcript the teacher is correcting: a sentence id, the words still arriving, or none.
+  const [editing, setEditing] = useState<number | "pending" | null>(null);
+  const [pendingDraft, setPendingDraft] = useState("");
+
   // The panel shows the live diagram unless the teacher steps back (‹ ›) through earlier ones.
   const list = useMemo(() => (d ? [...l.archive, d] : l.archive), [d, l.archive]);
   const [view, setView] = useState<number | null>(null);
@@ -274,18 +278,76 @@ export function Live({ l }: { l: L }) {
             const isNow = idx === nowIdx;
             const text = b.sentences.map((s) => s.clean ?? s.raw).join(" ");
             const landed = l.landing !== null && (b.sentences[0]?.id ?? 0) < l.landing; // part of the caught-up chunk
+            const startPending = () => {
+              if (editing === "pending") return;
+              setPendingDraft(l.beginEditPending());
+              setEditing("pending");
+            };
+            // A click anywhere on a card edits its last sentence (the rough words on the live card), except
+            // the strip beside the mute button.
+            const editCard = (e: MouseEvent<HTMLParagraphElement>) => {
+              const t = e.target as HTMLElement;
+              if (editing !== null || t.closest(".editable, .editing, .mute")) return;
+              if (isNow) {
+                const pad = parseFloat(getComputedStyle(e.currentTarget).paddingRight);
+                if (e.clientX > e.currentTarget.getBoundingClientRect().right - pad) return;
+              }
+              if (isNow && l.pending.trim()) startPending();
+              else if (b.sentences.length) setEditing(b.sentences[b.sentences.length - 1].id);
+            };
             return (
               <p
                 key={b.sentences[0]?.id ?? "now"}
                 className={`para ${isNow ? "now" : age === 1 ? "old1" : "old2"}${landed ? " landed" : ""}`}
                 style={landed ? ({ "--i": k } as CSSProperties) : undefined}
+                onClick={editCard}
               >
-                {text}
+                {b.sentences[0] && (
+                  <time className="para-time tnum" aria-hidden="true">
+                    {formatClock(b.sentences[0].t)}
+                  </time>
+                )}
+                {b.sentences.map((x, j) => (
+                  <Fragment key={x.id}>
+                    {j > 0 && " "}
+                    <EditableText
+                      text={x.clean ?? x.raw}
+                      editing={editing === x.id}
+                      onStart={() => setEditing(x.id)}
+                      onDone={(v) => {
+                        if (v !== null) l.editSentence(x.id, v);
+                        setEditing(null);
+                      }}
+                    />
+                  </Fragment>
+                ))}
                 {isNow && (
                   <>
-                    {text && l.pending ? " " : ""}
-                    <span className="rough">{l.pending.trim()}</span>
-                    {!l.muted && <span className="caret" aria-hidden="true" />}
+                    {text && (l.pending || editing === "pending") ? " " : ""}
+                    {editing === "pending" && (
+                      <EditableText
+                        text={pendingDraft}
+                        editing
+                        onStart={() => {}}
+                        onDone={(v) => {
+                          l.finishEditPending(v);
+                          setEditing(null);
+                        }}
+                      />
+                    )}
+                    {editing === "pending" && l.pending ? " " : ""}
+                    {l.pending.trim() && (
+                      <span
+                        className="rough editable"
+                        role="button"
+                        tabIndex={0}
+                        title="Click to correct"
+                        onClick={startPending}
+                      >
+                        {l.pending.trim()}
+                      </span>
+                    )}
+                    {!l.muted && editing !== "pending" && <span className="caret" aria-hidden="true" />}
                     <MuteButton muted={l.muted} onToggle={l.toggleMute} />
                   </>
                 )}
@@ -402,6 +464,72 @@ function MuteButton({ muted, onToggle }: { muted: boolean; onToggle: () => void 
       <Icon name={muted ? "micOff" : "mic"} size={22} />
       {muted && "Muted"}
     </button>
+  );
+}
+
+// Transcript text the teacher can correct in place: click to edit; Enter or clicking away saves, Escape
+// cancels (onDone gets null). Saving an empty sentence removes it.
+function EditableText({
+  text, editing, onStart, onDone,
+}: { text: string; editing: boolean; onStart: () => void; onDone: (value: string | null) => void }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const done = useRef(false);
+  // Frozen while editing, so a tidy-up landing mid-edit can't replace the text under the cursor.
+  const [frozen, setFrozen] = useState<string | null>(null);
+  if (editing && frozen === null) setFrozen(text);
+  if (!editing && frozen !== null) setFrozen(null);
+  useEffect(() => {
+    if (!editing || !ref.current) return;
+    done.current = false;
+    ref.current.focus();
+    // Caret at the end, ready to type.
+    const range = document.createRange();
+    range.selectNodeContents(ref.current);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, [editing]);
+  const finish = (value: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(value);
+  };
+  if (!editing) {
+    return (
+      <span className="editable" role="button" tabIndex={0} title="Click to correct" onClick={onStart} onKeyDown={(e) => e.key === "Enter" && onStart()}>
+        {text}
+      </span>
+    );
+  }
+  return (
+    <>
+    <span
+      ref={ref}
+      className="editing"
+      contentEditable
+      suppressContentEditableWarning
+      role="textbox"
+      aria-label="Correct transcript"
+      data-placeholder="Type the correction"
+      onInput={(e) => {
+        // Keep :empty working for the placeholder once everything is deleted.
+        if (!e.currentTarget.textContent) e.currentTarget.innerHTML = "";
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish(e.currentTarget.textContent ?? "");
+        } else if (e.key === "Escape") finish(null);
+      }}
+      onBlur={(e) => finish(e.currentTarget.textContent ?? "")}
+    >
+      {frozen ?? text}
+    </span>
+    <span className="edit-hint" aria-hidden="true">
+      <kbd>↵</kbd> to save · <kbd>Esc</kbd> to cancel
+    </span>
+    </>
   );
 }
 

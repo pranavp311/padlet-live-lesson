@@ -250,7 +250,7 @@ export function useLesson() {
             .then(({ text, todo }: { text?: string; todo?: Todo | null }) => {
               if (s.lesson !== lesson) return;
               if (text) {
-                s.sentences = s.sentences.map((x) => (x.id === sentence.id ? { ...x, clean: text } : x));
+                s.sentences = s.sentences.map((x) => (x.id === sentence.id && !x.edited ? { ...x, clean: text } : x));
                 setSentences(s.sentences);
               }
               if (todo && !s.todos.some((t) => sameTodo(t, todo))) {
@@ -539,6 +539,48 @@ export function useLesson() {
 
   const drawThis = useCallback(() => void checkDiagram(true), [checkDiagram]);
 
+  // The teacher corrects a settled sentence. Kept as written: the tidy-up won't overwrite it.
+  const editSentence = useCallback((id: number, text: string) => {
+    const s = r.current;
+    const clean = text.trim();
+    s.sentences = clean
+      ? s.sentences.map((x) => (x.id === id ? { ...x, clean, edited: true } : x))
+      : s.sentences.filter((x) => x.id !== id);
+    setSentences(s.sentences);
+  }, []);
+
+  // The teacher corrects the words still arriving. Editing takes them out of the stream; words said
+  // meanwhile keep arriving after them, and saving settles the corrected words as a sentence.
+  const editingPending = useRef<string | null>(null);
+  const beginEditPending = useCallback(() => {
+    const s = r.current;
+    editingPending.current = s.pending.trim();
+    s.pending = "";
+    setPending("");
+    return editingPending.current;
+  }, []);
+  const finishEditPending = useCallback(
+    (text: string | null) => {
+      const s = r.current;
+      const before = editingPending.current;
+      editingPending.current = null;
+      if (before === null) return;
+      if (text === null) {
+        // Cancelled: put the words back in front of anything said meanwhile.
+        s.pending = [before, s.pending].filter(Boolean).join(" ");
+        setPending(s.pending);
+        return;
+      }
+      const clean = text.trim();
+      if (!clean) return;
+      const id = s.nextId;
+      settle([clean]);
+      s.sentences = s.sentences.map((x) => (x.id === id ? { ...x, clean, edited: true } : x));
+      setSentences(s.sentences);
+    },
+    [settle],
+  );
+
   const toggleMute = useCallback(() => {
     r.current.muted = !r.current.muted;
     setMuted(r.current.muted);
@@ -619,7 +661,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinnedId, subject,
-    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, bubblesNote, stopDrawing, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, bubblesNote, stopDrawing, editSentence, beginEditPending, finishEditPending, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 

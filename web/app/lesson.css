@@ -282,6 +282,13 @@
 .thumb-img .diagram-caption { display: none; }
 /* Mute, in the card with the words being said */
 .para.now { position: relative; padding-right: 64px; }
+.para:not(.hint) { cursor: text; }
+/* Minimal timestamps in a gutter left of each card, level with its first line. */
+.transcript { padding-left: 52px; }
+.para { position: relative; }
+.para-time { position: absolute; right: calc(100% + 12px); top: 16px; font-size: 12px; line-height: 32px; font-weight: 500; letter-spacing: 0; color: var(--wall-ink); opacity: .7; user-select: none; }
+.para.now .para-time { top: 24px; line-height: 44px; opacity: 1; }
+.para.now .mute { cursor: pointer; }
 .mute { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); height: 44px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text-3); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--text-2); }
 .mute:hover { background: var(--surface); color: #111; }
 .mute-on { background: var(--scarlet-tint); color: #b00020; }
@@ -292,3 +299,10 @@
 .unseen { position: absolute; top: -10px; right: -10px; z-index: 2; min-width: 28px; height: 28px; padding: 0 8px; border: 3px solid var(--wall); border-radius: 999px; background: #22a33b; color: #fff; font: inherit; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; animation: ll-in 400ms var(--ease) both; }
 .unseen:hover { background: #1b8a31; }
 .bubbles-note { max-width: 220px; padding: 8px 12px; border-radius: 12px 12px 4px 12px; background: #fff; box-shadow: var(--shadow-card); font-size: 13px; line-height: 18px; color: var(--text-2); animation: ll-fade 200ms var(--ease) both; }
+/* Correcting the transcript in place: a faint purple wash on hover, a soft purple field while editing. */
+.editable { cursor: text; border-radius: 6px; transition: background 140ms var(--ease); }
+.editable:hover { background: rgba(148, 102, 232, .09); }
+.editing { outline: none; padding: 0 4px; margin: 0 -4px; border-radius: 8px 8px 3px 3px; background: rgba(148, 102, 232, .1); box-shadow: inset 0 -2px 0 var(--grape); color: #111; caret-color: var(--grape-strong); }
+.editing:empty::before { content: attr(data-placeholder); color: rgba(148, 102, 232, .55); }
+.edit-hint { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 2px 8px; vertical-align: middle; border-radius: 999px; background: var(--grape-tint); font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; color: #520085; white-space: nowrap; animation: ll-fade 200ms var(--ease) both; }
+.edit-hint kbd { font: inherit; padding: 0 5px; border-radius: 5px; background: #fff; box-shadow: 0 1px 0 rgba(82, 0, 133, .25); }
