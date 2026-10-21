@@ -705,6 +705,7 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 16 }}>
           <section className="sections">
             <h2 className="h2">Sections</h2>
+            <div className="scroll-list">
             {e
               ? e.sections.map((s) => (
                   <div key={s.heading} className="sec">
@@ -716,6 +717,7 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
                   </div>
                 ))
               : [0, 1, 2].map((i) => <span key={i} className="skel" style={{ height: 64 }} />)}
+            </div>
           </section>
           <div style={{ flex: "1 1 280px", display: "flex", flexDirection: "column", gap: 16 }}>
           {l.todos.length > 0 && (
@@ -731,7 +733,7 @@ export function Ended({ l, onDone, doneLabel = "New lesson" }: { l: EndedData; o
           <section className="terms">
             <h2 className="h2">Key terms</h2>
             {e ? (
-              <dl>
+              <dl className="scroll-list">
                 {e.key_terms.map((k) => (
                   <div key={k.term}>
                     <dt>{k.term}</dt>
