@@ -280,11 +280,11 @@
 /* In thumbnails the caption is a small line, so the drawing keeps the space. */
 .slide-art .diagram-caption, .gal-img .diagram-caption, .lesson-cover .diagram-caption { font-size: 12px; line-height: 16px; }
 .thumb-img .diagram-caption { display: none; }
-/* Mute, in the timer pill */
-.pill { padding-right: 4px; }
-.mute { width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: var(--wall-ink); display: inline-flex; align-items: center; justify-content: center; }
-.mute:hover { background: rgba(255,255,255,.5); }
-.pill-muted { background: var(--scarlet-tint); }
-.pill-muted .rec { background: #b5b5b5; }
-.pill-muted .mute { color: #b00020; }
-.muted-label { font-size: 13px; color: #b00020; }
+/* Mute, in the card with the words being said */
+.para.now { position: relative; padding-right: 64px; }
+.mute { position: absolute; top: 12px; right: 12px; height: 36px; min-width: 36px; padding: 0 9px; border: 0; border-radius: 10px; background: transparent; color: var(--text-3); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--text-2); }
+.mute:hover { background: var(--surface); color: #111; }
+.mute-on { background: var(--scarlet-tint); color: #b00020; }
+.mute-on:hover { background: #ffc8c8; color: #b00020; }
+.para.now.hint { color: var(--text-3); }
+.para.now:has(.mute-on) { padding-right: 112px; }

@@ -211,13 +211,10 @@ export function Live({ l }: { l: L }) {
       <header className="hdr">
         <Brand />
         <span className="spacer" />
-        <div className={l.muted ? "pill pill-muted" : "pill"}>
-          <span className="rec" />
+        <div className="pill">
+          <span className="rec" style={l.muted ? { background: "#b5b5b5" } : undefined} />
           <span className="tnum">{formatClock(secs)}</span>
-          {l.muted ? <span className="muted-label">Muted</span> : <MicBars level={l.level} />}
-          <button className="mute" aria-pressed={l.muted} aria-label={l.muted ? "Unmute" : "Mute"} title={l.muted ? "Unmute" : "Mute"} onClick={l.toggleMute}>
-            <Icon name={l.muted ? "micOff" : "mic"} size={18} />
-          </button>
+          <MicBars level={l.level} />
         </div>
         <button className="btn btn-dark" onClick={() => void l.end()} disabled={l.ending}>
           {l.ending ? "Ending…" : "End lesson"}
@@ -271,13 +268,19 @@ export function Live({ l }: { l: L }) {
                   <>
                     {text && l.pending ? " " : ""}
                     <span className="rough">{l.pending.trim()}</span>
-                    <span className="caret" aria-hidden="true" />
+                    {!l.muted && <span className="caret" aria-hidden="true" />}
+                    <MuteButton muted={l.muted} onToggle={l.toggleMute} />
                   </>
                 )}
               </p>
             );
           })}
-          {l.catchUp === null && !l.sentences.length && !l.pending && <p className="hint">Start talking. Your words appear here.</p>}
+          {l.catchUp === null && !l.sentences.length && !l.pending && (
+            <p className="para now hint">
+              {l.muted ? "Muted." : "Start talking. Your words appear here."}
+              <MuteButton muted={l.muted} onToggle={l.toggleMute} />
+            </p>
+          )}
         </section>
 
         <section className="dpanel" aria-label="Diagram">
@@ -353,6 +356,16 @@ export function Live({ l }: { l: L }) {
       </main>
       <DiagramViewer diagrams={list} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
     </div>
+  );
+}
+
+// Mute sits in the card with the words being said: muted, the mic is ignored and nothing is transcribed.
+function MuteButton({ muted, onToggle }: { muted: boolean; onToggle: () => void }) {
+  return (
+    <button className={muted ? "mute mute-on" : "mute"} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={onToggle}>
+      <Icon name={muted ? "micOff" : "mic"} size={18} />
+      {muted && "Muted"}
+    </button>
   );
 }
 
