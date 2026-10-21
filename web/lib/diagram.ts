@@ -1,7 +1,7 @@
 // Diagram spec and the typed changes ("ops") the LLM returns. The model never writes drawing code:
 // it adds parts by id, and our renderers decide layout, colour and motion.
 
-export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters"] as const;
+export const KINDS = ["flow", "cycle", "timeline", "graph", "molecule", "venn", "letters", "table", "numberline"] as const;
 export type Kind = (typeof KINDS)[number];
 export type Role = "input" | "process" | "output" | "other";
 
@@ -23,6 +23,14 @@ export type Diagram = {
   items?: { id: string; label: string; sets: string[] }[];
   // Letters and sounds: "Mm" drawn as bubble letters, with its sound ("/m/") and an example word ("moon").
   letters?: { id: string; text: string; sound?: string; word?: string }[];
+  // Table: columns across, rows down; a cell is found by its row and column ids.
+  columns?: { id: string; label: string }[];
+  rows?: { id: string; label?: string }[];
+  cells?: { row: string; col: string; text: string }[];
+  // Number line: a range with numbered ticks, marked values, and jumps drawn as arcs ("start at 3, jump 4").
+  line?: { min: number; max: number; step: number };
+  marks?: { id: string; value: number; label?: string }[];
+  jumps?: { id: string; from: number; to: number; label?: string }[];
   caption?: string; // a line under the diagram, e.g. a formula
   fresh: string[]; // ids added by the latest change, drawn highlighted
 };
@@ -42,7 +50,13 @@ export type Op =
   | { op: "add_item"; id: string; label: string; sets: string[] }
   | { op: "add_letter"; id: string; text: string; sound?: string; word?: string }
   | { op: "set_caption"; text: string }
-  | { op: "remove"; id: string };
+  | { op: "remove"; id: string }
+  | { op: "add_column"; id: string; label: string }
+  | { op: "add_row"; id: string; label?: string }
+  | { op: "set_cell"; row: string; col: string; text: string }
+  | { op: "set_range"; min: number; max: number; step: number }
+  | { op: "add_mark"; id: string; value: number; label?: string }
+  | { op: "add_jump"; id: string; from: number; to: number; label?: string };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
   return {
@@ -71,7 +85,8 @@ const ROLES = ["input", "process", "output", "other"];
 function textFields(o: unknown): unknown {
   if (!o || typeof o !== "object") return o;
   const v = { ...(o as Record<string, unknown>) };
-  for (const k of ["id", "label", "when", "title", "from", "to"]) if (num(v[k])) v[k] = String(v[k]);
+  // An arrow's ends are node ids; a jump's ends are numbers on the line and stay numbers.
+  for (const k of ["id", "label", "when", "title", ...(v.op === "add_edge" ? ["from", "to"] : [])]) if (num(v[k])) v[k] = String(v[k]);
   return v;
 }
 
@@ -96,6 +111,12 @@ export function validOp(o: unknown): o is Op {
       return str(v.id) && str(v.text) && v.text.trim().length <= 4 && optStr(v.sound) && optStr(v.word);
     case "set_caption": return str(v.text);
     case "remove": return str(v.id);
+    case "add_column": return str(v.id) && str(v.label);
+    case "add_row": return str(v.id) && optStr(v.label);
+    case "set_cell": return str(v.row) && str(v.col) && typeof v.text === "string";
+    case "set_range": return num(v.min) && num(v.max) && num(v.step) && v.min < v.max && v.step > 0 && (v.max - v.min) / v.step <= 40;
+    case "add_mark": return str(v.id) && num(v.value) && optStr(v.label);
+    case "add_jump": return str(v.id) && num(v.from) && num(v.to) && v.from !== v.to && optStr(v.label);
     default: return false;
   }
 }
@@ -114,6 +135,11 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
     sets: [...(d.sets ?? [])],
     items: [...(d.items ?? [])],
     letters: [...(d.letters ?? [])],
+    columns: [...(d.columns ?? [])],
+    rows: [...(d.rows ?? [])],
+    cells: [...(d.cells ?? [])],
+    marks: [...(d.marks ?? [])],
+    jumps: [...(d.jumps ?? [])],
     fresh: [],
   };
   const has = (id: string) => next.nodes.some((n) => n.id === id);
@@ -178,9 +204,48 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.sets = keep(next.sets!);
         next.items = keep(next.items!).map((x) => ({ ...x, sets: x.sets.filter((id) => id !== o.id) }));
         next.letters = keep(next.letters!);
+        next.columns = keep(next.columns!);
+        next.rows = keep(next.rows!);
+        next.cells = next.cells!.filter((c) => c.row !== o.id && c.col !== o.id);
+        next.marks = keep(next.marks!);
+        next.jumps = keep(next.jumps!);
         if (o.id === "caption") next.caption = undefined;
         break;
       }
+      case "add_column":
+        if (next.columns!.length < 5 && !next.columns!.some((x) => x.id === o.id)) {
+          next.columns!.push({ id: o.id, label: o.label });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "add_row":
+        if (next.rows!.length < 6 && !next.rows!.some((x) => x.id === o.id)) {
+          next.rows!.push({ id: o.id, label: o.label });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "set_cell":
+        // Cells for a row or column that doesn't exist (or was capped off) are dropped; a filled cell can be rewritten.
+        if (next.rows!.some((x) => x.id === o.row) && next.columns!.some((x) => x.id === o.col)) {
+          next.cells = [...next.cells!.filter((c) => !(c.row === o.row && c.col === o.col)), { row: o.row, col: o.col, text: o.text }];
+          next.fresh.push(`${o.row}:${o.col}`);
+        }
+        break;
+      case "set_range":
+        next.line = { min: o.min, max: o.max, step: o.step };
+        break;
+      case "add_mark":
+        if (!next.marks!.some((x) => x.id === o.id)) {
+          next.marks!.push({ id: o.id, value: o.value, label: o.label });
+          next.fresh.push(o.id);
+        }
+        break;
+      case "add_jump":
+        if (!next.jumps!.some((x) => x.id === o.id)) {
+          next.jumps!.push({ id: o.id, from: o.from, to: o.to, label: o.label });
+          next.fresh.push(o.id);
+        }
+        break;
       case "set_caption":
         next.caption = o.text;
         next.fresh.push("caption");
@@ -217,7 +282,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
 export function isEmpty(d: Diagram) {
   return (
     !d.nodes.length && !d.events.length && !d.curves.length && !d.points.length && !d.segments?.length && !d.smiles &&
-    !d.sets?.length && !d.letters?.length
+    !d.sets?.length && !d.letters?.length && !d.columns?.length && !d.marks?.length && !d.jumps?.length
   );
 }
 
@@ -229,4 +294,6 @@ export const KIND_LABEL: Record<Kind, string> = {
   molecule: "Molecule",
   venn: "Venn",
   letters: "Letters",
+  table: "Table",
+  numberline: "Number line",
 };

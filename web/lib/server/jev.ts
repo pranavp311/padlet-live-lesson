@@ -58,6 +58,8 @@ export async function route(said: string, onScreen: string | null): Promise<Rout
         molecule: "The structure of a specific chemical compound",
         venn: "Comparing two or three groups: what they share and what belongs to only one",
         letters: "Letters, the sounds letters make (phonics), spelling or the alphabet",
+        table: "Comparing things across several features in rows and columns, or a chart to fill in (T-chart, KW-L chart, place value, Punnett square)",
+        numberline: "Counting on or back, adding or subtracting along a line, negative numbers, rounding, or placing numbers or fractions in order on a line",
         none: "Nothing to draw",
       },
     },

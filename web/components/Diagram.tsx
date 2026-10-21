@@ -49,6 +49,10 @@ function Drawing({ d, still }: { d: Diagram; still: boolean }) {
       return <Venn d={d} still={still} />;
     case "letters":
       return <Letters d={d} still={still} />;
+    case "table":
+      return <Table d={d} still={still} />;
+    case "numberline":
+      return <NumberLine d={d} still={still} />;
   }
 }
 
@@ -642,6 +646,127 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
           Neither: {outside.map((it) => it.label).join(", ")}
         </text>
       )}
+    </svg>
+  );
+}
+
+// A table: pastel header row across the top, row labels (when there are any) down the left, wrapped cell text.
+function Table({ d, still }: { d: Diagram; still: boolean }) {
+  const cols = d.columns ?? [];
+  const rows = d.rows ?? [];
+  const fresh = new Set(d.fresh);
+  const labelled = rows.some((r) => r.label);
+  const cell = (r: string, c: string) => (d.cells ?? []).find((x) => x.row === r && x.col === c)?.text ?? "";
+  // Columns as wide as their longest text needs, within limits, so short tables don't look stretched.
+  const colW = cols.map((c) => Math.min(240, Math.max(130, ...[c.label, ...rows.map((r) => cell(r.id, c.id))].map((t) => Math.min(t.length, 26) * 8.5 + 32))));
+  const labelW = labelled ? Math.min(200, Math.max(110, ...rows.map((r) => (r.label ?? "").length * 8.5 + 32))) : 0;
+  const headH = 56;
+  const rowH = 68;
+  const W = labelW + colW.reduce((a, b) => a + b, 0) || 1;
+  const H = headH + Math.max(1, rows.length) * rowH;
+  const x0 = (i: number) => labelW + colW.slice(0, i).reduce((a, b) => a + b, 0);
+  const anim = (id: string) => (fresh.has(id) && !still ? { animation: "ll-fade 500ms var(--ease) both" } : undefined);
+  return (
+    <svg viewBox={`-2 -2 ${W + 4} ${H + 4}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      <rect x={0} y={0} width={W} height={H} rx={14} fill="#fff" stroke="#e3e4e8" />
+      <path d={`M14 0H${W - 14}a14 14 0 0 1 14 14V${headH}H0V14a14 14 0 0 1 14-14z`} fill="var(--grape-tint)" />
+      {labelled && <rect x={0} y={headH} width={labelW} height={H - headH} fill="var(--canary-tint)" />}
+      {cols.map((c, i) => (
+        <g key={c.id} style={anim(c.id)}>
+          <Lines x={x0(i) + colW[i] / 2} y={headH / 2} lines={wrap(c.label, Math.floor(colW[i] / 9.5), 2)} size={17} weight={700} fill="#3d1a78" lh={19} />
+        </g>
+      ))}
+      {rows.map((r, j) => (
+        <g key={r.id} style={anim(r.id)}>
+          {j > 0 && <line x1={0} x2={W} y1={headH + j * rowH} y2={headH + j * rowH} stroke="#ebecef" />}
+          {labelled && <Lines x={labelW / 2} y={headH + j * rowH + rowH / 2} lines={wrap(r.label ?? "", Math.floor(labelW / 9), 2)} size={16} weight={700} fill="#6b4e00" lh={18} />}
+          {cols.map((c, i) => (
+            <g key={c.id} style={anim(`${r.id}:${c.id}`)}>
+              <Lines x={x0(i) + colW[i] / 2} y={headH + j * rowH + rowH / 2} lines={wrap(cell(r.id, c.id), Math.floor(colW[i] / 8.5), 3)} size={15} fill="#111" lh={18} />
+            </g>
+          ))}
+        </g>
+      ))}
+      {cols.slice(1).map((c, i) => (
+        <line key={c.id} x1={x0(i + 1)} x2={x0(i + 1)} y1={0} y2={H} stroke="#ebecef" />
+      ))}
+      {labelled && <line x1={labelW} x2={labelW} y1={0} y2={H} stroke="#ebecef" />}
+    </svg>
+  );
+}
+
+// "3/4" for 0.75 when the line counts in quarters; whole numbers as they are.
+function tickLabel(v: number, step: number) {
+  const n = Math.round(1 / step);
+  if (step >= 1 || Math.abs(1 / step - n) > 1e-6 || n > 12) return String(+v.toFixed(2));
+  const k = Math.round(v * n);
+  if (k % n === 0) return String(k / n);
+  const g = (a: number, b: number): number => (b ? g(b, a % b) : a);
+  const div = g(Math.abs(k), n);
+  return `${k / div}/${n / div}`;
+}
+
+// A number line: numbered ticks, marked values as dots, and jumps as arcs above the line ("start at 3, jump 4").
+function NumberLine({ d, still }: { d: Diagram; still: boolean }) {
+  const sid = useSid();
+  const marks = d.marks ?? [];
+  const jumps = d.jumps ?? [];
+  const values = [...marks.map((m) => m.value), ...jumps.flatMap((j) => [j.from, j.to])];
+  const lo = Math.min(0, ...values);
+  const hi = Math.max(10, ...values);
+  const line = d.line ?? { min: Math.floor(lo), max: Math.ceil(hi), step: Math.max(1, Math.ceil((hi - lo) / 20)) };
+  const W = 720;
+  const pad = 40;
+  const sxRaw = (v: number) => pad + ((v - line.min) / (line.max - line.min)) * (W - 2 * pad);
+  const arc = (j: { from: number; to: number }) => Math.min(140, Math.max(50, Math.abs(sxRaw(j.to) - sxRaw(j.from)) * 0.45));
+  // Only as tall as what's drawn: room above the line for the highest jump and its label, below for labels.
+  const top = jumps.length ? Math.max(...jumps.map(arc)) + 54 : 30;
+  const y = top;
+  const H = top + (marks.some((m) => m.label) ? 96 : 60);
+  const sx = sxRaw;
+  const ticks: number[] = [];
+  for (let v = line.min; v <= line.max + 1e-9; v += line.step) ticks.push(+v.toFixed(6));
+  const fresh = new Set(d.fresh);
+  const anim = (id: string, pop = false) =>
+    fresh.has(id) && !still ? (pop ? { transformBox: "fill-box" as const, transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : { animation: "ll-fade 600ms var(--ease) both" }) : undefined;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      <Defs id={sid} />
+      <line x1={pad - 24} x2={W - pad + 24} y1={y} y2={y} stroke="#6b6f76" strokeWidth={3} strokeLinecap="round" />
+      {ticks.map((v) => (
+        <g key={v}>
+          <line x1={sx(v)} x2={sx(v)} y1={y - 10} y2={y + 10} stroke="#6b6f76" strokeWidth={2} />
+          {ticks.length <= 21 || Math.round((v - line.min) / line.step) % 2 === 0 ? (
+            <text x={sx(v)} y={y + 38} textAnchor="middle" fontSize={22} fontWeight={600} fill="#111">
+              {tickLabel(v, line.step)}
+            </text>
+          ) : null}
+        </g>
+      ))}
+      {jumps.map((j) => {
+        const [x1, x2] = [sx(j.from), sx(j.to)];
+        const h = arc(j);
+        return (
+          <g key={j.id} style={anim(j.id)}>
+            <path d={`M${x1} ${y - 6} C${x1} ${y - h}, ${x2} ${y - h}, ${x2} ${y - 6}`} fill="none" stroke="var(--grape)" strokeWidth={3} markerEnd={`url(#${sid}-af)`} />
+            {j.label && (
+              <text x={(x1 + x2) / 2} y={y - h * 0.75 - 14} textAnchor="middle" fontSize={26} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+                {j.label}
+              </text>
+            )}
+          </g>
+        );
+      })}
+      {marks.map((m) => (
+        <g key={m.id} style={anim(m.id, true)}>
+          <circle cx={sx(m.value)} cy={y} r={10} fill="var(--grape)" stroke="#fff" strokeWidth={3} />
+          {m.label && (
+            <text x={sx(m.value)} y={y + 74} textAnchor="middle" fontSize={20} fontWeight={600} fill="#3d1a78">
+              {m.label}
+            </text>
+          )}
+        </g>
+      ))}
     </svg>
   );
 }

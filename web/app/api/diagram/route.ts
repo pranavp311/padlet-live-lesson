@@ -12,6 +12,8 @@ const OPS: Record<Kind, string> = {
   graph: `{"op":"set_axes","x":[-5,5],"y":[-2,10]}, {"op":"add_curve","id":"f","expr":"x^2 - 2x + 1","label":"y = x² − 2x + 1"} (expr in mathjs syntax using x), {"op":"add_point","id":"v","x":1,"y":0,"label":"vertex"}, and for geometry {"op":"add_segment","id":"a","from":[0,0],"to":[3,0],"label":"a = 3"} (shapes are made of segments; set axes so the shape fits with a margin)`,
   molecule: `{"op":"set_smiles","smiles":"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O"} (one valid SMILES for one compound; never a reaction with ">>": for a reaction draw the main product and put the equation in set_caption)`,
   venn: `{"op":"add_set","id":"mammals","label":"Mammals"} (2 or 3 sets), then {"op":"add_item","id":"whale","label":"Whale","sets":["mammals","sea"]} (an item in several sets sits in their overlap; "sets":[] puts it outside all of them); at most 4 items per region; put what the sets share in the overlap`,
+  table: `{"op":"add_column","id":"athens","label":"Athens"} (2-5 columns), {"op":"add_row","id":"gov","label":"Government"} (up to 6 rows; leave out label for a plain list), {"op":"set_cell","row":"gov","col":"athens","text":"Democracy"} (cell text 1-6 words). For a T-chart or KWL use columns with no row labels; for place value use columns "Hundreds","Tens","Ones"`,
+  numberline: `{"op":"set_range","min":0,"max":10,"step":1} (at most 40 steps; use step 0.25 for quarters), {"op":"add_mark","id":"start","value":3,"label":"start"}, {"op":"add_jump","id":"j1","from":3,"to":7,"label":"+4"} (a jump back has from > to). Mark where you start and land`,
   letters: `{"op":"add_letter","id":"m","text":"Mm","sound":"/m/","word":"moon"}: text is the letter in upper and lower case ("Ss"), or a letter group as written ("sh", "ai"); sound is the sound between slashes; word is a short example word that contains it. One add_letter per letter or sound the teacher is talking about (at most 4). "What letter makes the sound s?" draws "Ss"`,
 };
 
@@ -143,11 +145,14 @@ function describe(d: Diagram) {
   const labels = [
     ...d.nodes.map((n) => n.label), ...d.events.map((e) => e.label), ...d.curves.map((c) => c.label ?? ""),
     ...d.points.map((p) => p.label ?? ""), ...(d.segments ?? []).map((g) => g.label ?? ""),
-    ...(d.sets ?? []).map((x) => x.label), ...(d.items ?? []).map((x) => x.label), ...(d.letters ?? []).map((x) => x.text), d.caption ?? "",
+    ...(d.sets ?? []).map((x) => x.label), ...(d.items ?? []).map((x) => x.label), ...(d.letters ?? []).map((x) => x.text),
+    ...(d.columns ?? []).map((x) => x.label), ...(d.rows ?? []).map((x) => x.label ?? ""), ...(d.marks ?? []).map((x) => x.label ?? ""),
+    ...(d.jumps ?? []).map((x) => x.label ?? ""), d.caption ?? "",
   ].filter(Boolean);
   return `a ${d.kind} titled '${d.title}'${labels.length ? ` showing: ${labels.slice(0, 12).join(", ")}` : ""}`;
 }
 
 function compact(d: Diagram) {
-  return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, sets: d.sets, items: d.items, letters: d.letters, caption: d.caption };
+  return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, sets: d.sets, items: d.items, letters: d.letters,
+    columns: d.columns, rows: d.rows, cells: d.cells, line: d.line, marks: d.marks, jumps: d.jumps, caption: d.caption };
 }
