@@ -42,8 +42,10 @@ export type Diagram = {
   // Words split into parts ("but-ter-fly") under the letters, as syllables, sounds or word parts.
   words?: { id: string; parts: string[]; mode: "syllables" | "sounds" | "parts" }[];
   // Labelled parts of one thing (a plant cell, the heart): its outline, parts inside or on the edge, labels around it.
-  subject?: { label: string; shape: "cell" | "circle" | "oval" | "layers" };
-  parts?: { id: string; label: string; inside: boolean; fills?: boolean }[];
+  // "free": a thing that isn't one outline holding its parts (a flower, the heart): each part is drawn where it is in
+  // it, from `at` (x, y, width, height across and down a 100 x 100 box) and its form.
+  subject?: { label: string; shape: "cell" | "circle" | "oval" | "layers" | "free" };
+  parts?: { id: string; label: string; inside: boolean; fills?: boolean; at?: [number, number, number, number]; form?: "blob" | "bar" | "line" }[];
   // Worked steps (algebra, a balanced equation), lined up on their "=" or arrow.
   steps?: { id: string; text: string; note?: string }[];
   // Map: real places by latitude and longitude, and routes between them (a river's course, a journey, trade).
@@ -81,8 +83,8 @@ export type Op =
   | { op: "add_fraction"; id: string; num: number; den: number; shape?: "bar" | "circle"; label?: string }
   | { op: "add_branch"; id: string; label: string; parent?: string; edge?: string }
   | { op: "add_word"; id: string; parts: string[]; mode?: "syllables" | "sounds" | "parts" }
-  | { op: "set_subject"; label: string; shape?: "cell" | "circle" | "oval" | "layers" }
-  | { op: "add_part"; id: string; label: string; inside?: boolean; fills?: boolean }
+  | { op: "set_subject"; label: string; shape?: "cell" | "circle" | "oval" | "layers" | "free" }
+  | { op: "add_part"; id: string; label: string; inside?: boolean; fills?: boolean; at?: [number, number, number, number]; form?: "blob" | "bar" | "line" }
   | { op: "add_step"; id: string; text: string; note?: string }
   | { op: "add_place"; id: string; label: string; lat: number; lon: number }
   | { op: "set_view"; lat: number; lon: number; span: number }
@@ -166,9 +168,15 @@ export function validOp(o: unknown): o is Op {
         str(v.id) && Array.isArray(v.parts) && v.parts.length >= 1 && v.parts.length <= 8 && v.parts.every((x) => str(x)) &&
         (v.mode === undefined || v.mode === "syllables" || v.mode === "sounds" || v.mode === "parts")
       );
-    case "set_subject": return str(v.label) && (v.shape === undefined || ["cell", "circle", "oval", "layers"].includes(v.shape as string));
+    case "set_subject": return str(v.label) && (v.shape === undefined || ["cell", "circle", "oval", "layers", "free"].includes(v.shape as string));
     case "add_part":
-      return str(v.id) && str(v.label) && (v.inside === undefined || typeof v.inside === "boolean") && (v.fills === undefined || typeof v.fills === "boolean");
+      return (
+        str(v.id) && str(v.label) && (v.inside === undefined || typeof v.inside === "boolean") && (v.fills === undefined || typeof v.fills === "boolean") &&
+        // Only a line runs left or up (negative width or height); a blob or bar has a size.
+        (v.at === undefined ||
+          (Array.isArray(v.at) && v.at.length === 4 && v.at.every((n, i) => num(n) && n <= 110 && n >= (i < 2 || v.form === "line" ? -110 : 0) && (i >= 2 || n >= -10)))) &&
+        (v.form === undefined || ["blob", "bar", "line"].includes(v.form as string))
+      );
     case "add_step": return str(v.id) && str(v.text) && optStr(v.note);
     case "add_place":
       return str(v.id) && str(v.label) && num(v.lat) && num(v.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180;
@@ -242,6 +250,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
   };
   const has = (id: string) => next.nodes.some((n) => n.id === id);
   // Adds a part, or replaces the one with the same id ("actually 9 chose soccer"); a new part only while under the cap.
+  const refused = new Set<string>(); // Venn sets turned away, so their items are too
   const put = <T extends { id: string }>(xs: T[], x: T, cap = Infinity) => {
     const i = xs.findIndex((y) => y.id === x.id);
     if (i >= 0) xs[i] = x;
@@ -388,7 +397,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.fresh.push("subject");
         break;
       case "add_part":
-        put(next.parts!, { id: o.id, label: o.label, inside: o.inside ?? true, fills: o.fills }, 10);
+        put(next.parts!, { id: o.id, label: o.label, inside: o.inside ?? true, fills: o.fills, at: o.at, form: o.form }, 10);
         break;
       case "add_place":
         put(next.places!, { id: o.id, label: o.label, lat: o.lat, lon: o.lon }, 10);
@@ -440,6 +449,12 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         const was = next.sets!.find((x) => x.id === o.id);
         const want = o.inside === undefined ? was?.inside : o.inside || undefined;
         const inside = want && next.sets!.some((x) => x.id === want) && !within(want) ? want : undefined;
+        // No more than three main sets overlapping: a fourth has to be a subset or apart (four circles can't all overlap).
+        // Its items are left out too, rather than drawn in the wrong place.
+        if (!was && !inside && !o.apart && next.sets!.filter((x) => !x.inside && !x.apart).length >= 3) {
+          refused.add(o.id);
+          break;
+        }
         // Its colour stays with it, so removing another set doesn't recolour the rest.
         // (A set saved before colours were kept shows the colour of its place in the list.)
         const shown = next.sets!.map((x, i) => x.colour ?? i);
@@ -448,6 +463,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         break;
       }
       case "add_item":
+        if (o.sets.some((id) => refused.has(id))) break;
         put(next.items!, { id: o.id, label: o.label, sets: o.sets.filter((id) => next.sets!.some((x) => x.id === id)) }, 16); // unknown sets: outside
         break;
       case "add_letter":

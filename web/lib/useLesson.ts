@@ -301,7 +301,8 @@ export function useLesson() {
           // A diagram needs a title: Jev's same-topic check and the transcript thumbnail both use it.
           next.title ||=
             next.nodes[0]?.label ?? next.events[0]?.label ?? next.curves[0]?.label ?? next.letters?.[0]?.text ?? next.columns?.[0]?.label ?? next.bars?.[0]?.label ?? next.branches?.[0]?.label ?? next.subject?.label ?? next.steps?.[0]?.text ?? next.places?.[0]?.label ?? next.words?.[0]?.parts.join("") ??
-            (next.sets?.length ? next.sets.map((x) => x.label).join(" and ") : "Diagram");
+            (next.fractions?.length ? next.fractions.map((f) => `${f.num}/${f.den}`).join(", ") : null) ??
+            (next.sets?.length ? next.sets.map((x) => x.label).join(", ").replace(/, ([^,]*)$/, " and $1") : "Diagram");
           if (!isEmpty(next)) {
             drew = true;
             fileAway(s.current);

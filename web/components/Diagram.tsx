@@ -251,19 +251,27 @@ function Cycle({ d, still }: { d: Diagram; still: boolean }) {
   );
 }
 
+// Events alternate above and below the line, so neighbours can sit closer than a card is wide; past five events the
+// line carries on in a second row (a single long row would shrink the writing until it can't be read).
 function Timeline({ d, still }: { d: Diagram; still: boolean }) {
   const sid = useSid();
-  const step = 190;
-  const W = Math.max(1, d.events.length) * step + 40;
-  const H = 300;
-  const mid = H / 2;
+  const n = Math.max(1, d.events.length);
+  const perRow = Math.ceil(n / Math.ceil(n / 5));
+  const step = 100;
+  const rowH = 300;
+  const W = 40 + 160 + (perRow - 1) * step + 30;
+  const H = Math.ceil(n / perRow) * rowH;
   const fresh = new Set(d.fresh);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
       <Defs id={sid} />
-      <line x1={20} y1={mid} x2={W - 20} y2={mid} stroke={EDGE} strokeWidth={2} markerEnd={`url(#${sid}-a)`} />
-      {byDate(d.events).map((e, i) => {
-        const x = 20 + step / 2 + i * step;
+      {Array.from({ length: Math.ceil(n / perRow) }, (_, r) => (
+        <line key={r} x1={20} y1={r * rowH + rowH / 2} x2={W - 10} y2={r * rowH + rowH / 2} stroke={EDGE} strokeWidth={2} markerEnd={`url(#${sid}-a)`} />
+      ))}
+      {byDate(d.events).map((e, k) => {
+        const i = k % perRow;
+        const mid = Math.floor(k / perRow) * rowH + rowH / 2;
+        const x = 20 + 80 + i * step;
         const up = i % 2 === 0;
         const hot = fresh.has(e.id) && !still;
         const cardY = up ? mid - 112 : mid + 28;
@@ -362,8 +370,12 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
     [pad + 8, H - pad - 8 - lh],
     [W - pad - 8 - lw, H - pad - 8 - lh],
   ];
+  // …and off the numbers along the axes, which it would hide (counted as worse than any amount of curve).
+  const over = (x: number, y: number, x0: number, y0: number, x1: number, y1: number) => x < x1 && x + lw > x0 && y < y1 && y + lh > y0;
+  const onNumbers = (x: number, y: number) =>
+    (onAxisX && over(x, y, sx(0) - 34, pad, sx(0) + 2, H - pad)) || (onAxisY && over(x, y, pad, sy(0) - 2, W - pad, sy(0) + 24));
   const crossing = ([x, y]: [number, number]) =>
-    paths.reduce((n, p) => n + p.pts.filter(([px, py]) => px >= x && px <= x + lw && py >= y && py <= y + lh).length, 0);
+    (onNumbers(x, y) ? 1e6 : 0) + paths.reduce((n, p) => n + p.pts.filter(([px, py]) => px >= x && px <= x + lw && py >= y && py <= y + lh).length, 0);
   const [lx, ly] = corners.reduce((best, c) => (crossing(c) < crossing(best) ? c : best), corners[0]);
 
   return (
@@ -518,9 +530,12 @@ function Molecule({ d, still }: { d: Diagram; still: boolean }) {
       try {
         // A small molecule is about its hydrogens (water's bent H–O–H, methane's four C–H): they're drawn as atoms with
         // bonds, rather than "OH2" as one label.
-        const tree = SD.Parser.parse(withHydrogens(d.smiles!));
+        // With its hydrogens written out, every carbon is labelled too (methane's C at the centre of its four H).
+        const smiles = withHydrogens(d.smiles!);
+        const tree = SD.Parser.parse(smiles);
         ref.current.innerHTML = "";
-        new SD.SvgDrawer({ width: 480, height: 400, bondThickness: 1.6, fontSizeLarge: 14, fontSizeSmall: 9, padding: 24 }).draw(tree, ref.current, "light");
+        const showCarbons = smiles === d.smiles ? "default" : "all";
+        new SD.SvgDrawer({ width: 480, height: 400, bondThickness: 1.6, fontSizeLarge: 14, fontSizeSmall: 9, padding: 24, showCarbons }).draw(tree, ref.current, "light");
         // The drawer fits the view tightly round the molecule, so water would fill the panel: keep the view at least
         // a few bond lengths across, so small molecules stay a natural size.
         const [x, y, w, h] = (ref.current.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
@@ -756,9 +771,11 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
         }
         continue;
       }
-      const r = p.r * (kids.length === 1 ? 0.55 : kids.length === 2 ? 0.42 : 0.28);
+      // Two subsets that share an item (cats and dogs both have fur) overlap, a little larger, so it has room to go.
+      const shared = kids.length === 2 && (d.items ?? []).some((it) => kids.every((x) => it.sets.includes(x.id)));
+      const r = p.r * (kids.length === 1 ? 0.55 : shared ? 0.48 : kids.length === 2 ? 0.42 : 0.28);
       kids.forEach((x, k) => {
-        const cx = p.cx + (k - (kids.length - 1) / 2) * (2 * r + p.r * 0.06);
+        const cx = p.cx + (k - (kids.length - 1) / 2) * (shared ? 1.15 * r : 2 * r + p.r * 0.06);
         const cy = p.cy + p.r * (kids.length === 1 ? 0.35 : kids.length === 2 ? 0.3 : 0.2);
         circles.set(x.id, { cx, cy, r, i: sets.indexOf(x), label: [cx, cy - r + 22], small: true });
       });
@@ -789,10 +806,21 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
       const push = inner.length === 1 ? 0.55 : 0.35;
       at = [at[0] + (at[0] - mid[0]) * push, at[1] + (at[1] - mid[1]) * push];
     }
-    if (cs.length === 1 && cs[0].small) at = [at[0], at[1] + 12]; // below the subset's name
+    if (cs.length === 1 && cs[0].small) {
+      at = [at[0], at[1] + 12]; // below the subset's name
+      // Only in this subset, which overlaps another: away from their overlap.
+      for (const o of circles.values()) {
+        const dist = Math.hypot(o.cx - cs[0].cx, o.cy - cs[0].cy);
+        if (o !== cs[0] && o.small && dist < o.r + cs[0].r) at = [at[0] + ((cs[0].cx - o.cx) / dist) * cs[0].r * 0.4, at[1]];
+      }
+    }
     if (inner.length === 1 && sets.some((x) => x.inside === inner[0])) at = home(cs[0]);
     // Writing sized to a small circle: about as many characters as fit across it.
+    // In the overlap of two subsets: as wide as the overlap is.
+    const lens = cs.length === 2 && cs.every((c) => c.small);
+    const width = lens ? cs[0].r + cs[1].r - Math.hypot(cs[0].cx - cs[1].cx, cs[0].cy - cs[1].cy) : 0;
     const r = cs.length === 1 && cs[0].small ? cs[0].r : 180;
+    if (lens) return { key: [...inner].sort().join("|"), at, size: 14, chars: Math.max(4, Math.floor(width / 7.2)) };
     return { key: [...inner].sort().join("|"), at, size: r < 90 ? 16 : 21, chars: Math.max(6, Math.floor((r * 1.6) / (r < 90 ? 9 : 11.5))) };
   };
   const regions = new Map<string, { at: number[]; size: number; chars: number; items: { id: string; label: string }[] }>();
@@ -851,17 +879,25 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
 
 // A table: pastel header row across the top, row labels (when there are any) down the left, wrapped cell text.
 function Table({ d, still }: { d: Diagram; still: boolean }) {
-  const rows = d.rows ?? [];
+  const given = d.rows ?? [];
   const fresh = new Set(d.fresh);
-  const labelled = rows.some((r) => r.label);
-  const cell = (r: string, c: string) => (d.cells ?? []).find((x) => x.row === r && x.col === c)?.text ?? "";
+  const labelled = given.some((r) => r.label);
+  const at = (r: string, c: string) => (d.cells ?? []).find((x) => x.row === r && x.col === c)?.text ?? "";
   // Rows named down the left and an empty first column while the rest are filled in ("Planet" over Mercury, Venus…):
   // that column is the row names again, so its heading goes above them instead of an empty column. A table still to
   // be filled in (every cell empty) keeps its columns.
-  const filled = (c: { id: string }) => rows.some((r) => cell(r.id, c.id));
+  const filled = (c: { id: string }) => given.some((r) => at(r.id, c.id));
   const all = d.columns ?? [];
   const corner = labelled && all.length > 1 && !filled(all[0]) && all.slice(1).some(filled) ? all[0] : null;
-  const cols = corner ? all.slice(1) : all;
+  // Wide and short (four kinds of energy across, pros and cons down) is turned on its side: in the tall panel a wide
+  // table's writing shrinks until it can't be read. Only when the rows are named, so the names can head columns; and
+  // decided by the table's shape alone, so it doesn't turn over as its cells are filled in.
+  const flip = labelled && all.length >= 3 && all.length > given.length;
+  const across = corner ? all.slice(1) : all;
+  const rows = flip ? across.map((c) => ({ id: c.id, label: c.label })) : given;
+  const cols = flip ? given.map((r) => ({ id: r.id, label: r.label ?? "" })) : across;
+  const cell = (r: string, c: string) => (flip ? at(c, r) : at(r, c));
+  const cellId = (r: string, c: string) => (flip ? `${c}:${r}` : `${r}:${c}`); // as applyOps marks it fresh
   // Columns as wide as their longest text needs, within limits, so short tables don't look stretched.
   const colW = cols.map((c) => Math.min(240, Math.max(130, ...[c.label, ...rows.map((r) => cell(r.id, c.id))].map((t) => Math.min(t.length, 26) * 8.5 + 32))));
   const labelW = labelled ? Math.min(200, Math.max(110, ...rows.map((r) => (r.label ?? "").length * 8.5 + 32))) : 0;
@@ -876,7 +912,7 @@ function Table({ d, still }: { d: Diagram; still: boolean }) {
       <rect x={0} y={0} width={W} height={H} rx={14} fill="#fff" stroke="#e3e4e8" />
       <path d={`M14 0H${W - 14}a14 14 0 0 1 14 14V${headH}H0V14a14 14 0 0 1 14-14z`} fill="var(--grape-tint)" />
       {labelled && <rect x={0} y={headH} width={labelW} height={H - headH} fill="var(--canary-tint)" />}
-      {corner && (
+      {corner && !flip && (
         <g style={anim(corner.id)}>
           <Lines x={labelW / 2} y={headH / 2} lines={wrap(corner.label, Math.floor(labelW / 9.5), 2)} size={17} weight={700} fill="#3d1a78" lh={19} />
         </g>
@@ -891,7 +927,7 @@ function Table({ d, still }: { d: Diagram; still: boolean }) {
           {j > 0 && <line x1={0} x2={W} y1={headH + j * rowH} y2={headH + j * rowH} stroke="#ebecef" />}
           {labelled && <Lines x={labelW / 2} y={headH + j * rowH + rowH / 2} lines={wrap(r.label ?? "", Math.floor(labelW / 9), 2)} size={16} weight={700} fill="#6b4e00" lh={18} />}
           {cols.map((c, i) => (
-            <g key={c.id} style={anim(`${r.id}:${c.id}`)}>
+            <g key={c.id} style={anim(cellId(r.id, c.id))}>
               <Lines x={x0(i) + colW[i] / 2} y={headH + j * rowH + rowH / 2} lines={wrap(cell(r.id, c.id), Math.floor(colW[i] / 8.5), 3)} size={15} fill="#111" lh={18} />
             </g>
           ))}
@@ -1297,6 +1333,18 @@ function Parts({ d, still }: { d: Diagram; still: boolean }) {
     const a = (2 * Math.PI * i) / Math.max(1, edge.length) + Math.PI / 5;
     anchor.set(p.id, [cx + (rx - i * 12) * Math.cos(a), cy + (ry - i * 12) * Math.sin(a)]);
   });
+  // Free: each part drawn where the model placed it in a 100 x 100 box over the drawing area, and labelled from its middle.
+  const free = shape === "free";
+  const box = (p: (typeof parts)[number]) => {
+    const [x, y, w, h] = p.at ?? [40, 40, 20, 20];
+    return [cx - rx + (x / 100) * 2 * rx, cy - ry + (y / 100) * 2 * ry, (w / 100) * 2 * rx, (h / 100) * 2 * ry];
+  };
+  if (free) {
+    parts.forEach((p) => {
+      const [x, y, w, h] = box(p);
+      anchor.set(p.id, p.form === "line" ? [x + w * 0.6, y + h * 0.6] : [x + w / 2, y + h / 2]);
+    });
+  }
   // Layers: rings inside one another, outside first; each label points into its own band.
   const layers = shape === "layers";
   const ring = (i: number) => rx * (1 - i / Math.max(1, parts.length));
@@ -1327,7 +1375,17 @@ function Parts({ d, still }: { d: Diagram; still: boolean }) {
   };
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
-      {layers ? (
+      {free ? (
+        // Bars and lines first, so stems and roots run behind the petals and chambers they meet.
+        [...parts].sort((a, b) => Number(a.form === "blob" || !a.form) - Number(b.form === "blob" || !b.form)).map((p) => {
+          const [x, y, w, h] = box(p);
+          const c = colour(parts.indexOf(p));
+          const style = hot(p.id) ? { animation: "ll-fade 600ms var(--ease) both" } : undefined;
+          if (p.form === "line") return <line key={`f${p.id}`} x1={x} y1={y} x2={x + w} y2={y + h} stroke={c.ink} strokeOpacity={0.7} strokeWidth={5} strokeLinecap="round" style={style} />;
+          if (p.form === "bar") return <rect key={`f${p.id}`} x={x} y={y} width={Math.max(8, w)} height={Math.max(8, h)} rx={Math.min(w, h) / 2} fill={c.mid} fillOpacity={0.75} stroke={c.ink} strokeWidth={2} style={style} />;
+          return <ellipse key={`f${p.id}`} cx={x + w / 2} cy={y + h / 2} rx={Math.max(6, w / 2)} ry={Math.max(6, h / 2)} fill={c.mid} fillOpacity={0.6} stroke={c.ink} strokeWidth={2} style={style} />;
+        })
+      ) : layers ? (
         parts.map((p, i) => (
           <circle key={`r${p.id}`} cx={cx} cy={cy} r={ring(i)} fill={colour(i).mid} fillOpacity={0.75} stroke="#fff" strokeWidth={3} style={hot(p.id) ? { animation: "ll-fade 600ms var(--ease) both" } : undefined} />
         ))
@@ -1337,7 +1395,7 @@ function Parts({ d, still }: { d: Diagram; still: boolean }) {
           {shape === "cell" && <ellipse cx={cx} cy={cy} rx={rx - 12} ry={ry - 12} fill="none" stroke="#a8e8a2" strokeWidth={3} />}
         </>
       )}
-      {!layers && inside.map((p) => {
+      {!layers && !free && inside.map((p) => {
         const [x, y] = anchor.get(p.id)!;
         const c = colour(parts.indexOf(p));
         const r = p === inside[0] ? 46 : 26;
@@ -1612,7 +1670,9 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
       taken.push([ax - 12, ay - 12, 24, 24]);
     }
     const labels: { text: string; x: number; y: number }[] = [];
-    for (const text of new Set(legs.map((r) => r.label).filter((x): x is string => !!x && !written.has(x)))) {
+    // A name that's also a place's ("Bering Strait" on the route and on a pin) is already on the map.
+    const placeNames = new Set(places.map((p) => p.label.trim().toLowerCase()));
+    for (const text of new Set(legs.map((r) => r.label).filter((x): x is string => !!x && !written.has(x) && !placeNames.has(x.trim().toLowerCase())))) {
       const w = text.length * 9.5 + 10;
       const longestFirst = segs
         .map((seg, i) => ({ seg, i, len: Math.hypot(seg[3][0] - seg[0][0], seg[3][1] - seg[0][1]) }))
@@ -1623,7 +1683,7 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
           const [x, y] = pointAt(seg, t);
           return [x - w / 2, y - 26, w, 22];
         }))
-        .find((bx) => inFrame(bx) && !hits(bx));
+        .find((bx) => inFrame(bx) && !hits([bx[0] - 4, bx[1] - 4, bx[2] + 8, bx[3] + 8])); // with a little room around it
       if (spot) {
         taken.push(spot);
         written.add(text);
