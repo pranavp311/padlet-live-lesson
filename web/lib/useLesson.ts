@@ -114,12 +114,15 @@ export function useLesson() {
     pinnedId: null as string | null,
     inFlight: false,
     // Checks waiting for the one in flight: Bubbles requests in the order they were said, and at most one automatic check.
-    queue: [] as { force: boolean; ask?: string }[],
+    queue: [] as { force: boolean; ask?: string; ids?: number[] }[],
     wakeSeen: 0, // how many times "Bubbles" has been heard so far
     abort: null as AbortController | null, // the diagram request in flight, so Stop can cancel it
     muted: false,
     // An open listening window: where the request starts, and whether it sounded whole when the teacher last paused.
     summon: null as null | { start: number; timer?: ReturnType<typeof setTimeout>; paused?: boolean },
+    // Sentences that went to Bubbles as a request: they ask for a drawing rather than explain the lesson, so later
+    // checks and Draw this leave them out (or "draw how a bill becomes a law" gets redrawn over what came after).
+    asked: new Set<number>(),
     asking: false, // a Bubbles request is waiting on the server (mirrors the `asking` state, for code outside renders)
     settleTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     beforePause: "", // the words still arriving as of the last pause: a finished thought, not part of a request after it
@@ -167,12 +170,13 @@ export function useLesson() {
   }, []);
 
   const checkDiagram = useCallback(
-    async (force = false, ask?: string) => {
+    async (force = false, ask?: string, ids: number[] = []) => {
       const s = r.current;
+      for (const id of ids) s.asked.add(id); // a request's own sentences (see `asked`)
       if (s.inFlight) {
         // Requests wait their turn in the order they were said, each drawn on its own; automatic checks fold into one.
         const auto = s.queue.find((q) => !q.ask);
-        if (ask) s.queue.push({ force, ask });
+        if (ask) s.queue.push({ force, ask, ids });
         else if (auto) auto.force ||= force;
         else s.queue.push({ force });
         return;
@@ -180,10 +184,13 @@ export function useLesson() {
       if (!s.live) return;
       const lesson = s.lesson;
       const t = now();
-      const recent = s.sentences.slice(-3).map((x) => x.clean ?? x.raw);
+      const recent = s.sentences.filter((x) => !s.asked.has(x.id)).slice(-3).map((x) => x.clean ?? x.raw);
       // Draw this is about what's being said now, which may not have settled into a sentence yet.
       if (force && !ask && s.pending.trim()) recent.push(s.pending.trim());
-      if (!recent.length && !ask) return;
+      if (!recent.length && !ask) {
+        if (force) showNote("Nothing new to draw from what's been said yet.");
+        return;
+      }
       s.inFlight = true;
       if (force || ask) setListening(true);
       if (ask) setAsking((s.asking = true));
@@ -262,7 +269,11 @@ export function useLesson() {
         }
         if (!reply.ignored) tellTeacher(!!reply.error || !reply.action);
         // Not a request after all ("thanks, Bubbles"): the sentences it held back get their automatic check.
-        else if (!s.queue.some((q) => !q.ask)) s.queue.push({ force: false });
+        // Its sentences count as lesson again.
+        else {
+          for (const id of ids) s.asked.delete(id);
+          if (!s.queue.some((q) => !q.ask)) s.queue.push({ force: false });
+        }
       } catch (e) {
         if (abort.signal.reason === "timeout" || !abort.signal.aborted) {
           console.error("diagram request failed", e);
@@ -277,7 +288,7 @@ export function useLesson() {
         s.inFlight = false;
         const next = s.queue.findIndex((q) => q.ask);
         const q = next >= 0 ? s.queue.splice(next, 1)[0] : s.queue.shift();
-        if (q) void checkDiagram(q.force, q.ask);
+        if (q) void checkDiagram(q.force, q.ask, q.ids);
       }
     },
     [fileAway, showNote],
@@ -385,7 +396,7 @@ export function useLesson() {
     const { start } = s.summon;
     s.summon = null;
     const ask = s.sentences.slice(start).map(said).join(" ");
-    if (ask.trim()) void checkDiagram(true, ask);
+    if (ask.trim()) void checkDiagram(true, ask, s.sentences.slice(start).map((x) => x.id));
     else setListening(false);
   }, [settleRest, checkDiagram]);
 
@@ -447,7 +458,9 @@ export function useLesson() {
         // Bubbles, draw…" asks only for what follows the latest).
         clearTimeout(s.summon.timer);
         const before = s.sentences.slice(s.summon.start, start).map(said).join(" ");
-        if (start > s.summon.start && isRequest(before)) void checkDiagram(true, before);
+        if (start > s.summon.start && isRequest(before)) {
+          void checkDiagram(true, before, s.sentences.slice(s.summon.start, start).map((x) => x.id));
+        }
         s.summon.start = start;
       } else s.summon = { start };
       setListening(true);
@@ -581,7 +594,7 @@ export function useLesson() {
     clearTimeout(s.summon?.timer);
     clearTimeout(s.settleTimer);
     s.abort?.abort();
-    Object.assign(s, { cleans: [], pending: "", beforePause: "", pendingT: null, sentences: [], muted: false, summon: null, wakeSeen: 0, queue: [] });
+    Object.assign(s, { cleans: [], pending: "", beforePause: "", pendingT: null, sentences: [], muted: false, summon: null, wakeSeen: 0, queue: [], asked: new Set() });
     setPending("");
     setSentences([]);
     setMuted(false);

@@ -244,9 +244,11 @@ export function Live({ l }: { l: L }) {
   const secs = useClock(l.startedAt, true);
   const all = blocks(l.sentences, l.archive);
   const last = all[all.length - 1];
-  // The words still being said join the latest paragraph, or start a new one.
+  // The words still being said join the latest paragraph, or start a new one. The live card is always the last thing
+  // in the transcript: after a diagram, the paragraph before it is settled and a fresh live card opens below.
   const latestOpen = last?.kind === "para" && !full(last.sentences);
-  const shown: Block[] = latestOpen || !l.pending.trim() ? all : [...all, { kind: "para", sentences: [] }];
+  const newCard = !!l.pending.trim() || (last?.kind === "diagram" && l.sentences.length > 0);
+  const shown: Block[] = latestOpen || !newCard ? all : [...all, { kind: "para", sentences: [] }];
   const paras = shown.map((b, i) => ({ b, i })).filter(({ b }) => b.kind === "para");
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
   const landedFrom = Math.max(0, shown.findIndex((b) => b.kind === "para" && l.landing !== null && (b.sentences[0]?.id ?? 0) < l.landing));
