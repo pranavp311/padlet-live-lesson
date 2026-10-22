@@ -39,8 +39,13 @@
 .eyebrow { font-size: 12px; line-height: 17px; color: var(--wall-ink); }
 
 .live { flex: 1; min-height: 0; width: 100%; max-width: 1600px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 24px; padding: 0 20px 20px; }
-.transcript { flex: 999 1 560px; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 12px; overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 200px); mask-image: linear-gradient(to bottom, transparent 0, #000 200px); }
+/* The transcript scrolls; cards stack from the bottom (the first one's auto margin) like a chat, and the top edge fades. */
+.transcript-wrap { position: relative; flex: 999 1 560px; min-width: 0; height: 100%; }
+.transcript { height: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.18) transparent; padding-top: 48px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 64px); mask-image: linear-gradient(to bottom, transparent 0, #000 64px); }
+.transcript > :first-child { margin-top: auto; }
+.to-latest { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); height: 36px; padding: 0 14px; border: 0; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; background: #111; color: #fff; font: inherit; font-size: 13px; font-weight: 600; box-shadow: 0 6px 16px rgba(0,0,0,.18); cursor: pointer; animation: ll-fade 200ms var(--ease) both; }
+.to-latest:hover { background: #2a2a2a; }
 .para { margin: 0; width: 100%; padding: 16px 20px; border-radius: 16px; font-size: 22px; line-height: 32px; letter-spacing: -0.017em; text-wrap: pretty; flex-shrink: 0; }
 .para.old2 { background: #fef1dd; color: rgba(0,0,0,.45); }
 .para.old1 { background: #fef6ea; color: rgba(0,0,0,.6); }

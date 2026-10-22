@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { DiagramView } from "@/components/Diagram";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { Bubbles } from "@/components/Bubbles";
@@ -249,6 +249,7 @@ export function Live({ l }: { l: L }) {
   const shown: Block[] = latestOpen || !l.pending.trim() ? all : [...all, { kind: "para", sentences: [] }];
   const paras = shown.map((b, i) => ({ b, i })).filter(({ b }) => b.kind === "para");
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
+  const landedFrom = Math.max(0, shown.findIndex((b) => b.kind === "para" && l.landing !== null && (b.sentences[0]?.id ?? 0) < l.landing));
   const d = l.current;
 
   // The sentence the teacher is correcting, and what they've typed so far: kept here so the text survives
@@ -261,9 +262,33 @@ export function Live({ l }: { l: L }) {
     draft.current = null;
     setEditing((e) => (e === id ? null : e));
   };
-  // A sentence scrolled out of the transcript while being corrected: keep what was typed and stop editing.
+  // A sentence that left the transcript while being corrected (hidden by a catch-up): keep what was typed, stop editing.
   const editingShown =
-    editing === null || shown.slice(-8).some((b) => b.kind === "para" && b.sentences.some((x) => x.id === editing));
+    editing === null || (l.catchUp === null && shown.some((b) => b.kind === "para" && b.sentences.some((x) => x.id === editing)));
+
+  // The whole transcript scrolls. While the teacher is at the bottom it follows the latest words; once they scroll up
+  // (to reread or correct something) it stays put, and "Jump to latest" brings them back.
+  const scroller = useRef<HTMLElement>(null);
+  const follow = useRef(true);
+  const [behind, setBehind] = useState(false);
+  const onScroll = () => {
+    const el = scroller.current;
+    if (!el) return;
+    follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    setBehind(!follow.current);
+  };
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    if (follow.current) el.scrollTop = el.scrollHeight;
+    else setBehind(true);
+  }, [l.sentences, l.pending, l.archive, l.catchUp]);
+  const toLatest = () => {
+    follow.current = true;
+    setBehind(false);
+    // Instant: a smooth scroll's own scroll events would read as "scrolled up" while speech keeps arriving.
+    if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
+  };
   useEffect(() => {
     if (editingShown || editing === null) return;
     stopEditing(editing, draft.current?.id === editing ? draft.current.text : null);
@@ -333,95 +358,105 @@ export function Live({ l }: { l: L }) {
         </div>
       )}
       <main className="live">
-        <section className="transcript" aria-label="Transcript" aria-live="polite">
-          {/* Speech held during a cold start is written up out of sight, then lands in one go. */}
-          {l.catchUp !== null && (
-            <div className="catchup">
-              <span>Catching up…</span>
-              <div className="meter" role="progressbar" aria-label="Catching up" aria-valuenow={Math.round(l.catchUp * 100)}>
-                <div style={{ width: `${Math.max(4, l.catchUp * 100)}%` }} />
+        <div className="transcript-wrap">
+          <section ref={scroller} className="transcript" aria-label="Transcript" aria-live="polite" onScroll={onScroll}>
+            {/* Speech held during a cold start is written up out of sight, then lands in one go. */}
+            {l.catchUp !== null && (
+              <div className="catchup">
+                <span>Catching up…</span>
+                <div className="meter" role="progressbar" aria-label="Catching up" aria-valuenow={Math.round(l.catchUp * 100)}>
+                  <div style={{ width: `${Math.max(4, l.catchUp * 100)}%` }} />
+                </div>
               </div>
-            </div>
-          )}
-          {l.catchUp === null && shown.slice(-8).map((b, k, arr) => {
-            const idx = shown.length - arr.length + k;
-            if (b.kind === "diagram") return <Thumb key={b.d.id} d={b.d} onOpen={() => setOpen(list.indexOf(b.d))} />;
-            const age = paras.filter((p) => p.i > idx).length;
-            const isNow = idx === nowIdx;
-            const text = b.sentences.map((s) => s.clean ?? s.raw).join(" ");
-            const landed = l.landing !== null && (b.sentences[0]?.id ?? 0) < l.landing; // part of the caught-up chunk
-            const startPending = () => {
-              const id = l.editPending();
-              if (id !== null) setEditing(id);
-            };
-            // A click anywhere on a card edits its last sentence (the rough words on the live card), except
-            // the strip beside the mute button.
-            const editCard = (e: MouseEvent<HTMLParagraphElement>) => {
-              const t = e.target as HTMLElement;
-              // A press that ended an edit (its blur saved it) only saves; it doesn't open another.
-              if (editingAtPress.current || t.closest(".editable, .editing, .mute")) return;
-              if (isNow) {
-                const pad = parseFloat(getComputedStyle(e.currentTarget).paddingRight);
-                if (e.clientX > e.currentTarget.getBoundingClientRect().right - pad) return;
-              }
-              if (isNow && l.pending.trim()) startPending();
-              else if (b.sentences.length) setEditing(b.sentences[b.sentences.length - 1].id);
-            };
-            return (
-              <p
-                key={b.sentences[0]?.id ?? "now"}
-                className={`para ${isNow ? "now" : age === 1 ? "old1" : "old2"}${landed ? " landed" : ""}`}
-                style={landed ? ({ "--i": k } as CSSProperties) : undefined}
-                onPointerDown={() => (editingAtPress.current = editing !== null)}
-                onClick={editCard}
-              >
-                {b.sentences[0] && (
-                  <time className="para-time tnum" aria-hidden="true">
-                    {formatClock(b.sentences[0].t)}
-                  </time>
-                )}
-                {b.sentences.map((x, j) => (
-                  <Fragment key={x.id}>
-                    {j > 0 && " "}
-                    <EditableText
-                      text={x.clean ?? x.raw}
-                      draft={draft.current?.id === x.id ? draft.current.text : undefined}
-                      editing={editing === x.id}
-                      onStart={() => setEditing(x.id)}
-                      onType={(text) => (draft.current = { id: x.id, text })}
-                      onDone={(v) => stopEditing(x.id, v)}
-                    />
-                  </Fragment>
-                ))}
-                {isNow && (
-                  <>
-                    {text && l.pending ? " " : ""}
-                    {l.pending.trim() && (
-                      <span
-                        className="rough editable"
-                        role="button"
-                        tabIndex={0}
-                        title="Click to correct"
-                        onClick={startPending}
-                        onKeyDown={(e) => e.key === "Enter" && startPending()}
-                      >
-                        {l.pending.trim()}
-                      </span>
-                    )}
-                    {!l.muted && editing === null && <span className="caret" aria-hidden="true" />}
-                    <MuteButton muted={l.muted} onToggle={l.toggleMute} />
-                  </>
-                )}
+            )}
+            {l.catchUp === null && shown.map((b, idx) => {
+              if (b.kind === "diagram") return <Thumb key={b.d.id} d={b.d} onOpen={() => setOpen(list.indexOf(b.d))} />;
+              const age = paras.filter((p) => p.i > idx).length;
+              const isNow = idx === nowIdx;
+              const text = b.sentences.map((s) => s.clean ?? s.raw).join(" ");
+              const landed = l.landing !== null && (b.sentences[0]?.id ?? 0) < l.landing; // part of the caught-up chunk
+              // Its place in that chunk, which settles in oldest first; capped so a long backlog's last cards (the ones
+              // on screen) finish within the landing time instead of popping in late.
+              const k = Math.min(idx - landedFrom, 7);
+              const startPending = () => {
+                const id = l.editPending();
+                if (id !== null) setEditing(id);
+              };
+              // A click anywhere on a card edits its last sentence (the rough words on the live card), except
+              // the strip beside the mute button.
+              const editCard = (e: MouseEvent<HTMLParagraphElement>) => {
+                const t = e.target as HTMLElement;
+                // A press that ended an edit (its blur saved it) only saves; it doesn't open another.
+                if (editingAtPress.current || t.closest(".editable, .editing, .mute")) return;
+                if (isNow) {
+                  const pad = parseFloat(getComputedStyle(e.currentTarget).paddingRight);
+                  if (e.clientX > e.currentTarget.getBoundingClientRect().right - pad) return;
+                }
+                if (isNow && l.pending.trim()) startPending();
+                else if (b.sentences.length) setEditing(b.sentences[b.sentences.length - 1].id);
+              };
+              return (
+                <p
+                  key={b.sentences[0]?.id ?? "now"}
+                  className={`para ${isNow ? "now" : age === 1 ? "old1" : "old2"}${landed ? " landed" : ""}`}
+                  style={landed ? ({ "--i": k } as CSSProperties) : undefined}
+                  onPointerDown={() => (editingAtPress.current = editing !== null)}
+                  onClick={editCard}
+                >
+                  {b.sentences[0] && (
+                    <time className="para-time tnum" aria-hidden="true">
+                      {formatClock(b.sentences[0].t)}
+                    </time>
+                  )}
+                  {b.sentences.map((x, j) => (
+                    <Fragment key={x.id}>
+                      {j > 0 && " "}
+                      <EditableText
+                        text={x.clean ?? x.raw}
+                        draft={draft.current?.id === x.id ? draft.current.text : undefined}
+                        editing={editing === x.id}
+                        onStart={() => setEditing(x.id)}
+                        onType={(text) => (draft.current = { id: x.id, text })}
+                        onDone={(v) => stopEditing(x.id, v)}
+                      />
+                    </Fragment>
+                  ))}
+                  {isNow && (
+                    <>
+                      {text && l.pending ? " " : ""}
+                      {l.pending.trim() && (
+                        <span
+                          className="rough editable"
+                          role="button"
+                          tabIndex={0}
+                          title="Click to correct"
+                          onClick={startPending}
+                          onKeyDown={(e) => e.key === "Enter" && startPending()}
+                        >
+                          {l.pending.trim()}
+                        </span>
+                      )}
+                      {!l.muted && editing === null && <span className="caret" aria-hidden="true" />}
+                      <MuteButton muted={l.muted} onToggle={l.toggleMute} />
+                    </>
+                  )}
+                </p>
+              );
+            })}
+            {l.catchUp === null && !l.sentences.length && !l.pending && (
+              <p className="para now hint">
+                {l.muted ? "Muted." : "Start talking. Your words appear here."}
+                <MuteButton muted={l.muted} onToggle={l.toggleMute} />
               </p>
-            );
-          })}
-          {l.catchUp === null && !l.sentences.length && !l.pending && (
-            <p className="para now hint">
-              {l.muted ? "Muted." : "Start talking. Your words appear here."}
-              <MuteButton muted={l.muted} onToggle={l.toggleMute} />
-            </p>
+            )}
+          </section>
+          {behind && (
+            <button className="to-latest" onClick={toLatest}>
+              <Icon name="down" size={16} />
+              Jump to latest
+            </button>
           )}
-        </section>
+        </div>
 
         <section className="dpanel" aria-label="Diagram">
           {/* Bubbles lives in the corner for the whole lesson: breathing when idle, scribbling while drawing. */}
