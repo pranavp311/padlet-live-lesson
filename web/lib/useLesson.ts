@@ -18,6 +18,7 @@ export type LessonError = "mic-blocked" | "mic-failed" | "stt-unreachable" | "st
 
 const DRAWABLE = 0.75;
 const NEW_DIAGRAM_GAP_S = 20;
+const RECHECK_S = 3; // a drawing held back for want of a second drawable sentence is checked again after this
 const DISMISS_S = 60;
 // What the teacher said, with their corrections.
 const said = (x: Sentence) => (x.edited ? x.clean! : x.raw);
@@ -66,6 +67,8 @@ type DiagramReply = {
   ops?: Op[];
   error?: string;
   ignored?: boolean; // a "Bubbles" mention that wasn't a request
+  held?: boolean; // drawable, but held back by the pacing rules
+  already?: boolean; // what Bubbles was asked to add is already on the diagram
 };
 
 export function useLesson() {
@@ -138,7 +141,8 @@ export function useLesson() {
     noteTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     streak: 0,
     lastCreatedAt: -Infinity,
-    quietUntil: -Infinity,
+    quietUntil: -Infinity, // no new diagrams until then: the teacher closed one, or pressed Stop
+    recheck: undefined as ReturnType<typeof setTimeout> | undefined, // a held-back drawing, checked again later
     iconPicked: false,
     nextId: 1,
     lesson: 0, // bumped per lesson; async replies from an older lesson are dropped
@@ -219,18 +223,22 @@ export function useLesson() {
       const timeout = setTimeout(() => abort.abort("timeout"), DIAGRAM_TIMEOUT_MS);
       let drew = false;
       // A request to Bubbles, or a Draw this click, that changes nothing on screen shouldn't fail silently.
-      const tellTeacher = (failed: boolean) => {
+      const tellTeacher = (failed: boolean, already = false) => {
         if (!(ask || force) || drew || s.lesson !== lesson || !s.live) return;
         if (failed) showNote("I couldn't draw that just now. Try again?");
+        else if (already) showNote("That's already on the diagram.");
         else showNote(ask ? "I wasn't sure what to draw. Try naming it." : "Nothing new to draw from what's been said yet.");
       };
       try {
-        const allowCreate = s.streak >= 1 && t - s.lastCreatedAt >= NEW_DIAGRAM_GAP_S && t >= s.quietUntil;
+        // A new topic waits 20 s after the last diagram (no flicker between topics) and, unless it's clearly drawable,
+        // for a second drawable check in a row; never while the teacher has asked for quiet.
+        const eager = t - s.lastCreatedAt >= NEW_DIAGRAM_GAP_S && t >= s.quietUntil;
+        const allowCreate = eager && s.streak >= 1;
         const res = await fetch("/api/diagram", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // A "Bubbles, …" request is about the diagram on screen, which is the pinned one while pinned.
-          body: JSON.stringify({ recent, current: about, allowCreate, force, ask }),
+          body: JSON.stringify({ recent, current: about, allowCreate, eager, force, ask }),
           signal: abort.signal,
         });
         // NDJSON: an early {"drawing": true} line (start the animation), then the result line.
@@ -259,6 +267,21 @@ export function useLesson() {
         if (reply.jev && !ask) { // a word to Bubbles ("thanks, Bubbles") says nothing about the lesson's pace
           s.streak = reply.jev.drawable >= DRAWABLE ? s.streak + 1 : 0;
         }
+        // Drawable but held back by the pacing: if the teacher says nothing more, it would never be drawn, so check again
+        // once a new diagram is allowed (not while they've asked for quiet). By then this check counts toward the
+        // streak, so a drawable sentence the teacher has stopped after is drawn: the two-in-a-row rule is there to keep
+        // the board from switching topic mid-flow, not to leave what they just explained undrawn.
+        if (reply.held && !ask && !force && t >= s.quietUntil) {
+          const wait = Math.max(RECHECK_S, s.lastCreatedAt + NEW_DIAGRAM_GAP_S - t);
+          clearTimeout(s.recheck);
+          // Not while Bubbles is hearing a request or a backlog is landing (their own checks follow), or while muted.
+          const recheck = () => {
+            if (s.lesson !== lesson || !s.live || s.ending) return;
+            if (s.summon || s.catchingUp || s.muted) s.recheck = setTimeout(recheck, RECHECK_S * 1000);
+            else void checkDiagram();
+          };
+          s.recheck = setTimeout(recheck, wait * 1000);
+        }
         if (reply.action === "update" && reply.ops?.length) {
           const target = findDiagram(about?.id ?? null);
           // The pinned diagram is frozen, except when the teacher asks Bubbles to change it.
@@ -282,9 +305,10 @@ export function useLesson() {
             fileAway(s.current);
             setCur(next);
             s.lastCreatedAt = t;
+            clearTimeout(s.recheck);
           }
         }
-        if (!reply.ignored) tellTeacher(!!reply.error || !reply.action);
+        if (!reply.ignored) tellTeacher(!!reply.error || !reply.action, reply.already);
         // Not a request after all ("thanks, Bubbles"): the sentences it held back get their automatic check.
         // Its sentences count as lesson again.
         else {
@@ -621,6 +645,7 @@ export function useLesson() {
     // Nothing from the cancelled start carries into the next one.
     clearTimeout(s.summon?.timer);
     clearTimeout(s.settleTimer);
+    clearTimeout(s.recheck);
     s.abort?.abort();
     Object.assign(s, { cleans: [], pending: "", beforePause: "", pendingT: null, sentences: [], muted: false, summon: null, wakeSeen: 0, queue: [], asked: new Set(), paraEnds: [] });
     setPending("");
@@ -685,6 +710,7 @@ export function useLesson() {
     setEnding(true);
     clearTimeout(s.summon?.timer);
     clearTimeout(s.settleTimer);
+    clearTimeout(s.recheck);
     s.summon = null;
     s.queue = [];
     s.abort?.abort();
@@ -775,7 +801,8 @@ export function useLesson() {
     if (whole) fireSummon();
     clearTimeout(s.summon?.timer);
     s.summon = null;
-    s.lastCreatedAt = now();
+    s.quietUntil = Math.max(s.quietUntil, now() + NEW_DIAGRAM_GAP_S); // what was stopped isn't drawn again straight away
+    clearTimeout(s.recheck);
     s.streak = 0;
     setDrawing(false);
     setListening(false);
@@ -796,11 +823,13 @@ export function useLesson() {
     r.current.pinnedId = null;
     setPinnedId(null);
     r.current.quietUntil = now() + DISMISS_S;
+    clearTimeout(r.current.recheck);
   }, [fileAway]);
 
   const reset = useCallback(() => {
     r.current.lesson++;
     clearTimeout(r.current.settleTimer);
+    clearTimeout(r.current.recheck);
     clearTimeout(r.current.summon?.timer);
     r.current.abort?.abort();
     setMuted(false);

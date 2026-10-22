@@ -4,6 +4,9 @@ import { asName } from "@/lib/wake";
 import type { Diagram, Kind, Op } from "@/lib/diagram";
 
 const DRAWABLE = 0.75;
+// A new topic usually needs two drawable checks in a row (allowCreate); one this clearly drawable is drawn at once
+// (when `eager`: no diagram was made in the last few seconds and the teacher hasn't closed one).
+const SURE = 0.85;
 const ASKED = 0.7; // Jev's probability that a "Bubbles, …" sentence really asks him for something, or asks for an edit
 
 const OPS: Record<Kind, string> = {
@@ -33,15 +36,15 @@ To take a part off when the teacher asks ("no, remove that"), use {"op":"remove"
 Rules: labels are 1-3 words (table cells and worked steps can be longer); at most 8 nodes or events in total; only add what the teacher has actually said; reuse existing ids; never repeat existing parts. To change a part (a corrected number or label), send its add_… op again with the same id.
 Return {"action":"update"|"new_topic"|"none","ops":[...]}. Use "new_topic" only when the teacher has clearly moved to a different topic than the current diagram; then ops describe the new diagram. Use "none" when nothing new is worth drawing.`;
 
-type Body = { recent: string[]; current: Diagram | null; allowCreate: boolean; force?: boolean; ask?: string };
-type LlmReply = { action: "update" | "new_topic" | "none"; ops: Op[] };
+type Body = { recent: string[]; current: Diagram | null; allowCreate: boolean; eager?: boolean; force?: boolean; ask?: string };
+type LlmReply = { action: "update" | "new_topic" | "none"; ops: Op[]; already?: boolean };
 
 // Replies as NDJSON in up to two lines, so the client can start the drawing animation (with a Stop
 // button) as soon as Jev has decided, before the slower LLM step:
 //   {"jev": …, "drawing": true}                 drawing is coming
 //   {"jev"?: …, "action", "kind"?, "ops"?, "error"?}   the result (always the last line)
 export async function POST(req: Request) {
-  const { recent, current, allowCreate, force, ask } = (await req.json()) as Body;
+  const { recent, current, allowCreate: paced, eager, force, ask } = (await req.json()) as Body;
   const said = recent.join(" ");
   return ndjson(async (send) => {
     if (ask) return send(await drawRequest(ask, said, current, send));
@@ -60,7 +63,9 @@ export async function POST(req: Request) {
 
     // Update the diagram on screen only if Jev says the topic hasn't moved on and the kind still fits.
     const sameTopic = !!current && current.kind === kind && (jev.sameTopic ?? 0) >= 0.5;
-    if (!sameTopic && !allowCreate && !force) return send({ jev, action: "none" });
+    const allowCreate = paced || (!!eager && jev.drawable >= SURE);
+    // Held back only by the pacing: `held` lets the client check again once it allows a new diagram.
+    if (!sameTopic && !allowCreate && !force) return send({ jev, action: "none", held: true });
 
     send({ jev, drawing: true });
     const target = sameTopic ? current : null;
@@ -71,9 +76,10 @@ export async function POST(req: Request) {
       const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
       let action = !target ? (reply.action === "none" ? "none" : "new_topic") : reply.action;
       // A topic change found while updating still has to respect the client's pacing rules.
-      if (target && action === "new_topic" && !allowCreate && !force) action = "none";
+      const held = target && action === "new_topic" && !allowCreate && !force;
+      if (held) action = "none";
       console.info("diagram", JSON.stringify({ path: force ? "draw-this" : "auto", said: said.slice(-160), jev, kind, action }));
-      send({ jev, action, kind, ops: Array.isArray(reply.ops) ? reply.ops : [] });
+      send({ jev, action, kind, ops: Array.isArray(reply.ops) ? reply.ops : [], held: held || undefined });
     } catch (e) {
       console.error("diagram llm failed", e);
       send({ jev, error: String(e) });
@@ -89,13 +95,19 @@ const CLASSROOM = `This is a classroom: anyone in the room can say your name. If
 // get "drawing" (and Bubbles start drawing). It adds to the diagram on screen, or draws a new one.
 async function drawRequest(heard: string, said: string, current: Diagram | null, send: (line: object) => void) {
   const ask = asName(heard);
-  // Zooming only means something for a map: with one on screen, "zoom into Caro" (Cairo, misheard) is about it.
+  // Jev's edit score for the same sentence varies ("add the Battle of Midway" scored 0.90 one run, 0.65 the next), so
+  // a request that opens with an editing word is an edit of the diagram on screen outright: "add…" never means a new
+  // drawing. Zooming only means something for a map: with one on screen, "zoom into Caro" (Cairo, misheard) is about it.
+  const editWord = /^(\W*(hey|hi|okay|ok|so|um|uh|now|bubbles?|can|could|would|will|you|please|and|also)\b)*\W*(add|insert|remove|delete|take out|change|rename|swap|replace|fix|correct)\b/i;
   const zoom = current?.kind === "map" && /\bzoom(ing)? (in|out|into|onto|on|to|back|closer|further)\b/i.test(ask);
+  // …unless it asks for something to be drawn ("change of topic, draw the heart"): then Jev weighs it as usual.
+  const drawsNew = /\b(draw|sketch|show|make|map|diagram|picture)\b/i.test(ask) || /\bchange of\b/i.test(ask);
+  const plainEdit = !!current && (zoom || (editWord.test(ask) && !drawsNew));
   try {
     const [jev, asked, edits] = await Promise.all([
       route(ask, null),
       asksBubbles(ask),
-      zoom ? Promise.resolve(1) : current ? editsDiagram(ask, said, describe(current)) : Promise.resolve(0),
+      plainEdit ? Promise.resolve(1) : current ? editsDiagram(ask, said, describe(current)) : Promise.resolve(0),
     ]);
     // Bubbles answers any request (draw, show, explain…) with a diagram, but not thanks or mentions. An instruction
     // about the diagram on screen ("zoom in a little") is a request even when it doesn't sound like one.
@@ -105,14 +117,18 @@ async function drawRequest(heard: string, said: string, current: Diagram | null,
     }
     send({ jev, drawing: true });
     if (current && edits >= ASKED) {
-      const user = `Current diagram:\n${JSON.stringify(compact(current))}\n\nThe teacher asked you, Bubbles, to change or add to this diagram: "${ask}"\nReturn action "update" with ops that add to it (use set_caption for a formula or line of text under it); use your own knowledge for the content.\n${CLASSROOM}`;
+      const user = `Current diagram:\n${JSON.stringify(compact(current))}\n\nThe teacher asked you, Bubbles, to change or add to this diagram: "${ask}"\nReturn action "update" with ops that add to it (use set_caption for a formula or line of text under it); use your own knowledge for the content. If everything asked for is already on the diagram, return {"action":"none","already":true,"ops":[]}.\n${CLASSROOM}`;
       const reply = await llmJson<LlmReply>(SYSTEM(current.kind), user, 800);
-      if (reply.action === "none") {
-        console.info("diagram", JSON.stringify({ path: "bubbles-declined", ask, kind: current.kind }));
-        return { jev, action: "none" };
+      if (reply.action !== "none") {
+        console.info("diagram", JSON.stringify({ path: "bubbles-edit", ask, asked, edits, kind: current.kind }));
+        return { jev, action: "update", kind: current.kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
       }
-      console.info("diagram", JSON.stringify({ path: "bubbles-edit", ask, asked, edits, kind: current.kind }));
-      return { jev, action: "update", kind: current.kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
+      // Made an edit by its opening word alone ("change of topic: draw the heart"), with nothing to change on this
+      // diagram: it's a request for a new one, drawn below, rather than dropped.
+      if (reply.already || !plainEdit || zoom) {
+        console.info("diagram", JSON.stringify({ path: "bubbles-declined", ask, kind: current.kind, already: reply.already }));
+        return { jev, action: "none", already: reply.already === true || undefined };
+      }
     }
     // A request that doesn't name its kind ("draw the uh… water cycle") gets one from the lesson so far, not a flow chart.
     const kind: Kind = jev.kind !== "none" ? jev.kind : (await route(`${said} ${ask}`, null)).kind.replace("none", "flow") as Kind;
