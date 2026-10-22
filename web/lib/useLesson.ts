@@ -387,14 +387,17 @@ export function useLesson() {
     }
     settle([rest]);
   }, [settle]);
-  // The teacher has gone quiet: what's left settles, and the paragraph closes, so the live card shows it as done and
-  // the next words start a new one.
-  const settleQuiet = useCallback(() => {
+  // The paragraph so far closes, so the live card shows it as done and the next words start a new one: when the
+  // teacher goes quiet (what's left settles first), or saves a correction to it with Enter.
+  const closeCard = useCallback(() => {
     const s = r.current;
-    settleRest();
     const last = s.sentences[s.sentences.length - 1];
     if (last && !s.paraEnds.includes(last.id)) setParaEnds((s.paraEnds = [...s.paraEnds, last.id]));
-  }, [settleRest]);
+  }, []);
+  const settleQuiet = useCallback(() => {
+    settleRest();
+    closeCard();
+  }, [settleRest, closeCard]);
   const settleLater = useCallback(() => {
     const s = r.current;
     clearTimeout(s.settleTimer);
@@ -833,7 +836,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinnedId, subject,
-    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, asking, bubblesNote, stopDrawing, editSentence, editPending, paraEnds, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, asking, bubblesNote, stopDrawing, editSentence, editPending, paraEnds, closeCard, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 

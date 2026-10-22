@@ -431,6 +431,7 @@ export function Live({ l }: { l: L }) {
                         onStart={() => setEditing(x.id)}
                         onType={(text) => (draft.current = { id: x.id, text })}
                         onDone={(v) => stopEditing(x.id, v)}
+                        onEnter={isNow ? l.closeCard : undefined}
                         // The arrow keys carry on into the card's other sentences, and from its last into the words
                         // still arriving.
                         onPrev={j > 0 ? () => editAt(b.sentences[j - 1].id, "end") : undefined}
@@ -625,11 +626,15 @@ function caretPlace(el: HTMLElement) {
   return { start, end, firstLine: mid < lines[0].bottom, lastLine: mid > lines[lines.length - 1].top };
 }
 
+// What's in a box being edited, as one line: a line break (pasted, or put in by a dictation app) becomes a space
+// rather than vanishing and joining two words.
+const typed = (el: HTMLElement) => el.innerText.replace(/\s+/g, " ");
+
 // Transcript text the teacher can correct in place: click to edit; Enter or clicking away saves, Escape
 // cancels (onDone gets null). Saving an empty sentence removes it. At its edges, the arrow keys (and Backspace and
 // Delete) save it and move on to the sentence before or after (onPrev, onNext).
 function EditableText({
-  text, draft, editing, caret = "end", onStart, onType, onDone, onPrev, onNext,
+  text, draft, editing, caret = "end", onStart, onType, onDone, onPrev, onNext, onEnter,
 }: {
   text: string;
   draft?: string; // typed before this box remounted
@@ -640,6 +645,7 @@ function EditableText({
   onDone: (value: string | null) => void;
   onPrev?: () => void;
   onNext?: () => void;
+  onEnter?: () => void; // saved with Enter, rather than by clicking away or arrowing on
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const done = useRef(false);
@@ -664,6 +670,11 @@ function EditableText({
     done.current = true;
     onDone(value);
   };
+  const enter = (el: HTMLElement) => {
+    if (done.current) return;
+    finish(typed(el));
+    onEnter?.();
+  };
   if (!editing) {
     return (
       <span className="editable" role="button" tabIndex={0} title="Click to correct" onClick={onStart} onKeyDown={(e) => e.key === "Enter" && onStart()}>
@@ -683,9 +694,13 @@ function EditableText({
       aria-label="Correct transcript"
       data-placeholder="Type the correction"
       onInput={(e) => {
+        // A sentence is one line: a line break that got past onKeyDown (Shift+Enter, a dictation app, an input method)
+        // saves it, like Enter.
+        const { inputType, data } = e.nativeEvent as InputEvent;
+        if (inputType === "insertParagraph" || inputType === "insertLineBreak" || data?.includes("\n")) return enter(e.currentTarget);
         // Keep :empty working for the placeholder once everything is deleted.
         if (!e.currentTarget.textContent) e.currentTarget.innerHTML = "";
-        onType(e.currentTarget.textContent ?? "");
+        onType(typed(e.currentTarget));
       }}
       onKeyDown={(e) => {
         const el = e.currentTarget;
@@ -695,17 +710,18 @@ function EditableText({
         const back = at && ((at.start && (e.key === "ArrowLeft" || e.key === "Backspace")) || (at.firstLine && e.key === "ArrowUp"));
         const on = at && ((at.end && (e.key === "ArrowRight" || e.key === "Delete")) || (at.lastLine && e.key === "ArrowDown"));
         const move = back ? onPrev : on ? onNext : undefined;
-        if (e.key === "Enter") {
+        // Not the Enter that picks an input method's word (Safari sends it after composing ends, as key code 229).
+        if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) {
           e.preventDefault();
-          finish(el.textContent ?? "");
+          enter(el);
         } else if (e.key === "Escape") finish(null);
         else if (move) {
           e.preventDefault();
-          finish(el.textContent ?? "");
+          finish(typed(el));
           move();
         }
       }}
-      onBlur={(e) => finish(e.currentTarget.textContent ?? "")}
+      onBlur={(e) => finish(typed(e.currentTarget))}
     >
       {frozen ?? text}
     </span>
