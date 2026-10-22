@@ -10,6 +10,7 @@ import type { LessonExport } from "@/app/api/export/route";
 import type { Todo } from "@/lib/todo";
 import type { Subject } from "@/lib/subject";
 import { saveLesson } from "@/lib/history";
+import { summarise } from "@/lib/summary";
 
 export type Phase = "ready" | "warming" | "live" | "ended";
 // What went wrong, for the error notice: the microphone was refused or failed, or speech-to-text was
@@ -686,18 +687,9 @@ export function useLesson() {
     const lesson = s.lesson;
     setExportError(null);
     try {
-      const res = await fetch("/api/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          sentences: s.sentences.map((x) => ({ t: x.t, text: x.clean ?? x.raw })),
-          diagrams: s.archive.map((d) => ({ id: d.id, kind: d.kind, title: d.title, t: d.t })),
-        }),
-      });
-      const data = await res.json();
+      // Saved into the lesson when it arrives even if the teacher has left this screen (see summarise).
+      const data = await summarise({ id: `l${s.startedAt}`, title, sentences: s.sentences, archive: s.archive });
       if (s.lesson !== lesson) return;
-      if (data.error) throw new Error(data.error);
       setLessonExport(data);
       save(data);
     } catch (e) {
