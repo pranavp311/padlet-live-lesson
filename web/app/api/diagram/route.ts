@@ -12,7 +12,7 @@ const OPS: Record<Kind, string> = {
   timeline: `{"op":"add_event","id":"e1","when":"1914","label":"War begins"} in date order`,
   graph: `{"op":"set_axes","x":[-5,5],"y":[-2,10]}, {"op":"add_curve","id":"f","expr":"x^2 - 2x + 1","label":"y = x² − 2x + 1"} (expr in mathjs syntax using x), {"op":"add_point","id":"v","x":1,"y":0,"label":"vertex"}, and for geometry {"op":"add_segment","id":"a","from":[0,0],"to":[3,0],"label":"a = 3"} (shapes are made of segments; set axes so the shape fits with a margin)`,
   molecule: `{"op":"set_smiles","smiles":"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O"} (one valid SMILES for one compound; never a reaction with ">>": for a reaction draw the main product and put the equation in set_caption)`,
-  venn: `{"op":"add_set","id":"mammals","label":"Mammals"} (2 or 3 sets), then {"op":"add_item","id":"whale","label":"Whale","sets":["mammals","sea"]} (an item in several sets sits in their overlap; "sets":[] puts it outside all of them); at most 4 items per region; put what the sets share in the overlap`,
+  venn: `{"op":"add_set","id":"mammals","label":"Mammals"} (2 or 3 sets, at most 4 with subsets), then {"op":"add_item","id":"whale","label":"Whale","sets":["mammals","sea"]} (an item in several sets sits in their overlap; "sets":[] puts it outside all of them); at most 4 items per region; put what the sets share in the overlap. Get the relations right: a set wholly within another is a subset, {"op":"add_set","id":"squares","label":"Squares","inside":"rectangles"} (add the outer set first; an item in the subset lists both sets); sets that share nothing (rational and irrational numbers, odd and even) get "apart":true on one of them, and nothing goes in both. A set sent again keeps these; "inside":"" or "apart":false undoes them`,
   table: `{"op":"add_column","id":"athens","label":"Athens"} (2-5 columns), {"op":"add_row","id":"gov","label":"Government"} (up to 6 rows; leave out label for a plain list), {"op":"set_cell","row":"gov","col":"athens","text":"Democracy"} (cell text 1-6 words). For a T-chart or KWL use columns and add_row without a label for each line; for place value use columns "Hundreds","Tens","Ones"`,
   numberline: `{"op":"set_range","min":0,"max":10,"step":1} (at most 40 steps; use step 0.25 for quarters), {"op":"add_mark","id":"start","value":3,"label":"start"}, {"op":"add_jump","id":"j1","from":3,"to":7,"label":"+4"} (a jump back has from > to). Mark where you start and land`,
   chart: `{"op":"add_bar","id":"apples","label":"Apples","value":12,"icon":"🍎"} (one per category, at most 8; icon is one emoji, needed for a pictograph), {"op":"set_chart","style":"bar"|"pictograph","axis":"Number of children"}. Use pictograph for young children counting objects`,
@@ -89,14 +89,17 @@ const CLASSROOM = `This is a classroom: anyone in the room can say your name. If
 // get "drawing" (and Bubbles start drawing). It adds to the diagram on screen, or draws a new one.
 async function drawRequest(heard: string, said: string, current: Diagram | null, send: (line: object) => void) {
   const ask = asName(heard);
+  // Zooming only means something for a map: with one on screen, "zoom into Caro" (Cairo, misheard) is about it.
+  const zoom = current?.kind === "map" && /\bzoom(ing)? (in|out|into|onto|on|to|back|closer|further)\b/i.test(ask);
   try {
     const [jev, asked, edits] = await Promise.all([
       route(ask, null),
       asksBubbles(ask),
-      current ? editsDiagram(ask, said, describe(current)) : Promise.resolve(0),
+      zoom ? Promise.resolve(1) : current ? editsDiagram(ask, said, describe(current)) : Promise.resolve(0),
     ]);
-    // Bubbles answers any request (draw, show, explain…) with a diagram, but not thanks or mentions.
-    if (asked < ASKED) {
+    // Bubbles answers any request (draw, show, explain…) with a diagram, but not thanks or mentions. An instruction
+    // about the diagram on screen ("zoom in a little") is a request even when it doesn't sound like one.
+    if (asked < ASKED && edits < ASKED) {
       console.info("diagram", JSON.stringify({ path: "bubbles-ignored", ask, asked }));
       return { jev, action: "none", ignored: true }; // not a request (thanks, a mention): stay quiet
     }
@@ -119,14 +122,15 @@ async function drawRequest(heard: string, said: string, current: Diagram | null,
     const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\n${CLASSROOM}\nEarlier in the lesson: ${said}${onScreen}`;
     const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
     const ops = Array.isArray(reply.ops) ? reply.ops : [];
+    // A change to the view of the diagram on screen, or a line of text to go under it, that Jev scored low as an edit:
+    // the model saw the diagram, so it goes onto it rather than being dropped. Anything more is a new drawing.
+    if (current && ops.length && ops.every((o) => o?.op === "set_caption" || (o?.op === "set_view" && current.kind === "map"))) {
+      console.info("diagram", JSON.stringify({ path: "bubbles-update", ask, asked, edits, action: reply.action }));
+      return { jev, action: "update", kind: current.kind, ops };
+    }
     if (reply.action === "none" || !substantial(ops)) {
       console.info("diagram", JSON.stringify({ path: "bubbles-declined", ask, kind, action: reply.action }));
       return { jev, action: "none" };
-    }
-    // Only a line of text ("write the formula underneath") is an edit Jev scored low: it goes under the diagram on screen.
-    if (current && ops.length && ops.every((o) => o?.op === "set_caption")) {
-      console.info("diagram", JSON.stringify({ path: "bubbles-caption", ask, asked, edits }));
-      return { jev, action: "update", kind: current.kind, ops };
     }
     console.info("diagram", JSON.stringify({ path: "bubbles", ask, jev, asked, edits, kind }));
     // A new map fits its places by itself; a zoom only makes sense on a map already on screen.

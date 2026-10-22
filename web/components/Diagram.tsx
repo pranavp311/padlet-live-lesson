@@ -641,12 +641,14 @@ function pickOut(word: string, letters: string) {
   return [{ text: word }];
 }
 
-// Two or three overlapping circles; each item is written in the region of the sets it belongs to, and items in
-// none of them are listed underneath.
+// Sets as circles; each item is written in the region of the sets it belongs to, and items in none of them are listed
+// underneath. The main sets overlap (two or three), or stand side by side when one is marked apart (they share
+// nothing: rational and irrational numbers). A subset is a smaller circle inside its parent, toward the bottom.
 const VENN_COLOURS = [
   { fill: "var(--grape-tint)", line: "#b98cff", ink: "#3d1a78" },
   { fill: "var(--oceanic-tint)", line: "#6fb3f2", ink: "#0c3b6e" },
   { fill: "var(--canary-tint)", line: "#ffd54f", ink: "#6b4e00" },
+  { fill: "var(--park-tint)", line: "#7fd47a", ink: "#1f5c1c" },
 ];
 const VENN_LAYOUT = {
   1: { W: 460, H: 440, r: 180, c: [[230, 250]], label: [[230, 40]] },
@@ -654,62 +656,126 @@ const VENN_LAYOUT = {
   3: { W: 700, H: 640, r: 165, c: [[260, 225], [440, 225], [350, 380]], label: [[150, 36], [550, 36], [350, 620]] },
 } as const;
 
+// One line of at most n characters, shortened with "…" (a long single word too).
+const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, Math.max(1, n - 1)).trimEnd() + "…");
+
 function Venn({ d, still }: { d: Diagram; still: boolean }) {
-  const sets = (d.sets ?? []).slice(0, 3);
-  const n = Math.max(1, sets.length) as 1 | 2 | 3;
-  const L = VENN_LAYOUT[n];
+  const sets = (d.sets ?? []).slice(0, 4);
   const fresh = new Set(d.fresh);
-  const outside = (d.items ?? []).filter((it) => !it.sets.length);
-  const H = L.H + (outside.length ? 60 : 0);
-  // Where each combination of sets is drawn: the average of their centres, pushed away from the others.
-  const spot = (memberOf: string[]) => {
-    const inIdx = sets.map((x, i) => (memberOf.includes(x.id) ? i : -1)).filter((i) => i >= 0);
-    const avg = (pts: number[][]) => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
-    const mid = avg(L.c.map((p) => [...p]));
-    const here = avg(inIdx.map((i) => [...L.c[i]]));
-    if (inIdx.length === sets.length) return here; // in every set: the centre
-    const push = inIdx.length === 1 ? 0.55 : 0.35;
-    return [here[0] + (here[0] - mid[0]) * push, here[1] + (here[1] - mid[1]) * push];
+  const parentOf = (id: string) => sets.find((x) => x.id === id)?.inside;
+  const top = sets.filter((x) => !x.inside);
+  const apart = top.length > 3 || top.some((x) => x.apart);
+  // Where each set's circle and name go.
+  const circles = new Map<string, { cx: number; cy: number; r: number; i: number; label: number[]; small: boolean }>();
+  let W: number;
+  let H: number;
+  const avg = (pts: number[][]) => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+  const L = VENN_LAYOUT[Math.min(3, Math.max(1, top.length)) as 1 | 2 | 3];
+  if (apart) {
+    // In a row, or two rows of two for four sets (a row of four would shrink the writing too far).
+    const perRow = top.length === 4 ? 2 : top.length;
+    const r = perRow <= 2 ? 160 : 120;
+    const gap = 40;
+    const rowH = 2 * r + 80;
+    W = perRow * 2 * r + (perRow - 1) * gap + 60;
+    H = Math.ceil(top.length / perRow) * rowH + 30;
+    top.forEach((x, k) => {
+      const cx = 30 + r + (k % perRow) * (2 * r + gap);
+      const cy = Math.floor(k / perRow) * rowH + r + 80;
+      circles.set(x.id, { cx, cy, r, i: sets.indexOf(x), label: [cx, cy - r - 40], small: false });
+    });
+  } else {
+    W = L.W;
+    H = L.H;
+    top.forEach((x, k) => circles.set(x.id, { cx: L.c[k][0], cy: L.c[k][1], r: L.r, i: sets.indexOf(x), label: [...L.label[k]], small: false }));
+  }
+  // Subsets, a level at a time: one fills the lower part of its parent; several sit side by side across it. Where
+  // the main sets overlap, a subset leans away from the others, so it doesn't look like it's in their overlap too.
+  const mid = avg(L.c.map((p) => [...p]));
+  for (let placed = true; placed; ) {
+    placed = false;
+    for (const [id, p] of [...circles]) {
+      const kids = sets.filter((x) => x.inside === id && !circles.has(x.id));
+      if (!kids.length) continue;
+      placed = true;
+      const lean = !apart && !p.small && top.length > 1 ? Math.sign(p.cx - mid[0]) * p.r * 0.25 : 0;
+      const r = p.r * (kids.length === 1 ? (lean ? 0.45 : 0.55) : kids.length === 2 ? 0.42 : 0.28);
+      kids.forEach((x, k) => {
+        const cx = p.cx + lean + (k - (kids.length - 1) / 2) * (2 * r + p.r * 0.06);
+        const cy = p.cy + p.r * (kids.length === 1 ? 0.35 : kids.length === 2 ? 0.3 : 0.2);
+        circles.set(x.id, { cx, cy, r, i: sets.indexOf(x), label: [cx, cy - r + 22], small: true });
+      });
+    }
+  }
+  // Where an item goes: in the innermost of its sets (being in "fractions" means being in "rational" too). In one
+  // main set of overlapping ones: away from the others; in several: their overlap. In a set that has subsets but
+  // in none of them: above them.
+  const ancestors = (id: string): string[] => {
+    const up = parentOf(id);
+    return up ? [up, ...ancestors(up)] : [];
   };
-  const regions = new Map<string, { at: number[]; items: { id: string; label: string }[] }>();
+  const spot = (memberOf: string[]) => {
+    const inner = memberOf.filter((id) => circles.has(id) && !memberOf.some((o) => ancestors(o).includes(id)));
+    const cs = inner.map((id) => circles.get(id)!);
+    let at = avg(cs.map((c) => [c.cx, c.cy]));
+    if (!apart && inner.every((id) => !parentOf(id)) && inner.length < top.length) {
+      const push = inner.length === 1 ? 0.55 : 0.35;
+      at = [at[0] + (at[0] - mid[0]) * push, at[1] + (at[1] - mid[1]) * push];
+    }
+    if (cs.length === 1 && cs[0].small) at = [at[0], at[1] + 12]; // below the subset's name
+    // In a set that has subsets but in none of them: in its upper part, clear of them.
+    if (inner.length === 1 && sets.some((x) => x.inside === inner[0])) at = [at[0], cs[0].cy - cs[0].r * 0.6];
+    // Writing sized to a small circle: about as many characters as fit across it.
+    const r = cs.length === 1 && cs[0].small ? cs[0].r : 180;
+    return { key: [...inner].sort().join("|"), at, size: r < 90 ? 16 : 21, chars: Math.max(6, Math.floor((r * 1.6) / (r < 90 ? 9 : 11.5))) };
+  };
+  const regions = new Map<string, { at: number[]; size: number; chars: number; items: { id: string; label: string }[] }>();
+  const outside: { id: string; label: string }[] = [];
   for (const it of d.items ?? []) {
-    if (!it.sets.length) continue;
-    const key = [...it.sets].sort().join("|");
-    if (!regions.has(key)) regions.set(key, { at: spot(it.sets), items: [] });
+    const { key, at, size, chars } = spot(it.sets);
+    if (!key) {
+      outside.push(it);
+      continue;
+    }
+    if (!regions.has(key)) regions.set(key, { at, size, chars, items: [] });
     regions.get(key)!.items.push(it);
   }
+  if (outside.length) H += 60;
+  const drawn = [...circles].sort(([, a], [, b]) => Number(a.small) - Number(b.small)); // subsets on top
   return (
-    <svg viewBox={`0 0 ${L.W} ${H}`} width="100%" height="100%" style={cap(L.W, H)} role="img" aria-label={d.title}>
-      {sets.map((x, i) => {
-        const hot = fresh.has(x.id) && !still;
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
+      {drawn.map(([id, c]) => {
+        const x = sets[c.i];
+        const colour = VENN_COLOURS[c.i % VENN_COLOURS.length];
+        const hot = fresh.has(id) && !still;
         return (
-          <g key={x.id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
-            <circle cx={L.c[i][0]} cy={L.c[i][1]} r={L.r} fill={VENN_COLOURS[i].fill} fillOpacity={0.8} stroke={VENN_COLOURS[i].line} strokeWidth={3} style={{ mixBlendMode: "multiply" }} />
-            <text x={L.label[i][0]} y={L.label[i][1]} textAnchor="middle" fontSize={24} fontWeight={700} fill={VENN_COLOURS[i].ink}>
-              {x.label}
+          <g key={id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
+            <circle cx={c.cx} cy={c.cy} r={c.r} fill={colour.fill} fillOpacity={0.8} stroke={colour.line} strokeWidth={3} style={{ mixBlendMode: "multiply" }} />
+            <text x={c.label[0]} y={c.label[1]} textAnchor="middle" fontSize={c.small ? 18 : 24} fontWeight={700} fill={colour.ink}>
+              {c.small ? clip(x.label, Math.floor((c.r * 1.6) / 10)) : x.label}
             </text>
           </g>
         );
       })}
-      {[...regions.values()].map(({ at, items }) =>
+      {[...regions.values()].map(({ at, size, chars, items }) =>
         items.slice(0, 5).map((it, k) => (
           <text
             key={it.id}
             x={at[0]}
-            y={at[1] + (k - (Math.min(items.length, 5) - 1) / 2) * 28}
+            y={at[1] + (k - (Math.min(items.length, 5) - 1) / 2) * (size + 7)}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize={21}
+            fontSize={size}
             fontWeight={600}
             fill="#111"
             style={fresh.has(it.id) && !still ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}
           >
-            {wrap(it.label, 16, 1)[0] /* a region is narrow: one line, shortened with "…" */}
+            {clip(it.label, chars) /* a region is narrow: one line, shortened with "…" */}
           </text>
         )),
       )}
       {outside.length > 0 && (
-        <text x={L.W / 2} y={H - 22} textAnchor="middle" fontSize={17} fill="rgba(0,0,0,.6)">
+        <text x={W / 2} y={H - 22} textAnchor="middle" fontSize={17} fill="rgba(0,0,0,.6)">
           Neither: {outside.map((it) => it.label).join(", ")}
         </text>
       )}

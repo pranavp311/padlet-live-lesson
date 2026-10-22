@@ -18,8 +18,9 @@ export type Diagram = {
   points: { id: string; x: number; y: number; label?: string }[];
   segments: { id: string; from: [number, number]; to: [number, number]; label?: string }[];
   smiles?: string;
-  // Venn: two or three sets; each item sits in the region of the sets it belongs to (none: outside them all).
-  sets?: { id: string; label: string }[];
+  // Venn: up to four sets; each item sits in the region of the sets it belongs to (none: outside them all). Sets
+  // overlap unless one is `apart` (it shares nothing with the other main sets) or `inside` another (a subset).
+  sets?: { id: string; label: string; inside?: string; apart?: boolean }[];
   items?: { id: string; label: string; sets: string[] }[];
   // Letters and sounds: "Mm" drawn as bubble letters, with its sound ("/m/") and an example word ("moon").
   letters?: { id: string; text: string; sound?: string; word?: string }[];
@@ -64,7 +65,7 @@ export type Op =
   | { op: "add_point"; id: string; x: number; y: number; label?: string }
   | { op: "add_segment"; id: string; from: [number, number]; to: [number, number]; label?: string }
   | { op: "set_smiles"; smiles: string }
-  | { op: "add_set"; id: string; label: string }
+  | { op: "add_set"; id: string; label: string; inside?: string; apart?: boolean }
   | { op: "add_item"; id: string; label: string; sets: string[] }
   | { op: "add_letter"; id: string; text: string; sound?: string; word?: string }
   | { op: "set_caption"; text: string }
@@ -145,7 +146,7 @@ export function validOp(o: unknown): o is Op {
     case "add_point": return str(v.id) && num(v.x) && num(v.y) && (v.label === undefined || typeof v.label === "string");
     case "add_segment": return str(v.id) && pair(v.from) && pair(v.to) && (v.label === undefined || typeof v.label === "string");
     case "set_smiles": return str(v.smiles);
-    case "add_set": return str(v.id) && str(v.label);
+    case "add_set": return str(v.id) && str(v.label) && optStr(v.inside) && (v.apart === undefined || typeof v.apart === "boolean");
     case "add_item": return str(v.id) && str(v.label) && Array.isArray(v.sets) && v.sets.every((x) => typeof x === "string");
     case "add_letter":
       return str(v.id) && str(v.text) && v.text.trim().length <= 4 && optStr(v.sound) && optStr(v.word);
@@ -204,12 +205,14 @@ function parentsFirst(ops: Op[]) {
 export function applyOps(d: Diagram, raw: unknown[]): Diagram {
   // Ops that make something come before ops that refer to it, so an item sent before its Venn set (or a cell before
   // its row, a route before its place) isn't dropped. The sort is stable: order within each group is kept.
+  // A subset's set comes after the set it's inside, and before the items in it.
   const refers = new Set(["add_item", "set_cell", "add_route", "add_edge"]);
+  const late = (o: Op) => (refers.has(o.op) ? 2 : o.op === "add_set" && o.inside ? 1 : 0);
   const ops = parentsFirst(
     raw
       .map(textFields)
       .filter(validOp)
-      .sort((a, b) => Number(refers.has(a.op)) - Number(refers.has(b.op))),
+      .sort((a, b) => late(a) - late(b)),
   );
   const next: Diagram = {
     ...d,
@@ -304,7 +307,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.curves = keep(next.curves);
         next.points = keep(next.points);
         next.segments = keep(next.segments);
-        next.sets = keep(next.sets!);
+        next.sets = keep(next.sets!).map((x) => (x.inside === o.id ? { ...x, inside: undefined } : x)); // its subsets stay, as sets of their own
         next.items = keep(next.items!)
           .filter((x) => !(x.sets.length === 1 && x.sets[0] === o.id))
           .map((x) => ({ ...x, sets: x.sets.filter((id) => id !== o.id) }));
@@ -430,9 +433,16 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.smiles = o.smiles;
         next.fresh.push("smiles");
         break;
-      case "add_set":
-        put(next.sets!, { id: o.id, label: o.label }, 3);
+      case "add_set": {
+        // Inside a set that exists and isn't itself inside this one (a loop would leave both nowhere to be drawn).
+        const within = (id: string | undefined): boolean => !!id && (id === o.id || within(next.sets!.find((x) => x.id === id)?.inside));
+        // Sent again without them (a new label), a set keeps its relations; "inside":"" or "apart":false undoes them.
+        const was = next.sets!.find((x) => x.id === o.id);
+        const want = o.inside === undefined ? was?.inside : o.inside || undefined;
+        const inside = want && next.sets!.some((x) => x.id === want) && !within(want) ? want : undefined;
+        put(next.sets!, { id: o.id, label: o.label, inside, apart: (o.apart ?? was?.apart) || undefined }, 4);
         break;
+      }
       case "add_item":
         put(next.items!, { id: o.id, label: o.label, sets: o.sets.filter((id) => next.sets!.some((x) => x.id === id)) }, 16); // unknown sets: outside
         break;
