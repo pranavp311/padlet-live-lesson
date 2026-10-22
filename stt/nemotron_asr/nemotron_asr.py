@@ -50,7 +50,7 @@ with image.imports():
     from omegaconf import OmegaConf
     from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
     from nemo.collections.asr.inference.utils.progressbar import TQDMProgressBar
-    from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+    from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
     from starlette.websockets import WebSocketState
     
     # Import local utilities
@@ -356,7 +356,12 @@ class NemotronASR:
         
         # Setup FastAPI WebSocket server
         self.web_app = FastAPI()
-        
+
+        # The app's warm-up request: any HTTP request boots the container; answer it rather than log a 404.
+        @self.web_app.get("/")
+        async def warm():
+            return Response(status_code=204)
+
         # Register WebSocket handler
         @self.web_app.websocket("/ws")
         async def run_with_websocket(ws: WebSocket):

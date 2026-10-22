@@ -1,5 +1,6 @@
 import { asksBubbles, editsDiagram, route, type Route } from "@/lib/server/jev";
 import { llmJson } from "@/lib/server/llm";
+import { asName } from "@/lib/wake";
 import type { Diagram, Kind, Op } from "@/lib/diagram";
 
 const DRAWABLE = 0.75;
@@ -63,7 +64,9 @@ export async function POST(req: Request) {
 
     send({ jev, drawing: true });
     const target = sameTopic ? current : null;
-    const user = `${target ? `Current diagram:\n${JSON.stringify(compact(target))}` : "No diagram yet."}\n\nTeacher just said: ${said}`;
+    // Draw this is the teacher asking outright: something has to come back, not "none".
+    const now = force ? `\nThe teacher pressed "Draw this": draw what they're explaining now${target ? ", adding it to the current diagram or starting a new one if it has moved on" : ""}. Return "none" only if nothing is being explained (classroom routine, small talk).` : "";
+    const user = `${target ? `Current diagram:\n${JSON.stringify(compact(target))}` : "No diagram yet."}\n\nTeacher just said: ${said}${now}`;
     try {
       const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
       let action = !target ? (reply.action === "none" ? "none" : "new_topic") : reply.action;
@@ -77,6 +80,9 @@ export async function POST(req: Request) {
     }
   });
 }
+
+// Anyone in the room can say the name, so a request (or an edit to the diagram on screen) can come from a student.
+const CLASSROOM = `This is a classroom: anyone in the room can say your name. If the request is rude, unkind or not suitable for school, or isn't really a request, return {"action":"none","ops":[]}.`;
 
 // The teacher said Bubbles' name: Jev checks it's really a request for a visual, whether it's about the
 // diagram already on screen ("…underneath our drawing"), and picks the kind; only then does the client
@@ -96,18 +102,27 @@ async function drawRequest(heard: string, said: string, current: Diagram | null,
     }
     send({ jev, drawing: true });
     if (current && edits >= ASKED) {
-      const user = `Current diagram:\n${JSON.stringify(compact(current))}\n\nThe teacher asked you, Bubbles, to change or add to this diagram: "${ask}"\nReturn action "update" with ops that add to it (use set_caption for a formula or line of text under it); use your own knowledge for the content.`;
+      const user = `Current diagram:\n${JSON.stringify(compact(current))}\n\nThe teacher asked you, Bubbles, to change or add to this diagram: "${ask}"\nReturn action "update" with ops that add to it (use set_caption for a formula or line of text under it); use your own knowledge for the content.\n${CLASSROOM}`;
       const reply = await llmJson<LlmReply>(SYSTEM(current.kind), user, 800);
+      if (reply.action === "none") {
+        console.info("diagram", JSON.stringify({ path: "bubbles-declined", ask, kind: current.kind }));
+        return { jev, action: "none" };
+      }
       console.info("diagram", JSON.stringify({ path: "bubbles-edit", ask, asked, edits, kind: current.kind }));
       return { jev, action: "update", kind: current.kind, ops: Array.isArray(reply.ops) ? reply.ops : [] };
     }
-    const kind: Kind = jev.kind !== "none" ? jev.kind : "flow";
+    // A request that doesn't name its kind ("draw the uh… water cycle") gets one from the lesson so far, not a flow chart.
+    const kind: Kind = jev.kind !== "none" ? jev.kind : (await route(`${said} ${ask}`, null)).kind.replace("none", "flow") as Kind;
     // The diagram on screen goes in too: a request that only adds a line of text to it ("write the formula") should
     // come back as just set_caption, which is applied to it below, rather than a redraw.
     const onScreen = current ? `\nOn screen now: ${JSON.stringify(compact(current))}\nIf the request only adds a line of text to that diagram, return only set_caption.` : "";
-    const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\nEarlier in the lesson: ${said}${onScreen}`;
+    const user = `The teacher asked you, Bubbles, directly: "${ask}"\nDraw exactly what they asked for, even if they haven't explained it yet; use your own knowledge for the content.\n${CLASSROOM}\nEarlier in the lesson: ${said}${onScreen}`;
     const reply = await llmJson<LlmReply>(SYSTEM(kind), user, 800);
     const ops = Array.isArray(reply.ops) ? reply.ops : [];
+    if (reply.action === "none" || !substantial(ops)) {
+      console.info("diagram", JSON.stringify({ path: "bubbles-declined", ask, kind, action: reply.action }));
+      return { jev, action: "none" };
+    }
     // Only a line of text ("write the formula underneath") is an edit Jev scored low: it goes under the diagram on screen.
     if (current && ops.length && ops.every((o) => o?.op === "set_caption")) {
       console.info("diagram", JSON.stringify({ path: "bubbles-caption", ask, asked, edits }));
@@ -132,22 +147,18 @@ function ndjson(run: (send: (line: object) => void) => Promise<unknown>) {
   return new Response(body, { headers: { "Content-Type": "application/x-ndjson" } });
 }
 
-// "a graph titled 'Pythagoras theorem' showing: a, b, c, right angle", for Jev's edit check.
-// The speech model writes the name lowercase with no commas, which Jev reads as the word, not someone being
-// addressed: "…theorem bubbles" 0.46 vs "…theorem, Bubbles" 0.98; "Bubbles draw the water cycle" 0.29 vs
-// "Bubbles, draw…" 0.97. Write it as a name, except where it's the ordinary word ("air bubbles", "bubble sort").
-const NOT_NAME_BEFORE = /^(the|a|an|air|soap|gas|water|of|these|those|some|tiny|small|big|little|many|blow|blowing|in|with)$/i;
-const NOT_NAME_AFTER = /^\s+(sort|tea|wrap|gum|chart|bath|rise|rises|form|forms|pop|pops|burst|bursts)\b/i;
-function asName(text: string) {
-  return text.replace(/(\b\w+\s+)?\bbubbles?\b/gi, (m, before: string | undefined, at: number, all: string) => {
-    const next = all.slice(at + m.length);
-    if ((before && NOT_NAME_BEFORE.test(before.trim())) || NOT_NAME_AFTER.test(next)) return m;
-    // "…theorem, Bubbles" after a word; "Bubbles, draw…" when it opens a sentence and words follow.
-    if (before) return `${before.trimEnd()}, Bubbles`;
-    return /^\s+[a-z]/i.test(next) ? "Bubbles," : "Bubbles";
-  });
+// A drawing worth showing has a real word in it (a label, a caption or its title), several labelled parts ("A → B →
+// C"), or something to plot. "Bubbles, draw a" followed by unrelated talk came back as two boxes labelled "a".
+// Ops whose content is numbers or parts rather than a text label: a fraction, a number line, a bar, a split word.
+const PLOTS = new Set(["add_segment", "add_point", "add_fraction", "set_range", "add_mark", "add_jump", "add_bar", "add_place", "add_word"]);
+function substantial(ops: unknown[]) {
+  const vs = ops.filter((o): o is Record<string, unknown> => !!o && typeof o === "object");
+  if (vs.some((v) => v.expr || v.smiles || PLOTS.has(v.op as string))) return true;
+  if (vs.some((v) => [v.label, v.text, v.when, v.title].some((x) => typeof x === "string" && /\p{L}{3}/u.test(x)))) return true;
+  return vs.filter((v) => typeof v.label === "string" && v.label.trim()).length >= 2;
 }
 
+// "a graph titled 'Pythagoras theorem' showing: a, b, c, right angle", for Jev's edit check.
 function describe(d: Diagram) {
   const labels = [
     ...d.nodes.map((n) => n.label), ...d.events.map((e) => e.label), ...d.curves.map((c) => c.label ?? ""),

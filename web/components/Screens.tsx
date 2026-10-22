@@ -18,10 +18,29 @@ type L = ReturnType<typeof useLesson>;
 
 const today = () => new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
-// Start page: every saved lesson as a card, newest first. "New lesson" opens a small dialog for the title.
-export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[] | null; onOpen: (id: string) => void }) {
+// Start page: every saved lesson as a card, newest first. "New lesson" opens a small dialog for the title; a card's
+// trash button asks before deleting it.
+export function Ready({
+  l, lessons, onOpen, onDelete,
+}: { l: L; lessons: LessonSummary[] | null; onOpen: (id: string) => void; onDelete: (id: string) => boolean }) {
   const [asking, setAsking] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const [doomed, setDoomed] = useState<LessonSummary | null>(null);
+  const [deleteFailed, setDeleteFailed] = useState(false);
+  const confirm = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (doomed) confirm.current?.showModal();
+    else confirm.current?.close();
+    setDeleteFailed(false);
+  }, [doomed]);
+  const deleteDoomed = () => {
+    if (!doomed) return;
+    // The browser can refuse (storage blocked): say so and leave the lesson where it is.
+    if (!onDelete(doomed.id)) return setDeleteFailed(true);
+    setDoomed(null);
+    // The trash button that opened the dialog is gone; keep keyboard focus on the dashboard, not the page top.
+    requestAnimationFrame(() => (document.querySelector<HTMLElement>(".lesson-card") ?? document.querySelector<HTMLElement>(".new-lesson"))?.focus());
+  };
   const open = () => {
     l.clearError();
     setAsking(true);
@@ -53,7 +72,7 @@ export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[] |
             </div>
             <div className="lesson-grid">
               {lessons.map((x) => (
-                <LessonCard key={x.id} x={x} onOpen={() => onOpen(x.id)} />
+                <LessonCard key={x.id} x={x} onOpen={() => onOpen(x.id)} onDelete={() => setDoomed(x)} />
               ))}
             </div>
           </>
@@ -90,34 +109,67 @@ export function Ready({ l, lessons, onOpen }: { l: L; lessons: LessonSummary[] |
           </div>
         </form>
       </dialog>
+
+      <dialog ref={confirm} className="dialog confirm-dialog" onClose={() => setDoomed(null)} onClick={(e) => e.target === e.currentTarget && setDoomed(null)}>
+        {doomed && (
+          <div className="confirm-body">
+            <span className="confirm-icon" aria-hidden="true">
+              <Icon name="trash" size={26} />
+            </span>
+            <h2 className="h2">Delete this lesson?</h2>
+            <p className="muted">
+              <strong>{doomed.title}</strong> will be removed from this browser, with its transcript, diagrams and to-dos. This can’t be undone.
+            </p>
+            {deleteFailed && (
+              <p className="confirm-error" role="alert">
+                This browser wouldn’t delete it. Its storage may be blocked.
+              </p>
+            )}
+            <div className="confirm-actions">
+              <button className="btn btn-soft" autoFocus onClick={() => setDoomed(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={deleteDoomed}>
+                Delete
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
     </div>
   );
 }
 
-function LessonCard({ x, onOpen }: { x: LessonSummary; onOpen: () => void }) {
+function LessonCard({ x, onOpen, onDelete }: { x: LessonSummary; onOpen: () => void; onDelete: () => void }) {
   const mins = Math.max(1, Math.round((x.endedAt - x.startedAt) / 60000));
   const date = new Date(x.startedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return (
-    <button className="lesson-card" onClick={onOpen}>
-      <span className="lesson-cover">
-        {x.cover ? <DiagramView d={x.cover} still /> : <SubjectTile subject={x.subject} size={64} />}
-      </span>
-      <span className="lesson-info">
-        <span className="lesson-title">
-          <SubjectTile subject={x.subject} size={28} />
-          <span className="t17">{x.title}</span>
+    <div className="lesson-wrap">
+      <button className="lesson-card" onClick={onOpen}>
+        <span className="lesson-cover">
+          {x.cover ? <DiagramView d={x.cover} still /> : <SubjectTile subject={x.subject} size={64} />}
         </span>
-        <span className="t14 tnum">
-          {date} · {mins} min
-        </span>
-        {(x.diagrams > 0 || (x.todos ?? 0) > 0) && (
-          <span className="lesson-tags">
-            {x.diagrams > 0 && <span className="tag">{x.diagrams} diagram{x.diagrams > 1 ? "s" : ""}</span>}
-            {(x.todos ?? 0) > 0 && <span className="tag">{x.todos} to-do{x.todos! > 1 ? "s" : ""}</span>}
+        <span className="lesson-info">
+          <span className="lesson-title">
+            <SubjectTile subject={x.subject} size={28} />
+            <span className="t17">{x.title}</span>
           </span>
-        )}
-      </span>
-    </button>
+          <span className="t14 tnum">
+            {date} · {mins} min
+          </span>
+          {(x.diagrams > 0 || (x.todos ?? 0) > 0) && (
+            <span className="lesson-tags">
+              {x.diagrams > 0 && <span className="tag">{x.diagrams} diagram{x.diagrams > 1 ? "s" : ""}</span>}
+              {(x.todos ?? 0) > 0 && <span className="tag">{x.todos} to-do{x.todos! > 1 ? "s" : ""}</span>}
+            </span>
+          )}
+        </span>
+      </button>
+      {/* A sibling of the card, not inside it: a button can't hold another button. */}
+      <button className="lesson-delete" aria-label={`Delete ${x.title}`} title="Delete lesson" onClick={onDelete}>
+        <Icon name="trash" size={18} />
+      </button>
+    </div>
   );
 }
 
@@ -161,6 +213,12 @@ function useClock(from: number, running: boolean) {
 type Block = { kind: "para"; sentences: Sentence[] } | { kind: "diagram"; d: Diagram };
 
 // Sentences grouped into paragraphs of up to 3, broken wherever a filed diagram appeared.
+// A paragraph closes after three sentences, or sooner once it's long: long sentences would otherwise grow the live
+// card past the top of the screen.
+const PARA_CHARS = 240;
+// Counted on what was heard, not the tidied text, so paragraphs don't reflow when a tidy-up lands.
+const full = (para: Sentence[]) => para.length >= 3 || para.reduce((n, x) => n + x.raw.length, 0) >= PARA_CHARS;
+
 function blocks(sentences: Sentence[], archive: Diagram[]): Block[] {
   const out: Block[] = [];
   const marks = [...archive].sort((a, b) => a.t - b.t);
@@ -174,7 +232,7 @@ function blocks(sentences: Sentence[], archive: Diagram[]): Block[] {
       flush();
       out.push({ kind: "diagram", d: marks.shift()! });
     }
-    if (para.length === 3) flush();
+    if (full(para)) flush();
     para.push(s);
   }
   flush();
@@ -187,7 +245,7 @@ export function Live({ l }: { l: L }) {
   const all = blocks(l.sentences, l.archive);
   const last = all[all.length - 1];
   // The words still being said join the latest paragraph, or start a new one.
-  const latestOpen = last?.kind === "para" && last.sentences.length < 3;
+  const latestOpen = last?.kind === "para" && !full(last.sentences);
   const shown: Block[] = latestOpen || !l.pending.trim() ? all : [...all, { kind: "para", sentences: [] }];
   const paras = shown.map((b, i) => ({ b, i })).filter(({ b }) => b.kind === "para");
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
@@ -374,7 +432,10 @@ export function Live({ l }: { l: L }) {
                 <StopButton onStop={l.stopDrawing} />
               </>
             ) : l.listening ? (
-              <span className="drawing-caption">Listening…</span>
+              <>
+                <span className="drawing-caption">Listening…</span>
+                {l.asking && <StopButton onStop={l.stopDrawing} />}
+              </>
             ) : (
               l.bubblesNote && <span className="bubbles-note">{l.bubblesNote}</span>
             )}
@@ -518,6 +579,7 @@ function EditableText({
       ref={ref}
       className="editing"
       contentEditable
+      spellCheck={false}
       suppressContentEditableWarning
       role="textbox"
       aria-label="Correct transcript"
