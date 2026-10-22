@@ -4,6 +4,7 @@ import dagre from "@dagrejs/dagre";
 import { compile } from "mathjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Diagram, Role } from "@/lib/diagram";
+import { separate } from "@/lib/diagram";
 
 // Every kind renders to one SVG with a viewBox, so the same component works live,
 // as a transcript thumbnail and in the end-of-lesson gallery. `still` turns off motion.
@@ -664,7 +665,7 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
   const fresh = new Set(d.fresh);
   const parentOf = (id: string) => sets.find((x) => x.id === id)?.inside;
   const top = sets.filter((x) => !x.inside);
-  const apart = top.length > 3 || top.some((x) => x.apart);
+  const apart = separate(sets);
   // Where each set's circle and name go.
   const circles = new Map<string, { cx: number; cy: number; r: number; i: number; label: number[]; small: boolean }>();
   let W: number;
@@ -689,24 +690,51 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
     H = L.H;
     top.forEach((x, k) => circles.set(x.id, { cx: L.c[k][0], cy: L.c[k][1], r: L.r, i: sets.indexOf(x), label: [...L.label[k]], small: false }));
   }
-  // Subsets, a level at a time: one fills the lower part of its parent; several sit side by side across it. Where
-  // the main sets overlap, a subset leans away from the others, so it doesn't look like it's in their overlap too.
+  // Subsets, a level at a time. With the main sets apart (or only one), one subset fills the lower part of its parent
+  // and several sit side by side across it. Where main sets overlap, a subset has to stay out of the overlap, or it
+  // would look like it's in the other sets too: it goes at the first spot, turning out from the side of its parent
+  // that faces away from them, that's clear of every other circle (and of the subsets already placed).
   const mid = avg(L.c.map((p) => [...p]));
+  const overlaps = (p: { small: boolean }) => !apart && !p.small && top.length > 1;
+  const turns = [0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100, 120, -120].map((a) => (a * Math.PI) / 180);
+  const away = (p: { cx: number; cy: number }) => Math.atan2(p.cy - mid[1], p.cx - mid[0]);
+  const clearance = (x: number, y: number, r: number, p: object) =>
+    Math.min(...[...circles.values()].filter((o) => o !== p).map((o) => Math.hypot(x - o.cx, y - o.cy) - o.r - r));
   for (let placed = true; placed; ) {
     placed = false;
     for (const [id, p] of [...circles]) {
       const kids = sets.filter((x) => x.inside === id && !circles.has(x.id));
       if (!kids.length) continue;
       placed = true;
-      const lean = !apart && !p.small && top.length > 1 ? Math.sign(p.cx - mid[0]) * p.r * 0.25 : 0;
-      const r = p.r * (kids.length === 1 ? (lean ? 0.45 : 0.55) : kids.length === 2 ? 0.42 : 0.28);
+      if (overlaps(p)) {
+        const r = p.r * (kids.length === 1 ? 0.4 : kids.length === 2 ? 0.32 : 0.26);
+        for (const x of kids) {
+          const reach = p.r - r - 8;
+          const tries = [reach, reach * 0.7].flatMap((dist) => turns.map((t) => [Math.cos(away(p) + t) * dist, Math.sin(away(p) + t) * dist]));
+          const [dx, dy] = tries.find(([dx, dy]) => clearance(p.cx + dx, p.cy + dy, r, p) >= 6) ?? tries[0];
+          const [cx, cy] = [p.cx + dx, p.cy + dy];
+          circles.set(x.id, { cx, cy, r, i: sets.indexOf(x), label: [cx, cy - r + 22], small: true });
+        }
+        continue;
+      }
+      const r = p.r * (kids.length === 1 ? 0.55 : kids.length === 2 ? 0.42 : 0.28);
       kids.forEach((x, k) => {
-        const cx = p.cx + lean + (k - (kids.length - 1) / 2) * (2 * r + p.r * 0.06);
+        const cx = p.cx + (k - (kids.length - 1) / 2) * (2 * r + p.r * 0.06);
         const cy = p.cy + p.r * (kids.length === 1 ? 0.35 : kids.length === 2 ? 0.3 : 0.2);
         circles.set(x.id, { cx, cy, r, i: sets.indexOf(x), label: [cx, cy - r + 22], small: true });
       });
     }
   }
+  // Where a set's own items go when it has subsets (items in it but in none of them): in its upper part; where main
+  // sets overlap, the spot in it with the most room between the other circles and its subsets.
+  const home = (p: { cx: number; cy: number; r: number; small: boolean }) => {
+    if (!overlaps(p)) return [p.cx, p.cy - p.r * 0.6];
+    const tries = [0.55, 0.4].flatMap((k) => turns.map((t) => [p.cx + Math.cos(away(p) + t) * p.r * k, p.cy + Math.sin(away(p) + t) * p.r * k]));
+    // Scored across the width of a line of writing: its ends must stay inside the set and clear of the rest.
+    const room = ([x, y]: number[]) =>
+      Math.min(...[-50, 0, 50].map((dx) => Math.min(clearance(x + dx, y, 0, p), p.r - Math.hypot(x + dx - p.cx, y - p.cy))));
+    return tries.reduce((best, pt) => (room(pt) > room(best) ? pt : best));
+  };
   // Where an item goes: in the innermost of its sets (being in "fractions" means being in "rational" too). In one
   // main set of overlapping ones: away from the others; in several: their overlap. In a set that has subsets but
   // in none of them: above them.
@@ -723,8 +751,7 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
       at = [at[0] + (at[0] - mid[0]) * push, at[1] + (at[1] - mid[1]) * push];
     }
     if (cs.length === 1 && cs[0].small) at = [at[0], at[1] + 12]; // below the subset's name
-    // In a set that has subsets but in none of them: in its upper part, clear of them.
-    if (inner.length === 1 && sets.some((x) => x.inside === inner[0])) at = [at[0], cs[0].cy - cs[0].r * 0.6];
+    if (inner.length === 1 && sets.some((x) => x.inside === inner[0])) at = home(cs[0]);
     // Writing sized to a small circle: about as many characters as fit across it.
     const r = cs.length === 1 && cs[0].small ? cs[0].r : 180;
     return { key: [...inner].sort().join("|"), at, size: r < 90 ? 16 : 21, chars: Math.max(6, Math.floor((r * 1.6) / (r < 90 ? 9 : 11.5))) };
@@ -746,7 +773,7 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
       {drawn.map(([id, c]) => {
         const x = sets[c.i];
-        const colour = VENN_COLOURS[c.i % VENN_COLOURS.length];
+        const colour = VENN_COLOURS[(x.colour ?? c.i) % VENN_COLOURS.length]; // lessons saved before colours were kept: by order
         const hot = fresh.has(id) && !still;
         return (
           <g key={id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>

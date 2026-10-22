@@ -20,7 +20,7 @@ export type Diagram = {
   smiles?: string;
   // Venn: up to four sets; each item sits in the region of the sets it belongs to (none: outside them all). Sets
   // overlap unless one is `apart` (it shares nothing with the other main sets) or `inside` another (a subset).
-  sets?: { id: string; label: string; inside?: string; apart?: boolean }[];
+  sets?: { id: string; label: string; inside?: string; apart?: boolean; colour?: number }[];
   items?: { id: string; label: string; sets: string[] }[];
   // Letters and sounds: "Mm" drawn as bubble letters, with its sound ("/m/") and an example word ("moon").
   letters?: { id: string; text: string; sound?: string; word?: string }[];
@@ -440,7 +440,11 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         const was = next.sets!.find((x) => x.id === o.id);
         const want = o.inside === undefined ? was?.inside : o.inside || undefined;
         const inside = want && next.sets!.some((x) => x.id === want) && !within(want) ? want : undefined;
-        put(next.sets!, { id: o.id, label: o.label, inside, apart: (o.apart ?? was?.apart) || undefined }, 4);
+        // Its colour stays with it, so removing another set doesn't recolour the rest.
+        // (A set saved before colours were kept shows the colour of its place in the list.)
+        const shown = next.sets!.map((x, i) => x.colour ?? i);
+        const colour = was ? shown[next.sets!.indexOf(was)] : [0, 1, 2, 3].find((c) => !shown.includes(c));
+        put(next.sets!, { id: o.id, label: o.label, inside, apart: (o.apart ?? was?.apart) || undefined, colour }, 4);
         break;
       }
       case "add_item":
@@ -451,8 +455,30 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         break;
     }
   }
+  // Separate main sets share nothing: an item listed in two of them (a slip, or kept from before they were made
+  // separate) stays in the first only, rather than being drawn in the gap between them.
+  if (next.sets!.length && separate(next.sets!)) {
+    const root = (id: string) => {
+      for (let s = next.sets!.find((x) => x.id === id), n = 0; s && n < 4; s = next.sets!.find((x) => x.id === s!.inside), n++) {
+        if (!s.inside) return s.id;
+      }
+      return id;
+    };
+    next.items = next.items!.map((it) => {
+      const first = it.sets.length ? root(it.sets[0]) : null;
+      const sets = it.sets.filter((id) => root(id) === first);
+      return sets.length === it.sets.length ? it : { ...it, sets };
+    });
+  }
   return next;
 }
+
+// Whether a Venn's main sets are drawn apart, sharing nothing: when one is marked apart, or there are four (four
+// circles can't all overlap legibly).
+export const separate = (sets: { inside?: string; apart?: boolean }[]) => {
+  const top = sets.filter((x) => !x.inside);
+  return top.length > 3 || top.some((x) => x.apart);
+};
 
 export function isEmpty(d: Diagram) {
   return (
