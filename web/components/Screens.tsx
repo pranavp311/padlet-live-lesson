@@ -212,14 +212,14 @@ function useClock(from: number, running: boolean) {
 
 type Block = { kind: "para"; sentences: Sentence[] } | { kind: "diagram"; d: Diagram };
 
-// Sentences grouped into paragraphs of up to 3, broken wherever a filed diagram appeared.
+// Sentences grouped into paragraphs of up to 3, broken wherever a filed diagram appeared or the teacher went quiet.
 // A paragraph closes after three sentences, or sooner once it's long: long sentences would otherwise grow the live
 // card past the top of the screen.
 const PARA_CHARS = 240;
 // Counted on what was heard, not the tidied text, so paragraphs don't reflow when a tidy-up lands.
 const full = (para: Sentence[]) => para.length >= 3 || para.reduce((n, x) => n + x.raw.length, 0) >= PARA_CHARS;
 
-function blocks(sentences: Sentence[], archive: Diagram[]): Block[] {
+function blocks(sentences: Sentence[], archive: Diagram[], ends: number[]): Block[] {
   const out: Block[] = [];
   const marks = [...archive].sort((a, b) => a.t - b.t);
   let para: Sentence[] = [];
@@ -234,6 +234,7 @@ function blocks(sentences: Sentence[], archive: Diagram[]): Block[] {
     }
     if (full(para)) flush();
     para.push(s);
+    if (ends.includes(s.id)) flush();
   }
   flush();
   marks.forEach((d) => out.push({ kind: "diagram", d }));
@@ -242,12 +243,14 @@ function blocks(sentences: Sentence[], archive: Diagram[]): Block[] {
 
 export function Live({ l }: { l: L }) {
   const secs = useClock(l.startedAt, true);
-  const all = blocks(l.sentences, l.archive);
+  const all = blocks(l.sentences, l.archive, l.paraEnds);
   const last = all[all.length - 1];
   // The words still being said join the latest paragraph, or start a new one. The live card is always the last thing
-  // in the transcript: after a diagram, the paragraph before it is settled and a fresh live card opens below.
-  const latestOpen = last?.kind === "para" && !full(last.sentences);
-  const newCard = !!l.pending.trim() || (last?.kind === "diagram" && l.sentences.length > 0);
+  // in the transcript: after a diagram, or once the teacher has gone quiet, the paragraph before it is settled and a
+  // fresh live card opens below.
+  const closed = last?.kind === "para" && l.paraEnds.includes(last.sentences[last.sentences.length - 1].id);
+  const latestOpen = last?.kind === "para" && !full(last.sentences) && !closed;
+  const newCard = !!l.pending.trim() || ((last?.kind === "diagram" || closed) && l.sentences.length > 0);
   const shown: Block[] = latestOpen || !newCard ? all : [...all, { kind: "para", sentences: [] }];
   const paras = shown.map((b, i) => ({ b, i })).filter(({ b }) => b.kind === "para");
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
@@ -259,10 +262,17 @@ export function Live({ l }: { l: L }) {
   const [editing, setEditing] = useState<number | null>(null);
   const draft = useRef<{ id: number; text: string } | null>(null);
   const editingAtPress = useRef(false);
+  // Where the caret lands in the sentence being opened: the end, or the start when arrowing into the next one.
+  const caretAt = useRef<"start" | "end">("end");
   const stopEditing = (id: number, value: string | null) => {
     if (value !== null) l.editSentence(id, value);
     draft.current = null;
+    caretAt.current = "end";
     setEditing((e) => (e === id ? null : e));
+  };
+  const editAt = (id: number, where: "start" | "end") => {
+    caretAt.current = where;
+    setEditing(id);
   };
   // A sentence that left the transcript while being corrected (hidden by a catch-up): keep what was typed, stop editing.
   const editingShown =
@@ -417,9 +427,23 @@ export function Live({ l }: { l: L }) {
                         text={x.clean ?? x.raw}
                         draft={draft.current?.id === x.id ? draft.current.text : undefined}
                         editing={editing === x.id}
+                        caret={caretAt.current}
                         onStart={() => setEditing(x.id)}
                         onType={(text) => (draft.current = { id: x.id, text })}
                         onDone={(v) => stopEditing(x.id, v)}
+                        // The arrow keys carry on into the card's other sentences, and from its last into the words
+                        // still arriving.
+                        onPrev={j > 0 ? () => editAt(b.sentences[j - 1].id, "end") : undefined}
+                        onNext={
+                          j < b.sentences.length - 1
+                            ? () => editAt(b.sentences[j + 1].id, "start")
+                            : isNow && /[\p{L}\p{N}]/u.test(l.pending) // a lone closing mark joins the sentence, leaving nothing to edit
+                              ? () => {
+                                  const id = l.editPending();
+                                  if (id !== null) editAt(id, "start");
+                                }
+                              : undefined
+                        }
                       />
                     </Fragment>
                   ))}
@@ -568,17 +592,54 @@ function MuteButton({ muted, onToggle }: { muted: boolean; onToggle: () => void 
   );
 }
 
+// Where the caret is in a box being edited: at its start or end, and on its first or last line. Null with a selection.
+function caretPlace(el: HTMLElement) {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount || !sel.isCollapsed) return null;
+  const range = sel.getRangeAt(0);
+  const before = document.createRange();
+  before.selectNodeContents(el);
+  before.setEnd(range.endContainer, range.endOffset);
+  const offset = before.toString().length;
+  const start = offset === 0;
+  const end = offset === (el.textContent ?? "").length;
+  const lines = el.getClientRects();
+  // A collapsed caret often has no box (at the end of the text, say), so measure the character beside it. The caret
+  // can sit on the box itself, before or after its text, rather than in the text.
+  let node = range.endContainer;
+  let i = range.endOffset;
+  if (node.nodeType !== Node.TEXT_NODE) {
+    const [prev, next] = [node.childNodes[i - 1], node.childNodes[i]];
+    if (prev?.nodeType === Node.TEXT_NODE) [node, i] = [prev, (prev.textContent ?? "").length];
+    else if (next?.nodeType === Node.TEXT_NODE) [node, i] = [next, 0];
+  }
+  const probe = document.createRange();
+  if (node.nodeType === Node.TEXT_NODE && (i > 0 || i < (node.textContent ?? "").length)) {
+    probe.setStart(node, i > 0 ? i - 1 : i);
+    probe.setEnd(node, i > 0 ? i : i + 1);
+  }
+  const rects = probe.collapsed ? range.getClientRects() : probe.getClientRects();
+  const at = rects[rects.length - 1];
+  if (!at || !lines.length) return { start, end, firstLine: start, lastLine: end };
+  const mid = (at.top + at.bottom) / 2;
+  return { start, end, firstLine: mid < lines[0].bottom, lastLine: mid > lines[lines.length - 1].top };
+}
+
 // Transcript text the teacher can correct in place: click to edit; Enter or clicking away saves, Escape
-// cancels (onDone gets null). Saving an empty sentence removes it.
+// cancels (onDone gets null). Saving an empty sentence removes it. At its edges, the arrow keys (and Backspace and
+// Delete) save it and move on to the sentence before or after (onPrev, onNext).
 function EditableText({
-  text, draft, editing, onStart, onType, onDone,
+  text, draft, editing, caret = "end", onStart, onType, onDone, onPrev, onNext,
 }: {
   text: string;
   draft?: string; // typed before this box remounted
   editing: boolean;
+  caret?: "start" | "end";
   onStart: () => void;
   onType: (text: string) => void;
   onDone: (value: string | null) => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const done = useRef(false);
@@ -590,14 +651,14 @@ function EditableText({
     if (!editing || !ref.current) return;
     done.current = false;
     ref.current.focus();
-    // Caret at the end, ready to type.
+    // Caret at the end, ready to type (or at the start, arriving from the sentence before).
     const range = document.createRange();
     range.selectNodeContents(ref.current);
-    range.collapse(false);
+    range.collapse(caret === "start");
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
-  }, [editing]);
+  }, [editing, caret]);
   const finish = (value: string | null) => {
     if (done.current) return;
     done.current = true;
@@ -627,10 +688,22 @@ function EditableText({
         onType(e.currentTarget.textContent ?? "");
       }}
       onKeyDown={(e) => {
+        const el = e.currentTarget;
+        // Shift (selecting), Alt/Cmd/Ctrl (word and line jumps) and typing with an input method keep their usual meaning.
+        const plain = !(e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || e.nativeEvent.isComposing);
+        const at = plain ? caretPlace(el) : null;
+        const back = at && ((at.start && (e.key === "ArrowLeft" || e.key === "Backspace")) || (at.firstLine && e.key === "ArrowUp"));
+        const on = at && ((at.end && (e.key === "ArrowRight" || e.key === "Delete")) || (at.lastLine && e.key === "ArrowDown"));
+        const move = back ? onPrev : on ? onNext : undefined;
         if (e.key === "Enter") {
           e.preventDefault();
-          finish(e.currentTarget.textContent ?? "");
+          finish(el.textContent ?? "");
         } else if (e.key === "Escape") finish(null);
+        else if (move) {
+          e.preventDefault();
+          finish(el.textContent ?? "");
+          move();
+        }
       }}
       onBlur={(e) => finish(e.currentTarget.textContent ?? "")}
     >

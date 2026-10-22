@@ -33,10 +33,11 @@ const SUMMON_AFTER_PAUSE_MS = 2000;
 const CARRIES_ON = /^\s*(and|also|with|plus|including|as well|but)\b/i;
 // Speech with no punctuation from the speech model settles at the next pause once it's this many words long.
 const RUN_ON_WORDS = 30;
-// A pause mid-thought isn't the end of a sentence: the words still arriving settle (and get tidied, with a full
-// stop) only after this long without speech. While the teacher talks, sentences settle at the model's own
-// punctuation, with what was said before them as context.
+// A pause mid-thought isn't the end of a sentence: words that trail off ("…and the") settle (and get tidied, with a
+// full stop) only after this long without speech; words that sound finished settle sooner. While the teacher talks,
+// sentences settle at the model's own punctuation, with what was said before them as context.
 const SETTLE_AFTER_PAUSE_MS = 10000;
+const SETTLE_WHOLE_MS = 2500;
 const SUMMON_GIVE_UP_MS = 8000; // after "Bubbles", stop waiting for more of the request after this long without speech
 const DIAGRAM_TIMEOUT_MS = 30000; // a diagram request that hasn't answered by now has failed
 // Words that don't make a request on their own ("Hey Bubbles", "Okay so Bubbles").
@@ -51,6 +52,10 @@ const unfinished = (text: string) => UNFINISHED.test(text.replace(TRAILING_FILLE
 // diagram of the". "draw that?", "draw a diagram?" or "label point A." are whole and go to the server. Lowercase on
 // purpose: a capital A is a label, not an article.
 const HANGING = /\b(a|an|the|of|for|to|with|and|or|but|then|in|on|from|into|between|draw|show|sketch|visuali[sz]e|help)\W*$/;
+// A request that points back at what was just explained ("Bubbles, can you draw this?", "show us what I just said"),
+// checked with the name and fillers taken out. It has nothing to draw by itself, so it goes the Draw this way.
+const POINTS_BACK =
+  /^\W*(draw|show|sketch|visuali[sz]e|illustrate|diagram|picture)\W+(this|that|it|what (i|we)('ve| have)?( just)? (said|explained|described|talked about))(\W+(for (me|us)|out|up))?\W*$/i;
 const CLEANS_AT_ONCE = 2; // a cold start's backlog settles many sentences at once; don't fire them all together
 const LAND_MS = 1500; // how long the caught-up chunk's settle-in animation runs
 
@@ -71,6 +76,8 @@ export function useLesson() {
   const [level, setLevel] = useState(0);
   const [muted, setMuted] = useState(false);
   const [sentences, setSentences] = useState<Sentence[]>([]);
+  // Sentences that close a paragraph: the teacher went quiet after them, so the live card moves on.
+  const [paraEnds, setParaEnds] = useState<number[]>([]);
   const [pending, setPending] = useState("");
   const [current, setCurrent] = useState<Diagram | null>(null);
   const [archive, setArchive] = useState<Diagram[]>([]);
@@ -123,6 +130,7 @@ export function useLesson() {
     // Sentences that went to Bubbles as a request: they ask for a drawing rather than explain the lesson, so later
     // checks and Draw this leave them out (or "draw how a bill becomes a law" gets redrawn over what came after).
     asked: new Set<number>(),
+    paraEnds: [] as number[],
     asking: false, // a Bubbles request is waiting on the server (mirrors the `asking` state, for code outside renders)
     settleTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     beforePause: "", // the words still arriving as of the last pause: a finished thought, not part of a request after it
@@ -182,6 +190,14 @@ export function useLesson() {
         return;
       }
       if (!s.live) return;
+      // Converted here rather than when said, so it keeps its place among the requests. A sentence of it that also
+      // explains something counts as lesson again ("Mitochondria make energy, Bubbles, draw this").
+      if (ask && POINTS_BACK.test(ask.replace(FILLER, " "))) {
+        ask = undefined;
+        for (const x of s.sentences) {
+          if (ids.includes(x.id) && !POINTS_BACK.test(said(x).replace(FILLER, " "))) s.asked.delete(x.id);
+        }
+      }
       const lesson = s.lesson;
       const t = now();
       const recent = s.sentences.filter((x) => !s.asked.has(x.id)).slice(-3).map((x) => x.clean ?? x.raw);
@@ -189,6 +205,7 @@ export function useLesson() {
       if (force && !ask && s.pending.trim()) recent.push(s.pending.trim());
       if (!recent.length && !ask) {
         if (force) showNote("Nothing new to draw from what's been said yet.");
+        setListening(!!s.summon); // a converted "Bubbles, draw this" turned listening on
         return;
       }
       s.inFlight = true;
@@ -370,11 +387,19 @@ export function useLesson() {
     }
     settle([rest]);
   }, [settle]);
+  // The teacher has gone quiet: what's left settles, and the paragraph closes, so the live card shows it as done and
+  // the next words start a new one.
+  const settleQuiet = useCallback(() => {
+    const s = r.current;
+    settleRest();
+    const last = s.sentences[s.sentences.length - 1];
+    if (last && !s.paraEnds.includes(last.id)) setParaEnds((s.paraEnds = [...s.paraEnds, last.id]));
+  }, [settleRest]);
   const settleLater = useCallback(() => {
     const s = r.current;
     clearTimeout(s.settleTimer);
-    s.settleTimer = setTimeout(settleRest, SETTLE_AFTER_PAUSE_MS);
-  }, [settleRest]);
+    s.settleTimer = setTimeout(settleQuiet, unfinished(s.pending) ? SETTLE_AFTER_PAUSE_MS : SETTLE_WHOLE_MS);
+  }, [settleQuiet]);
 
   // "Bubbles, draw …": the request is everything from the sentence where the name was heard up to the
   // teacher's next pause. It goes straight to the diagram step, skipping Jev's drawable check and pacing.
@@ -594,9 +619,10 @@ export function useLesson() {
     clearTimeout(s.summon?.timer);
     clearTimeout(s.settleTimer);
     s.abort?.abort();
-    Object.assign(s, { cleans: [], pending: "", beforePause: "", pendingT: null, sentences: [], muted: false, summon: null, wakeSeen: 0, queue: [], asked: new Set() });
+    Object.assign(s, { cleans: [], pending: "", beforePause: "", pendingT: null, sentences: [], muted: false, summon: null, wakeSeen: 0, queue: [], asked: new Set(), paraEnds: [] });
     setPending("");
     setSentences([]);
+    setParaEnds([]);
     setMuted(false);
     setListening(false);
     setDrawing(false);
@@ -783,7 +809,9 @@ export function useLesson() {
       catchingUp: false, cleans: [],
       pending: "", sentences: [], current: null, archive: [], todos: [], pinnedId: null, streak: 0,
       lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queue: [], wakeSeen: 0, summon: null, beforePause: "", pendingT: null,
+      asked: new Set(), paraEnds: [],
     });
+    setParaEnds([]);
     setCatchUp(null);
     setLanding(null);
     setListening(false);
@@ -805,7 +833,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinnedId, subject,
-    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, asking, bubblesNote, stopDrawing, editSentence, editPending, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, asking, bubblesNote, stopDrawing, editSentence, editPending, paraEnds, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 
