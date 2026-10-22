@@ -213,6 +213,12 @@ function useClock(from: number, running: boolean) {
 type Block = { kind: "para"; sentences: Sentence[] } | { kind: "diagram"; d: Diagram };
 
 // Sentences grouped into paragraphs of up to 3, broken wherever a filed diagram appeared.
+// A paragraph closes after three sentences, or sooner once it's long: long sentences would otherwise grow the live
+// card past the top of the screen.
+const PARA_CHARS = 240;
+// Counted on what was heard, not the tidied text, so paragraphs don't reflow when a tidy-up lands.
+const full = (para: Sentence[]) => para.length >= 3 || para.reduce((n, x) => n + x.raw.length, 0) >= PARA_CHARS;
+
 function blocks(sentences: Sentence[], archive: Diagram[]): Block[] {
   const out: Block[] = [];
   const marks = [...archive].sort((a, b) => a.t - b.t);
@@ -226,7 +232,7 @@ function blocks(sentences: Sentence[], archive: Diagram[]): Block[] {
       flush();
       out.push({ kind: "diagram", d: marks.shift()! });
     }
-    if (para.length === 3) flush();
+    if (full(para)) flush();
     para.push(s);
   }
   flush();
@@ -239,7 +245,7 @@ export function Live({ l }: { l: L }) {
   const all = blocks(l.sentences, l.archive);
   const last = all[all.length - 1];
   // The words still being said join the latest paragraph, or start a new one.
-  const latestOpen = last?.kind === "para" && last.sentences.length < 3;
+  const latestOpen = last?.kind === "para" && !full(last.sentences);
   const shown: Block[] = latestOpen || !l.pending.trim() ? all : [...all, { kind: "para", sentences: [] }];
   const paras = shown.map((b, i) => ({ b, i })).filter(({ b }) => b.kind === "para");
   const nowIdx = paras.length ? paras[paras.length - 1].i : -1;
@@ -426,7 +432,10 @@ export function Live({ l }: { l: L }) {
                 <StopButton onStop={l.stopDrawing} />
               </>
             ) : l.listening ? (
-              <span className="drawing-caption">Listening…</span>
+              <>
+                <span className="drawing-caption">Listening…</span>
+                {l.asking && <StopButton onStop={l.stopDrawing} />}
+              </>
             ) : (
               l.bubblesNote && <span className="bubbles-note">{l.bubblesNote}</span>
             )}
@@ -570,6 +579,7 @@ function EditableText({
       ref={ref}
       className="editing"
       contentEditable
+      spellCheck={false}
       suppressContentEditableWarning
       role="textbox"
       aria-label="Correct transcript"

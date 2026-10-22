@@ -5,6 +5,7 @@ import { applyOps, emptyDiagram, isEmpty, type Diagram, type Kind, type Op } fro
 import { startMic, type Mic } from "@/lib/mic";
 import { connectStt, warmStt, type Stt } from "@/lib/stt";
 import { splitSettled, type Sentence } from "@/lib/transcript";
+import { countName } from "@/lib/wake";
 import type { LessonExport } from "@/app/api/export/route";
 import type { Todo } from "@/lib/todo";
 import type { Subject } from "@/lib/subject";
@@ -18,13 +19,20 @@ export type LessonError = "mic-blocked" | "mic-failed" | "stt-unreachable" | "st
 const DRAWABLE = 0.75;
 const NEW_DIAGRAM_GAP_S = 20;
 const DISMISS_S = 60;
-const WAKE = /\bbubbles?\b/gi; // the mascot's name; the speech model writes it lowercase
 // What the teacher said, with their corrections.
 const said = (x: Sentence) => (x.edited ? x.clean! : x.raw);
-// How many times the name has been said so far.
-const countWake = (s: { sentences: Sentence[]; pending: string }) =>
-  (s.sentences.map(said).join(" ") + " " + s.pending).match(WAKE)?.length ?? 0;
-const SUMMON_QUIET_MS = 1500; // once a request has been said, fire when the teacher pauses or goes quiet this long
+// How many times the name has been said so far (not "air bubbles" or "bubble sort": countName tells them apart).
+// While speech is arriving, a "bubble" at the very end of the rough words waits for the next word; at a pause it counts.
+const countWake = (s: { sentences: Sentence[]; pending: string }, paused = false) =>
+  countName(s.sentences.map(said).join(" ")) + countName(s.pending, !paused);
+const SUMMON_QUIET_MS = 1500; // once a request has been said, fire when the teacher goes quiet this long
+// The speech server marks a pause after 0.8 s of silence: a breath. After one, a request that sounds whole still waits
+// this long, so "draw the water cycle" [breath] "and include the sun" goes as one request.
+const SUMMON_AFTER_PAUSE_MS = 2000;
+// Words that carry a request on after a pause ("…the water cycle." "And label the sun.").
+const CARRIES_ON = /^\s*(and|also|with|plus|including|as well|but)\b/i;
+// Speech with no punctuation from the speech model settles at the next pause once it's this many words long.
+const RUN_ON_WORDS = 30;
 // A pause mid-thought isn't the end of a sentence: the words still arriving settle (and get tidied, with a full
 // stop) only after this long without speech. While the teacher talks, sentences settle at the model's own
 // punctuation, with what was said before them as context.
@@ -35,7 +43,14 @@ const DIAGRAM_TIMEOUT_MS = 30000; // a diagram request that hasn't answered by n
 const FILLER = /\b(bubbles?|hey|hi|hello|okay|ok|so|um|uh|right|please|can|could|would|will|you)\b/gi;
 // A request that's clearly not finished yet ("could you help me draw", "show us", "a diagram of the"). "me" and
 // "us" only count straight after a verb: "draw the water cycle for me" is a whole request.
-const UNFINISHED = /\b((draw|show|help|give|tell|make) (me|us)|draw|show|sketch|visuali[sz]e|help|diagram|picture|with|of|for|about|a|an|the|and|or|but|to|then|that|how|between|into|in|on|from|like)\W*$/i;
+const UNFINISHED = /\b((draw|show|help|give|tell|make) (me|us)|draw|show|sketch|visuali[sz]e|help|diagram|picture|with|of|for|about|a|an|the|and|or|but|to|then|that|how|what|which|when|where|who|why|whether|if|because|between|into|in|on|from|like)\W*$/i;
+// Hesitations at the end ("draw the, um") hide the open word before them.
+const TRAILING_FILLER = /(\W+(uh+|um+|er+m?|uhm|hmm|like|you know|i mean))+\W*$/i;
+const unfinished = (text: string) => UNFINISHED.test(text.replace(TRAILING_FILLER, ""));
+// When the listening window runs out, only a request that plainly stops mid-phrase is dropped: "can you draw", "a
+// diagram of the". "draw that?", "draw a diagram?" or "label point A." are whole and go to the server. Lowercase on
+// purpose: a capital A is a label, not an article.
+const HANGING = /\b(a|an|the|of|for|to|with|and|or|but|then|in|on|from|into|between|draw|show|sketch|visuali[sz]e|help)\W*$/;
 const CLEANS_AT_ONCE = 2; // a cold start's backlog settles many sentences at once; don't fire them all together
 const LAND_MS = 1500; // how long the caught-up chunk's settle-in animation runs
 
@@ -72,6 +87,7 @@ export function useLesson() {
   const [listening, setListening] = useState(false);
   // The server confirmed a diagram is being drawn (Jev decided): Bubbles draws, the board shows dots.
   const [drawing, setDrawing] = useState(false);
+  const [asking, setAsking] = useState(false); // a Bubbles request is waiting on the server, before it starts drawing
   // Shown by Bubbles for a few seconds when a request to him produced nothing.
   const [bubblesNote, setBubblesNote] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -97,13 +113,17 @@ export function useLesson() {
     todos: [] as Todo[],
     pinnedId: null as string | null,
     inFlight: false,
-    queued: null as null | { force: boolean; ask?: string },
+    // Checks waiting for the one in flight: Bubbles requests in the order they were said, and at most one automatic check.
+    queue: [] as { force: boolean; ask?: string }[],
     wakeSeen: 0, // how many times "Bubbles" has been heard so far
     abort: null as AbortController | null, // the diagram request in flight, so Stop can cancel it
     muted: false,
-    summon: null as null | { start: number; timer?: ReturnType<typeof setTimeout> },
+    // An open listening window: where the request starts, and whether it sounded whole when the teacher last paused.
+    summon: null as null | { start: number; timer?: ReturnType<typeof setTimeout>; paused?: boolean },
+    asking: false, // a Bubbles request is waiting on the server (mirrors the `asking` state, for code outside renders)
     settleTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     beforePause: "", // the words still arriving as of the last pause: a finished thought, not part of a request after it
+    pendingT: null as number | null, // when the words still arriving began, which is when their sentence was said
     noteTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     streak: 0,
     lastCreatedAt: -Infinity,
@@ -138,21 +158,35 @@ export function useLesson() {
     setArchive(r.current.archive);
   }, []);
 
+  // A short line from Bubbles beside him, replaced by the next one and gone after a few seconds.
+  const showNote = useCallback((text: string) => {
+    const s = r.current;
+    setBubblesNote(text);
+    clearTimeout(s.noteTimer);
+    s.noteTimer = setTimeout(() => setBubblesNote(null), 4500);
+  }, []);
+
   const checkDiagram = useCallback(
     async (force = false, ask?: string) => {
       const s = r.current;
       if (s.inFlight) {
-        const asks = [s.queued?.ask, ask].filter(Boolean).join(" "); // two requests while busy: send both
-        s.queued = { force: force || !!s.queued?.force, ask: asks || undefined };
+        // Requests wait their turn in the order they were said, each drawn on its own; automatic checks fold into one.
+        const auto = s.queue.find((q) => !q.ask);
+        if (ask) s.queue.push({ force, ask });
+        else if (auto) auto.force ||= force;
+        else s.queue.push({ force });
         return;
       }
       if (!s.live) return;
       const lesson = s.lesson;
       const t = now();
       const recent = s.sentences.slice(-3).map((x) => x.clean ?? x.raw);
+      // Draw this is about what's being said now, which may not have settled into a sentence yet.
+      if (force && !ask && s.pending.trim()) recent.push(s.pending.trim());
       if (!recent.length && !ask) return;
       s.inFlight = true;
       if (force || ask) setListening(true);
+      if (ask) setAsking((s.asking = true));
       const abort = (s.abort = new AbortController());
       // A "Bubbles, …" request is about the diagram on screen, which is the pinned one while pinned. The reply
       // applies to that diagram even if the pin moves while it's being drawn.
@@ -160,12 +194,11 @@ export function useLesson() {
       // A hung call would hold every later check and request behind it.
       const timeout = setTimeout(() => abort.abort("timeout"), DIAGRAM_TIMEOUT_MS);
       let drew = false;
-      // A request to Bubbles that changes nothing on screen shouldn't fail silently.
+      // A request to Bubbles, or a Draw this click, that changes nothing on screen shouldn't fail silently.
       const tellTeacher = (failed: boolean) => {
-        if (!ask || drew || s.lesson !== lesson || !s.live) return;
-        setBubblesNote(failed ? "I couldn't draw that just now. Try again?" : "I wasn't sure what to draw. Try naming it.");
-        clearTimeout(s.noteTimer);
-        s.noteTimer = setTimeout(() => setBubblesNote(null), 4500);
+        if (!(ask || force) || drew || s.lesson !== lesson || !s.live) return;
+        if (failed) showNote("I couldn't draw that just now. Try again?");
+        else showNote(ask ? "I wasn't sure what to draw. Try naming it." : "Nothing new to draw from what's been said yet.");
       };
       try {
         const allowCreate = s.streak >= 1 && t - s.lastCreatedAt >= NEW_DIAGRAM_GAP_S && t >= s.quietUntil;
@@ -215,7 +248,7 @@ export function useLesson() {
             }
           }
         } else if (reply.action === "new_topic" && reply.kind && reply.ops?.length) {
-          const next = applyOps(emptyDiagram(reply.kind, t), reply.ops);
+          const next = applyOps(emptyDiagram(reply.kind, s.heard || t), reply.ops);
           // A diagram needs a title: Jev's same-topic check and the transcript thumbnail both use it.
           next.title ||= next.nodes[0]?.label ?? next.events[0]?.label ?? next.curves[0]?.label ?? "Diagram";
           if (!isEmpty(next)) {
@@ -225,9 +258,9 @@ export function useLesson() {
             s.lastCreatedAt = t;
           }
         }
-        if (!reply.ignored) tellTeacher(!!reply.error);
+        if (!reply.ignored) tellTeacher(!!reply.error || !reply.action);
         // Not a request after all ("thanks, Bubbles"): the sentences it held back get their automatic check.
-        else s.queued ??= { force: false };
+        else if (!s.queue.some((q) => !q.ask)) s.queue.push({ force: false });
       } catch (e) {
         if (abort.signal.reason === "timeout" || !abort.signal.aborted) {
           console.error("diagram request failed", e);
@@ -236,15 +269,16 @@ export function useLesson() {
       } finally {
         clearTimeout(timeout);
         setDrawing(false);
+        setAsking((s.asking = false));
         setListening(!!s.summon); // still attentive if another "Bubbles, …" request is being heard
         s.abort = null;
         s.inFlight = false;
-        const q = s.queued;
-        s.queued = null;
+        const next = s.queue.findIndex((q) => q.ask);
+        const q = next >= 0 ? s.queue.splice(next, 1)[0] : s.queue.shift();
         if (q) void checkDiagram(q.force, q.ask);
       }
     },
-    [fileAway],
+    [fileAway, showNote],
   );
 
   // Jev picks the lesson's subject, and so its icon, once: from the title at Start, or from the first sentences.
@@ -263,8 +297,10 @@ export function useLesson() {
   const settle = useCallback(
     (texts: string[], nameJustHeard = false) => {
       const s = r.current;
-      // Stamped with when it was said, not when it settled: a cold start's backlog settles all at once.
-      const added: Sentence[] = texts.map((raw) => ({ id: s.nextId++, raw, t: s.heard }));
+      // Stamped with when it was said, not when it settled: the first sentence began when the words still arriving
+      // began; the time a later one in the same batch began isn't known, so it gets the latest time heard.
+      const added: Sentence[] = texts.map((raw, i) => ({ id: s.nextId++, raw, t: i === 0 ? (s.pendingT ?? s.heard) : s.heard }));
+      s.pendingT = null;
       const before = s.sentences;
       s.sentences = [...before, ...added];
       setSentences(s.sentences);
@@ -297,7 +333,7 @@ export function useLesson() {
       if (!s.iconPicked && s.sentences.length >= 2) pickIcon(s.sentences.map((x) => x.raw).join(" "));
       // A backlog gets one diagram check once it's caught up, not one per sentence.
       // …and none while Bubbles is listening for a request: his request will draw instead.
-      if (added.length && !s.catchingUp && !s.summon && !nameJustHeard) void checkDiagram();
+      if (added.length && !s.catchingUp && !s.summon && !nameJustHeard && !s.ending) void checkDiagram();
     },
     [checkDiagram, pickIcon],
   );
@@ -336,7 +372,7 @@ export function useLesson() {
   };
   const isRequest = (text: string) => {
     const words = text.replace(FILLER, " ").match(/[a-z0-9']+/gi) ?? [];
-    return words.length >= 2 && !UNFINISHED.test(text);
+    return words.length >= 2 && !unfinished(text);
   };
 
   const fireSummon = useCallback(() => {
@@ -351,16 +387,22 @@ export function useLesson() {
     else setListening(false);
   }, [settleRest, checkDiagram]);
 
-  // The window ran out. Anything said after the name goes to Jev, which knows a request from a remark better
-  // than these word rules; only a bare "Hey Bubbles" is dropped.
+  // The window ran out. Anything said after the name goes to Jev, which knows a request from a remark better than
+  // these word rules ("thanks, Bubbles" is a remark). But a bare "Hey Bubbles", or a request left hanging ("Bubbles,
+  // can you draw…"), would only be guessed at: Bubbles asks for it again instead.
   const giveUpSummon = useCallback(() => {
     const s = r.current;
     if (!s.summon) return;
-    if (/[a-z0-9]/i.test(summonText().replace(FILLER, " "))) return fireSummon();
+    const text = summonText();
+    const content = /[a-z0-9]/i.test(text.replace(FILLER, " "));
+    if (content && !HANGING.test(text.replace(TRAILING_FILLER, ""))) return fireSummon();
+    clearTimeout(s.summon.timer);
     s.summon = null;
-    setListening(false);
+    setListening(s.asking); // an earlier request still waiting on the server keeps its Listening and Stop
     settleLater();
-  }, [fireSummon, settleLater]);
+    // A bare "Bubbles!" (often a student) goes quietly; a request left hanging gets asked for again.
+    if (content) showNote("I didn't catch the whole request. Say it again?");
+  }, [fireSummon, settleLater, showNote]);
 
   // Called on every new piece of speech and at every pause while Bubbles is listening: fire once a whole
   // request has been said and the teacher pauses; otherwise keep listening ("Hey Bubbles." … "Could you …").
@@ -370,41 +412,47 @@ export function useLesson() {
       if (!s.summon) return;
       clearTimeout(s.summon.timer);
       const ready = isRequest(summonText());
-      if (ready && paused) return fireSummon();
+      s.summon.paused = paused && ready;
       if (paused) settleLater();
-      s.summon.timer = ready ? setTimeout(fireSummon, SUMMON_QUIET_MS) : setTimeout(giveUpSummon, SUMMON_GIVE_UP_MS);
+      s.summon.timer = ready
+        ? setTimeout(fireSummon, paused ? SUMMON_AFTER_PAUSE_MS : SUMMON_QUIET_MS)
+        : setTimeout(giveUpSummon, SUMMON_GIVE_UP_MS);
     },
     [fireSummon, giveUpSummon, settleLater],
   );
 
-  const listenForBubbles = useCallback(() => {
+  const listenForBubbles = useCallback((paused = false) => {
     const s = r.current;
-    const heard = countWake(s);
+    const heard = countWake(s, paused);
     if (heard > s.wakeSeen) {
       // "The sun heats the ocean" [pause] "bubbles, draw the water cycle": the words before the pause are lecture,
       // not part of the request (Jev ignores a request buried in them), so they settle as their own sentence.
       const held = s.beforePause;
-      if (held.trim() && s.pending.startsWith(held) && !WAKE.test(held)) {
+      if (held.trim() && s.pending.startsWith(held) && !countName(held)) {
         s.pending = s.pending.slice(held.length).replace(/^\s*[,;:]+/, "");
         setPending(s.pending);
         settle([held.trim()], true);
+        s.pendingT = s.heard; // what's left began after the pause
       }
-      WAKE.lastIndex = 0;
-      // Attentive the moment the name is heard; drawing only starts once the server confirms. Each new
-      // mention restarts the window at its own sentence, so "Thank you, Bubbles… Okay Bubbles, draw…"
-      // asks only for what follows the latest mention.
-      const pendingHasName = WAKE.test(s.pending);
-      WAKE.lastIndex = 0;
-      const start = pendingHasName ? s.sentences.length : Math.max(0, s.sentences.length - 1);
+      // Attentive the moment the name is heard; drawing only starts once the server confirms. The window starts at
+      // the sentence holding the latest mention (several can settle from one piece of speech).
+      let named = s.sentences.length - 1;
+      while (named > 0 && !countName(said(s.sentences[named]))) named--;
+      const start = countName(s.pending) ? s.sentences.length : Math.max(0, named);
       if (s.summon) {
+        // A request already said in full before this mention ("Bubbles, draw the water cycle." "Bubbles!") is sent
+        // first, rather than replaced; otherwise the new mention restarts the window ("Thank you, Bubbles… Okay
+        // Bubbles, draw…" asks only for what follows the latest).
         clearTimeout(s.summon.timer);
+        const before = s.sentences.slice(s.summon.start, start).map(said).join(" ");
+        if (start > s.summon.start && isRequest(before)) void checkDiagram(true, before);
         s.summon.start = start;
       } else s.summon = { start };
       setListening(true);
     }
     s.wakeSeen = heard;
     awaitRequest(false);
-  }, [awaitRequest, settle]);
+  }, [awaitRequest, settle, checkDiagram]);
   // The held speech is all in: show it in one go, then run the diagram check its sentences skipped.
   const caughtUp = useCallback(() => {
     const s = r.current;
@@ -467,6 +515,14 @@ export function useLesson() {
         if (!mine()) return;
         s.heard = s.audioZero + audioSecs;
         clearTimeout(s.settleTimer);
+        // A whole request, a pause, then a new sentence or another "Bubbles": the request was finished. Send it as it
+        // stood, not with the lecture after it. A new sentence shows as the closing mark at the start of the next
+        // phrase, or as a request that had already ended its sentence and words that don't carry it on ("and…").
+        if (s.summon?.paused) {
+          const ended = /^\s*[.?!]/.test(piece) || (/[.?!]["')]?\s*$/.test(summonText()) && !CARRIES_ON.test(piece));
+          if (ended || countName(piece)) fireSummon();
+        }
+        if (!s.pending.trim()) s.pendingT = s.heard;
         // A phrase after a pause can open with the previous one's comma; it has nothing to attach to.
         s.pending = s.pending ? s.pending + piece : piece.replace(/^\s*[,;:]+/, "");
         // After a pause the model sends the closing punctuation at the start of the next phrase (". Let's").
@@ -483,13 +539,20 @@ export function useLesson() {
         const { done, rest } = splitSettled(s.pending);
         s.pending = rest;
         setPending(rest);
-        if (done.length) settle(done, named);
+        if (done.length) {
+          s.beforePause = ""; // the words it marked have started settling; a stale marker could cut a word in two
+          settle(done, named);
+          if (rest.trim()) s.pendingT = s.heard;
+        }
         if (!s.ending) listenForBubbles(); // a "Bubbles" heard while End drains the last words starts nothing
       },
       onPause: () => {
         if (!mine() || s.ending) return; // End settles the last words itself
         s.beforePause = s.pending;
+        listenForBubbles(true); // "Hey Bubbles" [pause]: a name at the very end counts once the teacher stops
         if (s.summon) awaitRequest(true);
+        // Speech the model hasn't punctuated would otherwise never settle while pauses stay short.
+        else if ((s.pending.match(/\S+/g)?.length ?? 0) >= RUN_ON_WORDS) settleRest();
         else settleLater();
       },
       onCatchUp: (progress) => {
@@ -505,7 +568,7 @@ export function useLesson() {
         setError(gotReady ? "stt-lost" : "stt-unreachable");
       },
     });
-  }, [settle, settleLater, pickIcon, caughtUp, title, awaitRequest, listenForBubbles]);
+  }, [settle, settleRest, settleLater, pickIcon, caughtUp, title, awaitRequest, listenForBubbles, fireSummon]);
 
   const cancel = useCallback(() => {
     const s = r.current;
@@ -516,7 +579,7 @@ export function useLesson() {
     clearTimeout(s.summon?.timer);
     clearTimeout(s.settleTimer);
     s.abort?.abort();
-    Object.assign(s, { cleans: [], pending: "", beforePause: "", sentences: [], muted: false, summon: null, wakeSeen: 0, queued: null });
+    Object.assign(s, { cleans: [], pending: "", beforePause: "", pendingT: null, sentences: [], muted: false, summon: null, wakeSeen: 0, queue: [] });
     setPending("");
     setSentences([]);
     setMuted(false);
@@ -579,7 +642,7 @@ export function useLesson() {
     clearTimeout(s.summon?.timer);
     clearTimeout(s.settleTimer);
     s.summon = null;
-    s.queued = null;
+    s.queue = [];
     s.abort?.abort();
     setListening(false);
     setDrawing(false);
@@ -634,9 +697,16 @@ export function useLesson() {
   }, [settleRest]);
 
   const toggleMute = useCallback(() => {
-    r.current.muted = !r.current.muted;
-    setMuted(r.current.muted);
-  }, []);
+    const s = r.current;
+    s.muted = !s.muted;
+    setMuted(s.muted);
+    if (s.muted && s.summon) {
+      if (isRequest(summonText())) return fireSummon();
+      clearTimeout(s.summon.timer);
+      s.summon = null;
+      setListening(s.asking);
+    }
+  }, [fireSummon]);
 
   // Edits from the send review panel are kept with the lesson.
   const updateTargets = useCallback(
@@ -651,19 +721,21 @@ export function useLesson() {
     [save],
   );
 
-  // Stop: cancel the drawing in flight (and a Bubbles request still listening). The automatic trigger
-  // then waits out the usual gap before offering a new diagram.
+  // Stop: cancel the drawing in flight (and a Bubbles request still listening). Requests already said and waiting
+  // their turn still go; a waiting automatic check doesn't. The automatic trigger then waits out the usual gap.
   const stopDrawing = useCallback(() => {
     const s = r.current;
+    const whole = s.summon && isRequest(summonText()); // a request said in full, waiting its 1.5-2 s before it goes
+    s.queue = s.queue.filter((q) => q.ask);
+    s.abort?.abort();
+    if (whole) fireSummon();
     clearTimeout(s.summon?.timer);
     s.summon = null;
-    s.queued = null;
-    s.abort?.abort();
     s.lastCreatedAt = now();
     s.streak = 0;
     setDrawing(false);
     setListening(false);
-  }, []);
+  }, [fireSummon]);
 
   // Pins diagram `id` (default: the newest); clicking Pin on the pinned diagram unpins it, and on
   // another diagram moves the pin there.
@@ -695,7 +767,7 @@ export function useLesson() {
       subject: "other",
       catchingUp: false, cleans: [],
       pending: "", sentences: [], current: null, archive: [], todos: [], pinnedId: null, streak: 0,
-      lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queued: null, wakeSeen: 0, summon: null, beforePause: "",
+      lastCreatedAt: -Infinity, quietUntil: -Infinity, iconPicked: false, queue: [], wakeSeen: 0, summon: null, beforePause: "", pendingT: null,
     });
     setCatchUp(null);
     setLanding(null);
@@ -718,7 +790,7 @@ export function useLesson() {
 
   return {
     phase, title, setTitle, startedAt, endedAt, level, sentences, pending, current, archive, todos, pinnedId, subject,
-    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, bubblesNote, stopDrawing, editSentence, editPending, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
+    lessonExport, exportError, error, clearError: () => setError(null), starting, ending, listening, drawing, asking, bubblesNote, stopDrawing, editSentence, editPending, muted, toggleMute, saveFailed, updateTargets, catchUp, landing, start, cancel, end, retryExport: buildExport, drawThis, togglePin, dismiss, reset,
   };
 }
 
