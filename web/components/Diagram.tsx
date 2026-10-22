@@ -1380,16 +1380,51 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
     const p = places.find((x) => x.id === id);
     return p && { ...p, lon: lonOf(p.lon) };
   };
-  // Each place's label goes above its pin unless that would hit the top edge or a label already placed.
-  const taken: [number, number, number, number][] = places.map((p) => [px(lonOf(p.lon)) - 11, py(p.lat) - 11, 22, 22]); // the pins
-  const labelBelow = places.map((p) => {
+  // Each place's label goes above its pin, else below, right or left: the first spot inside the frame and clear of the
+  // pins and the labels already placed. A place outside a zoomed view gets no pin or label.
+  type Box = [number, number, number, number];
+  const shown = places.map((p) => {
+    const [x, y] = [px(lonOf(p.lon)), py(p.lat)];
+    return x >= 0 && x <= W && y >= 0 && y <= H;
+  });
+  const taken: Box[] = places.filter((_, i) => shown[i]).map((p) => [px(lonOf(p.lon)) - 11, py(p.lat) - 11, 22, 22]); // the pins
+  const hits = ([ax, ay, aw, ah]: Box) => taken.some(([bx, by, bw, bh]) => ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah);
+  const inFrame = ([x, y, w, h]: Box) => x >= 4 && y >= 4 && x + w <= W - 4 && y + h <= H - 4;
+  const labelBox = places.map((p, i) => {
+    if (!shown[i]) return null;
     const [x, y] = [px(lonOf(p.lon)), py(p.lat)];
     const w = p.label.length * 9 + 24;
-    const box = (below: boolean): [number, number, number, number] => [x - w / 2, below ? y + 16 : y - 46, w, 30];
-    const hits = ([ax, ay, aw, ah]: number[]) => taken.some(([bx, by, bw, bh]) => ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah);
-    const below = y < 60 || hits(box(false));
-    taken.push(box(below));
-    return below;
+    const spots: Box[] = [[x - w / 2, y - 46, w, 30], [x - w / 2, y + 16, w, 30], [x + 16, y - 15, w, 30], [x - 16 - w, y - 15, w, 30]];
+    const box = spots.find((b) => inFrame(b) && !hits(b)) ?? spots.find(inFrame) ?? spots[0];
+    taken.push(box);
+    return box;
+  });
+  // Each route is a gentle curve, bowed to the left of travel, stopping short of the pins. Its label sits on the middle
+  // of the curve, else the nearest point along it that's in view and clear of the place labels (a zoomed map may show
+  // only one end of the route); with no such point it's left off.
+  const routes = (d.routes ?? []).map((r, _, all) => {
+    const [a, b] = [at(r.from), at(r.to)];
+    if (!a || !b) return null;
+    const [x1, y1, x2, y2] = [px(a.lon), py(a.lat), px(b.lon), py(b.lat)];
+    const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+    const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
+    const [sx1, sy1, sx2, sy2] = [x1 + ux * 14, y1 + uy * 14, x2 - ux * 16, y2 - uy * 16];
+    const [cx, cy] = [(x1 + x2) / 2 + uy * len * 0.18, (y1 + y2) / 2 - ux * len * 0.18];
+    let label: [number, number] | undefined;
+    if (r.label && showRouteLabel(r, all, at, px, py)) {
+      const w = r.label.length * 9.5 + 10;
+      const spots = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8].map((t): Box => {
+        const x = (1 - t) ** 2 * sx1 + 2 * (1 - t) * t * cx + t ** 2 * sx2;
+        const y = (1 - t) ** 2 * sy1 + 2 * (1 - t) * t * cy + t ** 2 * sy2;
+        return [x - w / 2, y - 26, w, 22];
+      });
+      const box = spots.find((bx) => inFrame(bx) && !hits(bx)) ?? spots.find(inFrame);
+      if (box) {
+        taken.push(box);
+        label = [box[0] + w / 2, box[1] + 16];
+      }
+    }
+    return { r, path: `M${sx1} ${sy1}Q${cx} ${cy} ${sx2} ${sy2}`, label };
   });
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
@@ -1415,21 +1450,15 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
       </g>
       {/* Pins and routes stay inside the map's frame: a place outside a zoomed view isn't drawn over the panel. */}
       <g clipPath={`url(#${sid}-view)`}>
-      {(d.routes ?? []).map((r, _, all) => {
-        const [a, b] = [at(r.from), at(r.to)];
-        if (!a || !b) return null;
-        const [x1, y1, x2, y2] = [px(lonOf(a.lon)), py(a.lat), px(lonOf(b.lon)), py(b.lat)];
-        // A gentle curve, bowed to the left of travel, stopping short of the pins.
-        const len = Math.hypot(x2 - x1, y2 - y1) || 1;
-        const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
-        const [sx1, sy1, sx2, sy2] = [x1 + ux * 14, y1 + uy * 14, x2 - ux * 16, y2 - uy * 16];
-        const [cx, cy] = [(x1 + x2) / 2 + uy * len * 0.18, (y1 + y2) / 2 - ux * len * 0.18];
+      {routes.map((route) => {
+        if (!route) return null;
+        const { r, label } = route;
         const hot = fresh.has(r.id) && !still;
         return (
           <g key={r.id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
-            <path d={`M${sx1} ${sy1}Q${cx} ${cy} ${sx2} ${sy2}`} fill="none" stroke="var(--grape-strong)" strokeWidth={3} strokeDasharray="8 7" strokeLinecap="round" markerEnd={`url(#${sid}-af)`} />
-            {r.label && showRouteLabel(r, all, at, px, py) && (
-              <text x={(sx1 + 2 * cx + sx2) / 4} y={(sy1 + 2 * cy + sy2) / 4 - 10} textAnchor="middle" fontSize={16} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+            <path d={route.path} fill="none" stroke="var(--grape-strong)" strokeWidth={3} strokeDasharray="8 7" strokeLinecap="round" markerEnd={`url(#${sid}-af)`} />
+            {label && (
+              <text x={label[0]} y={label[1]} textAnchor="middle" fontSize={16} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
                 {r.label}
               </text>
             )}
@@ -1439,13 +1468,14 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
       {places.map((p, i) => {
         const [x, y] = [px(lonOf(p.lon)), py(p.lat)];
         const hot = fresh.has(p.id) && !still;
-        const w = p.label.length * 9 + 24;
-        const below = labelBelow[i];
+        const box = labelBox[i];
+        if (!box) return null;
+        const [bx, by, w] = box;
         return (
           <g key={p.id} style={hot ? { transformBox: "fill-box", transformOrigin: "center", animation: "ll-in 600ms var(--ease) both" } : undefined}>
             <circle cx={x} cy={y} r={9} fill={BUBBLE[i % BUBBLE.length].mid} stroke="#fff" strokeWidth={3} />
-            <rect x={x - w / 2} y={below ? y + 16 : y - 46} width={w} height={30} rx={15} fill="#fff" stroke={BUBBLE[i % BUBBLE.length].mid} strokeWidth={2} />
-            <text x={x} y={below ? y + 31 : y - 31} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={700} fill="#111">
+            <rect x={bx} y={by} width={w} height={30} rx={15} fill="#fff" stroke={BUBBLE[i % BUBBLE.length].mid} strokeWidth={2} />
+            <text x={bx + w / 2} y={by + 15} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={700} fill="#111">
               {p.label}
             </text>
           </g>
