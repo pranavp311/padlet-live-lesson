@@ -48,6 +48,7 @@ export type Diagram = {
   // Map: real places by latitude and longitude, and routes between them (a river's course, a journey, trade).
   places?: { id: string; label: string; lat: number; lon: number }[];
   routes?: { id: string; from: string; to: string; label?: string }[];
+  view?: { lat: number; lon: number; span: number }; // set when the teacher asks to zoom: centre and degrees of longitude
   caption?: string; // a line under the diagram, e.g. a formula
   fresh: string[]; // ids added by the latest change, drawn highlighted
 };
@@ -83,6 +84,7 @@ export type Op =
   | { op: "add_part"; id: string; label: string; inside?: boolean; fills?: boolean }
   | { op: "add_step"; id: string; text: string; note?: string }
   | { op: "add_place"; id: string; label: string; lat: number; lon: number }
+  | { op: "set_view"; lat: number; lon: number; span: number }
   | { op: "add_route"; id: string; from: string; to: string; label?: string };
 
 export function emptyDiagram(kind: Kind, t: number): Diagram {
@@ -170,6 +172,8 @@ export function validOp(o: unknown): o is Op {
     case "add_place":
       return str(v.id) && str(v.label) && num(v.lat) && num(v.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180;
     case "add_route": return str(v.id) && str(v.from) && str(v.to) && optStr(v.label);
+    case "set_view":
+      return num(v.lat) && num(v.lon) && num(v.span) && Math.abs(v.lat) <= 85 && Math.abs(v.lon) <= 180 && v.span >= 0.05 && v.span <= 360;
     case "set_chart": return (v.style === undefined || v.style === "bar" || v.style === "pictograph") && optStr(v.axis);
     case "add_fraction":
       return (
@@ -328,6 +332,7 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         next.parts = keep(next.parts!);
         next.steps = keep(next.steps!);
         next.places = keep(next.places!);
+        if (o.id === "view") next.view = undefined; // back to fitting the places
         next.routes = next.routes!.filter((r) => r.id !== o.id && r.from !== o.id && r.to !== o.id);
         if (o.id === "caption") next.caption = undefined;
         break;
@@ -384,6 +389,15 @@ export function applyOps(d: Diagram, raw: unknown[]): Diagram {
         break;
       case "add_place":
         put(next.places!, { id: o.id, label: o.label, lat: o.lat, lon: o.lon }, 10);
+        // A place outside a zoomed view would be off the map: go back to fitting all the places.
+        if (next.view) {
+          const dLon = Math.abs(((o.lon - next.view.lon + 540) % 360) - 180);
+          if (dLon > next.view.span / 2 || Math.abs(o.lat - next.view.lat) > next.view.span * 0.3) next.view = undefined;
+        }
+        break;
+      case "set_view":
+        next.view = { lat: o.lat, lon: o.lon, span: o.span };
+        next.fresh.push("view");
         break;
       case "add_route":
         if (next.places!.some((x) => x.id === o.from) && next.places!.some((x) => x.id === o.to)) {

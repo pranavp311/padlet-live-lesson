@@ -1262,47 +1262,66 @@ function Steps({ d, still }: { d: Diagram; still: boolean }) {
   );
 }
 
-// Coastlines (Natural Earth 1:110m land, public domain) as rings of [lon, lat]; fetched once, only when a map is drawn.
-let land: Promise<[number, number][][]> | null = null;
-const loadLand = () =>
-  (land ??= fetch("/maps/land.json")
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`land.json ${r.status}`))))
-    .catch((e) => {
-      land = null; // try again next time a map is drawn
-      throw e;
-    }));
+// Coastlines (Natural Earth land, public domain) as rings of [lon, lat], fetched once each, only when a map needs them:
+// 1:110m (65 KB) for the world or a continent, 1:50m (0.9 MB) for a region, and for a close-up (a city, an island) the
+// 1:10m coastline cut into 30-degree tiles (land-10m/<lonTile>_<latTile>.json, up to 0.4 MB each), of which only the
+// tiles under the view are fetched. A tile that's all sea has no file.
+const LAND_REGION_SPAN = 25;
+const LAND_CLOSE_SPAN = 8;
+const TILE = 30;
+const lands = new Map<string, Promise<[number, number][][]>>();
+const loadLand = (file: string) => {
+  if (!lands.has(file)) {
+    lands.set(
+      file,
+      fetch(`/maps/${file}`)
+        .then((r) => (r.ok ? r.json() : r.status === 404 && file.startsWith("land-10m/") ? [] : Promise.reject(new Error(`${file} ${r.status}`))))
+        .catch((e) => {
+          lands.delete(file); // try again next time a map is drawn
+          throw e;
+        }),
+    );
+  }
+  return lands.get(file)!;
+};
+
+// A round distance for the scale bar: 1, 2, 5, 10, 20, 50… km.
+const niceKm = (km: number) => {
+  const pow = 10 ** Math.floor(Math.log10(km));
+  return [1, 2, 5, 10].map((m) => m * pow).filter((x) => x <= km).pop() ?? pow;
+};
 
 // A map: the land around the places mentioned, pins with labels, and routes as dashed arrows between them.
 function MapView({ d, still }: { d: Diagram; still: boolean }) {
   const sid = useSid();
   const [rings, setRings] = useState<[number, number][][]>([]);
-  useEffect(() => {
-    let live = true;
-    loadLand()
-      .then((r) => live && setRings(r))
-      .catch((e) => console.error("map outline failed", e));
-    return () => {
-      live = false;
-    };
-  }, []);
   const places = d.places ?? [];
   const fresh = new Set(d.fresh);
-  // The view: around the places with a margin, never narrower than 30 by 20 degrees; the whole world if none.
-  // Places on both sides of the 180° line (Siberia to Alaska) are seen across the Pacific, not round the world.
-  const across = places.length > 1 && Math.max(...places.map((p) => p.lon)) - Math.min(...places.map((p) => p.lon)) > 180;
+  // The view: the one the teacher asked for (zoom), else around the places with a margin, never narrower than a city
+  // (about 0.4 by 0.3 degrees); the whole world if there are no places.
+  // Places on both sides of the 180° line (Siberia to Alaska), or a zoomed view over it, are seen across the Pacific,
+  // not round the world.
+  const across =
+    (places.length > 1 && Math.max(...places.map((p) => p.lon)) - Math.min(...places.map((p) => p.lon)) > 180) ||
+    (!!d.view && Math.abs(d.view.lon) + d.view.span / 2 > 180);
   const lonOf = (lon: number) => (across && lon < 0 ? lon + 360 : lon);
   const lons = places.map((p) => lonOf(p.lon));
   const lats = places.map((p) => p.lat);
   let [lon0, lon1] = places.length ? [Math.min(...lons), Math.max(...lons)] : [-170, 190];
   let [lat0, lat1] = places.length ? [Math.min(...lats), Math.max(...lats)] : [-58, 82];
+  const view = d.view;
   const grow = (a: number, b: number, min: number, margin: number): [number, number] => {
     const span = Math.max(min, (b - a) * (1 + 2 * margin));
     const mid = (a + b) / 2;
     return [mid - span / 2, mid + span / 2];
   };
-  if (places.length) {
-    [lon0, lon1] = grow(lon0, lon1, 30, 0.35);
-    [lat0, lat1] = grow(lat0, lat1, 20, 0.35);
+  if (view) {
+    const vlon = lonOf(view.lon);
+    [lon0, lon1] = [vlon - view.span / 2, vlon + view.span / 2];
+    [lat0, lat1] = [view.lat - view.span * 0.3, view.lat + view.span * 0.3];
+  } else if (places.length) {
+    [lon0, lon1] = grow(lon0, lon1, 0.4, 0.35);
+    [lat0, lat1] = grow(lat0, lat1, 0.3, 0.35);
   }
   const k = Math.cos((((lat0 + lat1) / 2) * Math.PI) / 180); // a degree of longitude shrinks away from the equator
   const W = 720;
@@ -1318,11 +1337,40 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
     s = H / (lat1 - lat0);
     [lon0, lon1] = grow(lon0, lon1, W / (s * k), 0);
   }
+  // Which coastline files this (final) view needs, by its larger side (a river running north is narrow but long). A
+  // close-up across the 180° line, or of Antarctica (not in the tiles), uses 1:50m.
+  const extent = Math.max(lon1 - lon0, lat1 - lat0);
+  const close = extent < LAND_CLOSE_SPAN && !across && lat0 > -60;
+  const files: string[] = [];
+  if (close) {
+    const tileOf = (v: number) => Math.floor(v / TILE);
+    for (let tx = tileOf(lon0); tx <= tileOf(lon1); tx++) {
+      for (let ty = tileOf(lat0); ty <= tileOf(lat1); ty++) files.push(`land-10m/${tx}_${ty}.json`);
+    }
+  } else files.push(extent < LAND_REGION_SPAN ? "land-50m.json" : "land.json");
+  const filesKey = files.join(",");
+  useEffect(() => {
+    let live = true;
+    Promise.all(filesKey.split(",").map(loadLand))
+      .then((all) => live && setRings(all.flat()))
+      .catch((e) => console.error("map outline failed", e));
+    return () => {
+      live = false;
+    };
+  }, [filesKey]);
   const px = (lon: number) => (lon - lon0) * k * s;
   const py = (lat: number) => (lat1 - lat) * s;
-  // A coastline that crosses the 180° line starts a new stroke there instead of a line across the map; across the
-  // Pacific the world is drawn twice, side by side, so both shores show.
-  const landPath = (across ? [0, 360] : [0])
+  // A scale bar on regional and city maps: a degree of longitude is 111.32 km at the equator, k times that here.
+  const kmPerPx = 111.32 / s;
+  const barKm = niceKm(kmPerPx * 140);
+  const barPx = barKm / kmPerPx;
+  // Coastlines that cross the 180° line are stored continuous (running a little past ±180), so the land is drawn once
+  // for each 360° shift that reaches the view: both shores of the Pacific show, with no gap at the line.
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  for (const r of rings) for (const [lon] of r) [minLon, maxLon] = [Math.min(minLon, lon), Math.max(maxLon, lon)];
+  const shifts = [-360, 0, 360].filter((sh) => minLon + sh < lon1 && maxLon + sh > lon0);
+  const landPath = shifts
     .flatMap((shift) =>
       rings.map((r) => r.map(([lon, lat], i) => `${i && Math.abs(lon - r[i - 1][0]) <= 180 ? "L" : "M"}${px(lon + shift).toFixed(1)} ${py(lat).toFixed(1)}`).join("")),
     )
@@ -1351,8 +1399,22 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
       </clipPath>
       <g clipPath={`url(#${sid}-view)`}>
         <rect x={0} y={0} width={W} height={H} fill="var(--oceanic-tint)" />
-        <path d={landPath} fill="#eef9e8" stroke="#a9d9a0" strokeWidth={1.5} strokeLinejoin="round" fillRule="evenodd" />
+        {/* Tiles are cut along straight lines, so a close-up's land is drawn as fill only: an outline would show the cuts. */}
+        <path d={landPath} fill="#eef9e8" stroke={close ? "none" : "#a9d9a0"} strokeWidth={1.5} strokeLinejoin="round" fillRule="evenodd" />
+        {lon1 - lon0 < 60 && (
+          <g transform={`translate(18 ${H - 26})`}>
+            <rect x={-8} y={-22} width={barPx + 16} height={34} rx={8} fill="#fff" fillOpacity={0.85} />
+            <line x1={0} x2={barPx} y1={0} y2={0} stroke="#3f3f46" strokeWidth={3} strokeLinecap="round" />
+            <line x1={0} x2={0} y1={-5} y2={5} stroke="#3f3f46" strokeWidth={2} />
+            <line x1={barPx} x2={barPx} y1={-5} y2={5} stroke="#3f3f46" strokeWidth={2} />
+            <text x={barPx / 2} y={-8} textAnchor="middle" fontSize={13} fontWeight={600} fill="#3f3f46">
+              {barKm >= 1 ? `${barKm} km` : `${barKm * 1000} m`}
+            </text>
+          </g>
+        )}
       </g>
+      {/* Pins and routes stay inside the map's frame: a place outside a zoomed view isn't drawn over the panel. */}
+      <g clipPath={`url(#${sid}-view)`}>
       {(d.routes ?? []).map((r, _, all) => {
         const [a, b] = [at(r.from), at(r.to)];
         if (!a || !b) return null;
@@ -1389,6 +1451,7 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
           </g>
         );
       })}
+      </g>
     </svg>
   );
 }

@@ -21,7 +21,7 @@ const OPS: Record<Kind, string> = {
   web: `{"op":"add_branch","id":"main","label":"Plants"} for the main idea in the middle (no parent), then {"op":"add_branch","id":"roots","label":"Roots","parent":"main"} for ideas around it, and details under those (parent: their idea); at most 15 branches, 1-3 words each`,
   parts: `{"op":"set_subject","label":"Plant cell","shape":"cell"|"circle"|"oval"|"layers"} (layers: something made of layers inside one another, like the Earth, the atmosphere or skin; list its parts from the outside in), then {"op":"add_part","id":"nucleus","label":"Nucleus","inside":true} for each part (inside: true for parts within it, false for its outer layers like the cell wall or skin; the large central part, like the nucleus, first; "fills":true for what fills the inside, like cytoplasm); at most 10 parts, labels 1-3 words`,
   math: `{"op":"add_step","id":"s1","text":"2x + 3 = 11","note":"subtract 3"} one per line of working, in order (at most 7); write maths with Unicode: x², √, ×, ÷, ½, H₂O, →; each step on one line, e.g. "2H₂ + O₂ → 2H₂O"; note is a short reason for that step`,
-  map: `{"op":"add_place","id":"cairo","label":"Cairo","lat":30.0,"lon":31.2} for each real place (at most 10; real latitude and longitude in degrees), {"op":"add_route","id":"r1","from":"khartoum","to":"cairo","label":"Nile flows north"} between places (a river's course, a journey, a trade route); add places before routes that use them`,
+  map: `{"op":"add_place","id":"cairo","label":"Cairo","lat":30.0,"lon":31.2} for each real place (at most 10; real latitude and longitude in degrees), {"op":"add_route","id":"r1","from":"khartoum","to":"cairo","label":"Nile flows north"} between places (a river's course, a journey, a trade route); add places before routes that use them. The view fits the places by itself; only when the teacher asks to zoom in or out, or to show a wider area, use {"op":"set_view","lat":<centre latitude>,"lon":<centre longitude>,"span":<degrees>} (centre, and how many degrees of longitude to show: about 0.2 for a town, 0.5 for a city, 5 for a country, 40 for a continent). Zooming in means a smaller span than the view on screen (half, or less for "right in"); zooming out a bigger one. Centre on what the teacher names`,
   letters: `{"op":"add_letter","id":"m","text":"Mm","sound":"/m/","word":"moon"}: text is the letter in upper and lower case ("Ss"), or a letter group as written ("sh", "ai"); sound is the sound between slashes; word is a short example word that contains it. One add_letter per letter or sound the teacher is talking about (at most 4). "What letter makes the sound s?" draws "Ss". To split a word up, {"op":"add_word","id":"butterfly","parts":["but","ter","fly"],"mode":"syllables"|"sounds"|"parts"} (sounds: "c","a","t"; parts: prefix, root, suffix "un","help","ful"); add_word needs no add_letter; at most 4 words`,
 };
 
@@ -129,7 +129,8 @@ async function drawRequest(heard: string, said: string, current: Diagram | null,
       return { jev, action: "update", kind: current.kind, ops };
     }
     console.info("diagram", JSON.stringify({ path: "bubbles", ask, jev, asked, edits, kind }));
-    return { jev, action: "new_topic", kind, ops };
+    // A new map fits its places by itself; a zoom only makes sense on a map already on screen.
+    return { jev, action: "new_topic", kind, ops: ops.filter((o) => (o as { op?: string })?.op !== "set_view") };
   } catch (e) {
     console.error("bubbles request failed", e);
     return { error: String(e) };
@@ -177,5 +178,5 @@ function compact(d: Diagram) {
   return { title: d.title, nodes: d.nodes, edges: d.edges, events: d.events, axes: d.axes, curves: d.curves, points: d.points, segments: d.segments, smiles: d.smiles, sets: d.sets, items: d.items, letters: d.letters,
     columns: d.columns, rows: d.rows, cells: d.cells, line: d.line, marks: d.marks, jumps: d.jumps,
     bars: d.bars, chart: d.chart, fractions: d.fractions, branches: d.branches, words: d.words,
-    subject: d.subject, parts: d.parts, steps: d.steps, places: d.places, routes: d.routes, caption: d.caption };
+    subject: d.subject, parts: d.parts, steps: d.steps, places: d.places, routes: d.routes, view: d.view, caption: d.caption };
 }
