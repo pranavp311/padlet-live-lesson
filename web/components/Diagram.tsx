@@ -1399,32 +1399,89 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
     taken.push(box);
     return box;
   });
-  // Each route is a gentle curve, bowed to the left of travel, stopping short of the pins. Its label sits on the middle
-  // of the curve, else the nearest point along it that's in view and clear of the place labels (a zoomed map may show
-  // only one end of the route); with no such point it's left off.
-  const routes = (d.routes ?? []).map((r, _, all) => {
-    const [a, b] = [at(r.from), at(r.to)];
-    if (!a || !b) return null;
-    const [x1, y1, x2, y2] = [px(a.lon), py(a.lat), px(b.lon), py(b.lat)];
-    const len = Math.hypot(x2 - x1, y2 - y1) || 1;
-    const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
-    const [sx1, sy1, sx2, sy2] = [x1 + ux * 14, y1 + uy * 14, x2 - ux * 16, y2 - uy * 16];
-    const [cx, cy] = [(x1 + x2) / 2 + uy * len * 0.18, (y1 + y2) / 2 - ux * len * 0.18];
-    let label: [number, number] | undefined;
-    if (r.label && showRouteLabel(r, all, at, px, py)) {
-      const w = r.label.length * 9.5 + 10;
-      const spots = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8].map((t): Box => {
-        const x = (1 - t) ** 2 * sx1 + 2 * (1 - t) * t * cx + t ** 2 * sx2;
-        const y = (1 - t) ** 2 * sy1 + 2 * (1 - t) * t * cy + t ** 2 * sy2;
-        return [x - w / 2, y - 26, w, 22];
-      });
-      const box = spots.find((bx) => inFrame(bx) && !hits(bx)) ?? spots.find(inFrame);
-      if (box) {
-        taken.push(box);
-        label = [box[0] + w / 2, box[1] + 16];
+  // Routes: legs that join end to start (Lake Victoria to Juba, Juba to Khartoum…) are one journey, drawn as one
+  // smooth dashed line with a single arrowhead, stopping short of the pins; a lone leg is a gentle curve bowed to the
+  // left of travel. Each name on a journey ("White Nile") is written once, on its longest stretch, at a point that's
+  // in view and clear of the place labels; with no such point it's left off rather than drawn over them.
+  const journeys: NonNullable<Diagram["routes"]>[] = [];
+  for (const r of d.routes ?? []) {
+    if (!at(r.from) || !at(r.to)) continue;
+    const after = journeys.find((j) => j[j.length - 1].to === r.from);
+    const before = journeys.find((j) => j[0].from === r.to);
+    if (after && before && after !== before) {
+      // The leg bridges two journeys: they become one.
+      after.push(r, ...before);
+      journeys.splice(journeys.indexOf(before), 1);
+    } else if (after) after.push(r);
+    else if (before) before.unshift(r);
+    else journeys.push([r]);
+  }
+  const written = new Set<string>(); // a name is written once on the map, even if two journeys share it
+  const routes = journeys.map((legs) => {
+    const pts = [legs[0].from, ...legs.map((r) => r.to)].map((id) => {
+      const p = at(id)!;
+      return [px(p.lon), py(p.lat)];
+    });
+    const n = pts.length - 1;
+    // Stop short of the first and last pins (less on a very short leg).
+    const trim = (from: number[], to: number[], by: number) => {
+      const len = Math.hypot(to[0] - from[0], to[1] - from[1]) || 1;
+      const k = Math.min(by, len / 3) / len;
+      return [from[0] + (to[0] - from[0]) * k, from[1] + (to[1] - from[1]) * k];
+    };
+    pts[0] = trim(pts[0], pts[1], 14);
+    pts[n] = trim(pts[n], pts[n - 1], 16);
+    // Each leg as a cubic curve [start, control, control, end].
+    const segs = pts.slice(0, -1).map((p0, i) => {
+      const p1 = pts[i + 1];
+      if (n === 1) {
+        const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+        const [ux, uy] = [(p1[0] - p0[0]) / (len || 1), (p1[1] - p0[1]) / (len || 1)];
+        const q = [(p0[0] + p1[0]) / 2 + uy * len * 0.18, (p0[1] + p1[1]) / 2 - ux * len * 0.18];
+        return [p0, [p0[0] + ((q[0] - p0[0]) * 2) / 3, p0[1] + ((q[1] - p0[1]) * 2) / 3], [p1[0] + ((q[0] - p1[0]) * 2) / 3, p1[1] + ((q[1] - p1[1]) * 2) / 3], p1];
+      }
+      // Through the points (Catmull-Rom), so the line bends smoothly at each stop. Each handle is kept within a third of
+      // its own leg, or a short leg beside a long one would loop.
+      const [pa, pb] = [pts[Math.max(0, i - 1)], pts[Math.min(n, i + 2)]];
+      const reach = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) / 3;
+      const handle = (from: number[], dx: number, dy: number) => {
+        const k = Math.min(1, reach / (Math.hypot(dx, dy) || 1));
+        return [from[0] + dx * k, from[1] + dy * k];
+      };
+      return [p0, handle(p0, (p1[0] - pa[0]) / 6, (p1[1] - pa[1]) / 6), handle(p1, -(pb[0] - p0[0]) / 6, -(pb[1] - p0[1]) / 6), p1];
+    });
+    const path = `M${segs[0][0].join(" ")}` + segs.map(([, c1, c2, e]) => `C${c1.join(" ")} ${c2.join(" ")} ${e.join(" ")}`).join("");
+    const pointAt = ([s0, c1, c2, e]: number[][], t: number) =>
+      [0, 1].map((k) => (1 - t) ** 3 * s0[k] + 3 * (1 - t) ** 2 * t * c1[k] + 3 * (1 - t) * t ** 2 * c2[k] + t ** 3 * e[k]);
+    // When the last leg is too short for its arrowhead to show beside the pins, the direction goes on the longest leg,
+    // past its middle where a name may be written; the name then keeps clear of it.
+    const lens = segs.map((seg) => Math.hypot(seg[3][0] - seg[0][0], seg[3][1] - seg[0][1]));
+    const longest = segs[lens.indexOf(Math.max(...lens))];
+    const arrow = lens[n - 1] < 48 && n > 1 ? `M${pointAt(longest, 0.75).join(" ")}L${pointAt(longest, 0.8).join(" ")}` : null;
+    if (arrow) {
+      const [ax, ay] = pointAt(longest, 0.8);
+      taken.push([ax - 12, ay - 12, 24, 24]);
+    }
+    const labels: { text: string; x: number; y: number }[] = [];
+    for (const text of new Set(legs.map((r) => r.label).filter((x): x is string => !!x && !written.has(x)))) {
+      const w = text.length * 9.5 + 10;
+      const longestFirst = segs
+        .map((seg, i) => ({ seg, i, len: Math.hypot(seg[3][0] - seg[0][0], seg[3][1] - seg[0][1]) }))
+        .filter(({ i }) => legs[i].label === text)
+        .sort((x, y) => y.len - x.len);
+      const spot = longestFirst
+        .flatMap(({ seg }) => [0.5, 0.35, 0.65, 0.2, 0.8].map((t): Box => {
+          const [x, y] = pointAt(seg, t);
+          return [x - w / 2, y - 26, w, 22];
+        }))
+        .find((bx) => inFrame(bx) && !hits(bx));
+      if (spot) {
+        taken.push(spot);
+        written.add(text);
+        labels.push({ text, x: spot[0] + w / 2, y: spot[1] + 16 });
       }
     }
-    return { r, path: `M${sx1} ${sy1}Q${cx} ${cy} ${sx2} ${sy2}`, label };
+    return { legs, path, labels, arrow };
   });
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={cap(W, H)} role="img" aria-label={d.title}>
@@ -1450,18 +1507,18 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
       </g>
       {/* Pins and routes stay inside the map's frame: a place outside a zoomed view isn't drawn over the panel. */}
       <g clipPath={`url(#${sid}-view)`}>
-      {routes.map((route) => {
-        if (!route) return null;
-        const { r, label } = route;
-        const hot = fresh.has(r.id) && !still;
+      {routes.map(({ legs, path, labels, arrow }) => {
+        // A new journey fades in; one that grows a leg doesn't flash again. Keyed by a leg that stays in it.
+        const hot = legs.every((r) => fresh.has(r.id)) && !still;
         return (
-          <g key={r.id} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
-            <path d={route.path} fill="none" stroke="var(--grape-strong)" strokeWidth={3} strokeDasharray="8 7" strokeLinecap="round" markerEnd={`url(#${sid}-af)`} />
-            {label && (
-              <text x={label[0]} y={label[1]} textAnchor="middle" fontSize={16} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
-                {r.label}
+          <g key={legs.map((r) => r.id).sort()[0]} style={hot ? { animation: "ll-fade 600ms var(--ease) both" } : undefined}>
+            <path d={path} fill="none" stroke="var(--grape-strong)" strokeWidth={3} strokeDasharray="8 7" strokeLinecap="round" strokeLinejoin="round" markerEnd={arrow ? undefined : `url(#${sid}-af)`} />
+            {arrow && <path d={arrow} fill="none" stroke="transparent" strokeWidth={3} markerEnd={`url(#${sid}-af)`} />}
+            {labels.map((l) => (
+              <text key={l.text} x={l.x} y={l.y} textAnchor="middle" fontSize={16} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+                {l.text}
               </text>
-            )}
+            ))}
           </g>
         );
       })}
@@ -1484,22 +1541,5 @@ function MapView({ d, still }: { d: Diagram; still: boolean }) {
       </g>
     </svg>
   );
-}
-
-// Legs of one route often share a label ("Silk Road" on each): show it once, on the longest leg.
-function showRouteLabel(
-  r: { id: string; from: string; to: string; label?: string },
-  all: { id: string; from: string; to: string; label?: string }[],
-  at: (id: string) => { lat: number; lon: number } | undefined,
-  px: (lon: number) => number,
-  py: (lat: number) => number,
-) {
-  const len = (x: { from: string; to: string }) => {
-    const [a, b] = [at(x.from), at(x.to)];
-    return a && b ? Math.hypot(px(b.lon) - px(a.lon), py(b.lat) - py(a.lat)) : 0;
-  };
-  const same = all.filter((x) => x.label === r.label);
-  const longest = same.reduce((best, x) => (len(x) > len(best) ? x : best), same[0]);
-  return longest.id === r.id && len(r) >= 80; // a label on a very short leg would sit on the pins
 }
 
