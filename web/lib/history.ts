@@ -46,6 +46,18 @@ export function loadLesson(id: string): LessonRecord | null {
   return read<LessonRecord>(KEY(id));
 }
 
+// Removes a lesson and its dashboard card from this browser. Returns false when the browser refuses.
+export function deleteLesson(id: string): boolean {
+  try {
+    localStorage.setItem(INDEX, JSON.stringify(listLessons().filter((x) => x.id !== id)));
+    localStorage.removeItem(KEY(id));
+    return true;
+  } catch (e) {
+    console.error("couldn't delete lesson", e);
+    return false;
+  }
+}
+
 // Returns false when the browser refuses (storage full or blocked), so the caller can say so.
 export function saveLesson(l: LessonRecord): boolean {
   try {

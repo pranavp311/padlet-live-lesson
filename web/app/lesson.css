@@ -188,7 +188,25 @@
 .dash-empty .new-lesson { margin-top: 12px; }
 .lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 20px; }
 .lesson-card { padding: 8px; border: 0; border-radius: 20px; background: #fff; box-shadow: var(--shadow-1); display: flex; flex-direction: column; gap: 4px; text-align: left; font: inherit; color: #111; cursor: pointer; transition: transform 220ms var(--ease), box-shadow 220ms var(--ease); }
-.lesson-card:hover { transform: translateY(-4px) rotate(-0.4deg); box-shadow: 0 0.5px 1px rgba(0,0,0,.2), 0 14px 28px rgba(92,58,16,.16); }
+/* The card and its delete button lift together, so the lift lives on the wrapper. */
+.lesson-wrap { position: relative; display: flex; transition: transform 220ms var(--ease); }
+.lesson-wrap > .lesson-card { flex: 1; min-width: 0; }
+.lesson-wrap:hover { transform: translateY(-4px) rotate(-0.4deg); }
+.lesson-wrap:hover .lesson-card { box-shadow: 0 0.5px 1px rgba(0,0,0,.2), 0 14px 28px rgba(92,58,16,.16); }
+.lesson-delete { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); color: #3f3f46; box-shadow: 0 0.5px 1px rgba(0,0,0,.2), 0 4px 10px rgba(0,0,0,.08); cursor: pointer; opacity: 0; transform: scale(.9); transition: opacity 160ms var(--ease), transform 160ms var(--ease), background 120ms, color 120ms; }
+.lesson-wrap:hover .lesson-delete, .lesson-delete:focus-visible { opacity: 1; transform: none; }
+.lesson-delete:hover { background: var(--scarlet-tint); color: #b00020; }
+@media (hover: none) { .lesson-delete { opacity: 1; transform: none; } }
+.confirm-dialog { width: min(400px, calc(100vw - 32px)); }
+.confirm-body { padding: 28px 28px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.confirm-body .muted { margin: 0; max-width: 300px; }
+.confirm-body strong { color: #111; font-weight: 600; }
+.confirm-icon { width: 56px; height: 56px; margin-bottom: 4px; border-radius: 18px; background: var(--scarlet-tint); color: #b00020; display: flex; align-items: center; justify-content: center; }
+.confirm-error { margin: 4px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--scarlet-tint); color: #7c0000; font-size: 14px; line-height: 20px; }
+.confirm-actions { display: flex; gap: 8px; margin-top: 12px; width: 100%; }
+.confirm-actions .btn { flex: 1; height: 44px; }
+.btn-danger { background: #e5383b; color: #fff; box-shadow: 0 4px 8px rgba(229,56,59,.24); }
+.btn-danger:hover { background: #c8262b; }
 .lesson-card:active { transform: translateY(-1px) scale(0.99); }
 .lesson-cover { height: 150px; border-radius: 14px; background: var(--surface); overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 12px; }
 .lesson-cover > * { transition: transform 300ms var(--ease); }

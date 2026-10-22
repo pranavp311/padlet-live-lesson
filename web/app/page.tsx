@@ -3,7 +3,7 @@
 import "./lesson.css";
 import { useEffect, useState } from "react";
 import { Ended, Live, Ready, Warming } from "@/components/Screens";
-import { listLessons, loadLesson, saveLesson, type LessonRecord, type LessonSummary } from "@/lib/history";
+import { deleteLesson, listLessons, loadLesson, saveLesson, type LessonRecord, type LessonSummary } from "@/lib/history";
 import { useLesson } from "@/lib/useLesson";
 
 export default function Page() {
@@ -28,5 +28,10 @@ export default function Page() {
     };
     return <Ended l={{ ...past, updateTargets }} onDone={() => setPast(null)} doneLabel="All lessons" />;
   }
-  return <Ready l={l} lessons={lessons} onOpen={(id) => setPast(loadLesson(id))} />;
+  const remove = (id: string) => {
+    const ok = deleteLesson(id);
+    setLessons(listLessons());
+    return ok;
+  };
+  return <Ready l={l} lessons={lessons} onOpen={(id) => setPast(loadLesson(id))} onDelete={remove} />;
 }
