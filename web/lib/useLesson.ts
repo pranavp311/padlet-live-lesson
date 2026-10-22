@@ -204,7 +204,9 @@ export function useLesson() {
       }
       const lesson = s.lesson;
       const t = now();
-      const recent = s.sentences.filter((x) => !s.asked.has(x.id)).slice(-3).map((x) => x.clean ?? x.raw);
+      // The last few sentences said, less any that were requests to Bubbles: not the last few that weren't requests,
+      // which after a run of requests reaches back minutes to a topic long since drawn.
+      const recent = s.sentences.slice(-3).filter((x) => !s.asked.has(x.id)).map((x) => x.clean ?? x.raw);
       // Draw this is about what's being said now, which may not have settled into a sentence yet.
       if (force && !ask && s.pending.trim()) recent.push(s.pending.trim());
       if (!recent.length && !ask) {

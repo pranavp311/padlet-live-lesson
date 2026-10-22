@@ -474,6 +474,38 @@ function Graph({ d, still }: { d: Diagram; still: boolean }) {
   );
 }
 
+// A molecule of up to three heavy atoms with its hydrogens written out: "O" → "O([H])([H])", "C=O" → "C([H])([H])=O".
+// Anything else (rings, aromatic or bracketed atoms, larger molecules) is returned as it is.
+const VALENCE: Record<string, number> = { B: 3, C: 4, N: 3, O: 2, P: 3, S: 2, F: 1, Cl: 1, Br: 1, I: 1 };
+function withHydrogens(smiles: string) {
+  const tokens = smiles.match(/Cl|Br|[BCNOPSFI]|[-=#()]|./g) ?? [];
+  if (tokens.some((t) => !(t in VALENCE) && !"-=#()".includes(t))) return smiles;
+  const atoms = tokens.filter((t) => t in VALENCE);
+  if (atoms.length > 3) return smiles;
+  // Bond orders around each atom, following branches.
+  const used = atoms.map(() => 0);
+  const order = { "-": 1, "=": 2, "#": 3 } as Record<string, number>;
+  const stack: number[] = [];
+  let prev = -1;
+  let bond = 1;
+  let k = 0;
+  for (const t of tokens) {
+    if (t === "(") stack.push(prev);
+    else if (t === ")") prev = stack.pop() ?? -1;
+    else if (t in order) bond = order[t];
+    else {
+      if (prev >= 0) {
+        used[prev] += bond;
+        used[k] += bond;
+      }
+      prev = k++;
+      bond = 1;
+    }
+  }
+  k = 0;
+  return tokens.map((t) => (t in VALENCE ? t + "([H])".repeat(Math.max(0, VALENCE[t] - used[k++])) : t)).join("");
+}
+
 function Molecule({ d, still }: { d: Diagram; still: boolean }) {
   const ref = useRef<SVGSVGElement>(null);
   const [failed, setFailed] = useState(false);
@@ -484,9 +516,16 @@ function Molecule({ d, still }: { d: Diagram; still: boolean }) {
     import("smiles-drawer").then(({ default: SD }) => {
       if (!live || !ref.current) return;
       try {
-        const tree = SD.Parser.parse(d.smiles!);
+        // A small molecule is about its hydrogens (water's bent H–O–H, methane's four C–H): they're drawn as atoms with
+        // bonds, rather than "OH2" as one label.
+        const tree = SD.Parser.parse(withHydrogens(d.smiles!));
         ref.current.innerHTML = "";
         new SD.SvgDrawer({ width: 480, height: 400, bondThickness: 1.6, fontSizeLarge: 14, fontSizeSmall: 9, padding: 24 }).draw(tree, ref.current, "light");
+        // The drawer fits the view tightly round the molecule, so water would fill the panel: keep the view at least
+        // a few bond lengths across, so small molecules stay a natural size.
+        const [x, y, w, h] = (ref.current.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
+        const side = Math.max(w, h, 150);
+        if ([x, y, w, h].every(Number.isFinite)) ref.current.setAttribute("viewBox", `${x + w / 2 - side / 2} ${y + h / 2 - side / 2} ${side} ${side}`);
         ref.current.setAttribute("width", "100%");
         ref.current.setAttribute("height", "100%");
         setFailed(false);
@@ -812,11 +851,17 @@ function Venn({ d, still }: { d: Diagram; still: boolean }) {
 
 // A table: pastel header row across the top, row labels (when there are any) down the left, wrapped cell text.
 function Table({ d, still }: { d: Diagram; still: boolean }) {
-  const cols = d.columns ?? [];
   const rows = d.rows ?? [];
   const fresh = new Set(d.fresh);
   const labelled = rows.some((r) => r.label);
   const cell = (r: string, c: string) => (d.cells ?? []).find((x) => x.row === r && x.col === c)?.text ?? "";
+  // Rows named down the left and an empty first column while the rest are filled in ("Planet" over Mercury, Venus…):
+  // that column is the row names again, so its heading goes above them instead of an empty column. A table still to
+  // be filled in (every cell empty) keeps its columns.
+  const filled = (c: { id: string }) => rows.some((r) => cell(r.id, c.id));
+  const all = d.columns ?? [];
+  const corner = labelled && all.length > 1 && !filled(all[0]) && all.slice(1).some(filled) ? all[0] : null;
+  const cols = corner ? all.slice(1) : all;
   // Columns as wide as their longest text needs, within limits, so short tables don't look stretched.
   const colW = cols.map((c) => Math.min(240, Math.max(130, ...[c.label, ...rows.map((r) => cell(r.id, c.id))].map((t) => Math.min(t.length, 26) * 8.5 + 32))));
   const labelW = labelled ? Math.min(200, Math.max(110, ...rows.map((r) => (r.label ?? "").length * 8.5 + 32))) : 0;
@@ -831,6 +876,11 @@ function Table({ d, still }: { d: Diagram; still: boolean }) {
       <rect x={0} y={0} width={W} height={H} rx={14} fill="#fff" stroke="#e3e4e8" />
       <path d={`M14 0H${W - 14}a14 14 0 0 1 14 14V${headH}H0V14a14 14 0 0 1 14-14z`} fill="var(--grape-tint)" />
       {labelled && <rect x={0} y={headH} width={labelW} height={H - headH} fill="var(--canary-tint)" />}
+      {corner && (
+        <g style={anim(corner.id)}>
+          <Lines x={labelW / 2} y={headH / 2} lines={wrap(corner.label, Math.floor(labelW / 9.5), 2)} size={17} weight={700} fill="#3d1a78" lh={19} />
+        </g>
+      )}
       {cols.map((c, i) => (
         <g key={c.id} style={anim(c.id)}>
           <Lines x={x0(i) + colW[i] / 2} y={headH / 2} lines={wrap(c.label, Math.floor(colW[i] / 9.5), 2)} size={17} weight={700} fill="#3d1a78" lh={19} />
@@ -1118,7 +1168,9 @@ function Tree({ d, still }: { d: Diagram; still: boolean }) {
     g.setGraph({ rankdir: "TB", nodesep: 18, ranksep: 70, marginx: 16, marginy: 16 });
     g.setDefaultEdgeLabel(() => ({}));
     branches.forEach((b) => g.setNode(b.id, { width: pillW(b.label, 16), height: 44 }));
-    branches.forEach((b) => b.parent && g.setEdge(b.parent, b.id));
+    // A link's label gets its own room in the layout, so two labels under one parent ("no backbone", "have
+    // backbone") are spaced apart instead of written over each other.
+    branches.forEach((b) => b.parent && g.setEdge(b.parent, b.id, b.edge ? { width: b.edge.length * 8.6 + 16, height: 22, labelpos: "c" } : {}));
     dagre.layout(g);
     return g;
   }, [branches]);
@@ -1132,11 +1184,15 @@ function Tree({ d, still }: { d: Diagram; still: boolean }) {
         const n = layout.node(b.id);
         if (!p || !n) return null;
         const [x1, y1, x2, y2] = [p.x, p.y + 22, n.x, n.y - 22];
+        // Through the spot the layout kept for the label, if it has one.
+        const at = b.edge ? layout.edge(b.parent, b.id) : undefined;
+        const [lx, ly] = at && Number.isFinite(at.x) ? [at.x, at.y] : [(x1 + x2) / 2, (y1 + y2) / 2];
+        const curve = (ax: number, ay: number, bx: number, by: number) => `C${ax} ${(ay + by) / 2}, ${bx} ${(ay + by) / 2}, ${bx} ${by}`;
         return (
           <g key={`e${b.id}`} style={fresh.has(b.id) && !still ? { animation: "ll-fade 500ms var(--ease) both" } : undefined}>
-            <path d={`M${x1} ${y1}C${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`} fill="none" stroke={EDGE} strokeWidth={2} />
+            <path d={`M${x1} ${y1}${b.edge ? curve(x1, y1, lx, ly) + curve(lx, ly, x2, y2) : curve(x1, y1, x2, y2)}`} fill="none" stroke={EDGE} strokeWidth={2} />
             {b.edge && (
-              <text x={(x1 + x2) / 2} y={(y1 + y2) / 2} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
+              <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={700} fill="var(--grape-strong)" stroke="#fff" strokeWidth={5} paintOrder="stroke">
                 {b.edge}
               </text>
             )}
